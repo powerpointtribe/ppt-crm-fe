@@ -168,14 +168,24 @@ export default function FirstTimers() {
 
     try {
       setSavingEdit(true)
-      await firstTimersService.updateFirstTimer(editingItem.id, {
-        [editingItem.field]: editingItem.value
-      })
+
+      let updateData: any = {}
+
+      if (editingItem.field === 'name') {
+        // Split the name into first and last name
+        const nameParts = editingItem.value.trim().split(' ')
+        updateData.firstName = nameParts[0] || ''
+        updateData.lastName = nameParts.slice(1).join(' ') || ''
+      } else {
+        updateData[editingItem.field] = editingItem.value
+      }
+
+      await firstTimersService.updateFirstTimer(editingItem.id, updateData)
 
       // Update local state
       setFirstTimers(prev => prev.map(visitor =>
         visitor._id === editingItem.id
-          ? { ...visitor, [editingItem.field]: editingItem.value }
+          ? { ...visitor, ...updateData }
           : visitor
       ))
 
@@ -355,37 +365,37 @@ export default function FirstTimers() {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       not_contacted: {
-        color: 'bg-red-100 text-red-800 border-red-200',
+        color: 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border-red-300',
         icon: AlertCircle,
         label: 'Not Contacted'
       },
       contacted: {
-        color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        color: 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border-green-300',
         icon: Phone,
         label: 'Contacted'
       },
       scheduled_visit: {
-        color: 'bg-blue-100 text-blue-800 border-blue-200',
+        color: 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border-blue-300',
         icon: Calendar,
         label: 'Visit Scheduled'
       },
       visited: {
-        color: 'bg-purple-100 text-purple-800 border-purple-200',
+        color: 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border-purple-300',
         icon: UserCheck,
         label: 'Visited'
       },
       joined_group: {
-        color: 'bg-green-100 text-green-800 border-green-200',
+        color: 'bg-gradient-to-r from-cyan-100 to-cyan-200 text-cyan-800 border-cyan-300',
         icon: CheckCircle,
         label: 'Joined Group'
       },
       converted: {
-        color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        color: 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border-emerald-300',
         icon: UserPlus,
         label: 'Converted'
       },
       lost_contact: {
-        color: 'bg-gray-100 text-gray-800 border-gray-200',
+        color: 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border-gray-300',
         icon: Clock,
         label: 'Lost Contact'
       }
@@ -521,61 +531,107 @@ export default function FirstTimers() {
           actions={bulkActions}
         />
 
-        {/* Quick Stats */}
+        {/* Enhanced Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-3 gap-4">
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total</p>
-                  <p className="text-2xl font-bold">{stats.total || 0}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-600 mb-1">Total Visitors</p>
+                    <p className="text-3xl font-bold text-blue-900">{stats.total || 0}</p>
+                    <p className="text-xs text-blue-600 mt-1">All time</p>
+                  </div>
+                  <div className="p-3 bg-blue-200 rounded-full">
+                    <UserPlus className="h-8 w-8 text-blue-700" />
+                  </div>
                 </div>
-                <UserPlus className="h-8 w-8 text-blue-500" />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Need Follow-up</p>
-                  <p className="text-2xl font-bold text-orange-600">{stats.needingFollowUp || 0}</p>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 hover:shadow-lg transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-orange-600 mb-1">Need Follow-up</p>
+                    <p className="text-3xl font-bold text-orange-900">{stats.needingFollowUp || 0}</p>
+                    <p className="text-xs text-orange-600 mt-1">Require attention</p>
+                  </div>
+                  <div className="p-3 bg-orange-200 rounded-full">
+                    <Clock className="h-8 w-8 text-orange-700" />
+                  </div>
                 </div>
-                <Clock className="h-8 w-8 text-orange-500" />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Converted</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.converted || 0}</p>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <Card className="p-6 bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 hover:shadow-lg transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-emerald-600 mb-1">Converted</p>
+                    <p className="text-3xl font-bold text-emerald-900">{stats.converted || 0}</p>
+                    <p className="text-xs text-emerald-600 mt-1">Success rate</p>
+                  </div>
+                  <div className="p-3 bg-emerald-200 rounded-full">
+                    <CheckCircle className="h-8 w-8 text-emerald-700" />
+                  </div>
                 </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
-              </div>
-            </Card>
+              </Card>
+            </motion.div>
           </div>
         )}
 
 
-        {/* Search and Filter */}
-        <div className="flex gap-4">
-          <SearchInput
-            placeholder="Search by name..."
-            onSearch={handleSearch}
-            defaultValue={searchParams.search}
-            debounceMs={500}
-            className="flex-1"
-          />
-          <select
-            value={searchParams.status || ''}
-            onChange={(e) => handleFilter({ status: e.target.value as any || undefined })}
-            className="px-3 py-2 border rounded-md"
-          >
-            <option value="">All Status</option>
-            <option value="not_contacted">Not Contacted</option>
-            <option value="contacted">Contacted</option>
-            <option value="visited">Visited</option>
-            <option value="converted">Converted</option>
-          </select>
-        </div>
+        {/* Enhanced Search and Filter */}
+        <Card className="p-6 bg-gradient-to-r from-gray-50 to-white mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <SearchInput
+                placeholder="Search visitors by name, phone, or email..."
+                onSearch={handleSearch}
+                defaultValue={searchParams.search}
+                debounceMs={500}
+                className="w-full"
+              />
+            </div>
+            <div className="flex gap-3">
+              <select
+                value={searchParams.status || ''}
+                onChange={(e) => handleFilter({ status: e.target.value as any || undefined })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+              >
+                <option value="">All Status</option>
+                <option value="not_contacted">Not Contacted</option>
+                <option value="contacted">Contacted</option>
+                <option value="visited">Visited</option>
+                <option value="converted">Converted</option>
+                <option value="lost_contact">Lost Contact</option>
+              </select>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchParams({ page: 1, limit: 10, search: '' })
+                  handleSearch('')
+                }}
+                className="px-4 py-2 text-sm"
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        </Card>
 
         {/* Modern Visitor Cards Layout */}
         <div className="space-y-4">
@@ -591,10 +647,41 @@ export default function FirstTimers() {
               const daysSinceVisit = getDaysSinceVisit(visitor.dateOfVisit)
               const needsAttention = needsFollowUp(visitor)
 
+              // Dynamic avatar colors based on visitor characteristics
+              const getAvatarColor = (visitor: any) => {
+                if (visitor.status === 'converted') return 'from-emerald-500 to-emerald-600'
+                if (visitor.status === 'visited') return 'from-purple-500 to-purple-600'
+                if (visitor.status === 'contacted') return 'from-green-500 to-green-600'
+                if (visitor.status === 'not_contacted') return 'from-red-500 to-red-600'
+                if (visitor.assignedTo) return 'from-indigo-500 to-indigo-600'
+                return 'from-blue-500 to-blue-600'
+              }
+
+              const getRingColor = (visitor: any) => {
+                if (visitor.status === 'converted') return 'ring-emerald-100'
+                if (visitor.status === 'visited') return 'ring-purple-100'
+                if (visitor.status === 'contacted') return 'ring-green-100'
+                if (visitor.status === 'not_contacted') return 'ring-red-100'
+                if (visitor.assignedTo) return 'ring-indigo-100'
+                return 'ring-blue-100'
+              }
+
+              const getCardBorder = (visitor: any, needsAttention: boolean) => {
+                if (needsAttention) return 'border-orange-200 bg-gradient-to-r from-orange-50 to-orange-25'
+                if (visitor.status === 'converted') return 'border-emerald-200 hover:border-emerald-300'
+                if (visitor.status === 'visited') return 'border-purple-200 hover:border-purple-300'
+                if (visitor.status === 'contacted') return 'border-green-200 hover:border-green-300'
+                if (visitor.status === 'not_contacted') return 'border-red-200 hover:border-red-300'
+                return 'border-gray-100 hover:border-blue-200'
+              }
+
               return (
-                <div
+                <motion.div
                   key={visitor._id}
-                  className={`bg-white rounded-lg border ${needsAttention ? 'border-orange-200 bg-orange-50' : 'border-gray-200'} shadow-sm hover:shadow-md transition-all duration-200`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className={`bg-white rounded-xl border-2 ${getCardBorder(visitor, needsAttention)} shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}
                 >
                   <div className="p-4">
                     <div className="flex items-center justify-between">
@@ -605,24 +692,107 @@ export default function FirstTimers() {
                           onChange={() => bulkSelection.selectItem(visitor._id)}
                           className="h-4 w-4 text-blue-600 rounded"
                         />
-                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                        <div className={`w-10 h-10 bg-gradient-to-br ${getAvatarColor(visitor)} rounded-full flex items-center justify-center text-white font-bold shadow-md ring-2 ${getRingColor(visitor)}`}>
                           {visitor.firstName.charAt(0)}{visitor.lastName.charAt(0)}
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">
-                            {visitor.firstName} {visitor.lastName}
-                          </h3>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span>{visitor.phone}</span>
-                            <span className={`px-2 py-1 rounded-full text-xs ${statusConfig.color}`}>
-                              {statusConfig.label}
-                            </span>
+                          {/* Inline editable name */}
+                          {editingItem?.id === visitor._id && editingItem?.field === 'name' ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingItem.value}
+                                onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                                className="font-semibold text-gray-900 bg-transparent border-b-2 border-blue-500 focus:outline-none"
+                                autoFocus
+                              />
+                              <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <h3
+                              className="font-semibold text-gray-900 cursor-pointer hover:text-blue-600"
+                              onClick={() => handleInlineEdit(visitor._id, 'name', `${visitor.firstName} ${visitor.lastName}`)}
+                              title="Click to edit name"
+                            >
+                              {visitor.firstName} {visitor.lastName}
+                            </h3>
+                          )}
+
+                          <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
+                            {/* Inline editable phone */}
+                            {editingItem?.id === visitor._id && editingItem?.field === 'phone' ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={editingItem.value}
+                                  onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                                  className="bg-transparent border-b border-blue-500 focus:outline-none"
+                                  autoFocus
+                                />
+                                <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span
+                                className="cursor-pointer hover:text-blue-600"
+                                onClick={() => handleInlineEdit(visitor._id, 'phone', visitor.phone)}
+                                title="Click to edit phone"
+                              >
+                                {visitor.phone}
+                              </span>
+                            )}
+
+                            {/* Inline editable status */}
+                            {editingItem?.id === visitor._id && editingItem?.field === 'status' ? (
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={editingItem.value}
+                                  onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                                  className="text-xs border rounded px-1 py-1"
+                                  autoFocus
+                                >
+                                  <option value="not_contacted">Not Contacted</option>
+                                  <option value="contacted">Contacted</option>
+                                  <option value="visited">Visited</option>
+                                  <option value="converted">Converted</option>
+                                  <option value="lost_contact">Lost Contact</option>
+                                </select>
+                                <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs cursor-pointer hover:opacity-80 ${statusConfig.color}`}
+                                onClick={() => handleInlineEdit(visitor._id, 'status', visitor.status)}
+                                title="Click to edit status"
+                              >
+                                {statusConfig.label}
+                              </span>
+                            )}
+
                             {needsAttention && (
-                              <span className="text-orange-600 text-xs">Needs follow-up</span>
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Needs follow-up
+                              </span>
                             )}
                             {visitor.assignedTo && (
-                              <span className="text-blue-600 text-xs">
-                                Assigned: {typeof visitor.assignedTo === 'object' ? `${visitor.assignedTo?.firstName} ${visitor.assignedTo?.lastName}` : visitor.assignedTo}
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-800 border border-indigo-300">
+                                <User className="h-3 w-3 mr-1" />
+                                {typeof visitor.assignedTo === 'object' ? `${visitor.assignedTo?.firstName} ${visitor.assignedTo?.lastName}` : visitor.assignedTo}
                               </span>
                             )}
                           </div>
@@ -632,31 +802,119 @@ export default function FirstTimers() {
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => handleQuickStatusChange(visitor._id, 'contacted')}
-                          className="p-2"
+                          title="Mark as Contacted"
+                          className={`p-1.5 transition-all duration-200 ${
+                            visitor.status === 'contacted'
+                              ? 'bg-green-100 text-green-800 border-green-300'
+                              : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300'
+                          }`}
                         >
-                          <Phone className="h-4 w-4" />
+                          <Phone className="h-3.5 w-3.5" />
                         </Button>
+
+                        {/* Assign Member Dropdown */}
+                        <div className="relative">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (allMembers.length === 0) loadAllMembers()
+                              setActionMenuOpen(actionMenuOpen === `assign-${visitor._id}` ? null : `assign-${visitor._id}`)
+                            }}
+                            className={`px-3 py-1.5 text-xs transition-all duration-200 shadow-sm ${
+                              visitor.assignedTo
+                                ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                                : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
+                            }`}
+                          >
+                            <UserCog className="h-3 w-3 mr-1" />
+                            {visitor.assignedTo ? 'Reassign' : 'Assign'}
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+
+                          <AnimatePresence>
+                            {actionMenuOpen === `assign-${visitor._id}` && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg border z-20 max-h-48 overflow-y-auto"
+                              >
+                                <div className="py-1">
+                                  <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b">
+                                    Assign for Follow-up
+                                  </div>
+                                  {membersLoading ? (
+                                    <div className="px-3 py-4 text-center">
+                                      <LoadingSpinner size="sm" />
+                                    </div>
+                                  ) : (
+                                    allMembers.map((member) => (
+                                      <button
+                                        key={member._id}
+                                        onClick={() => {
+                                          handleAssignmentSubmit(member._id, visitor._id)
+                                          setActionMenuOpen(null)
+                                        }}
+                                        className="flex items-center gap-3 w-full px-4 py-3 text-sm hover:bg-blue-50 text-left transition-colors duration-150 border-b border-gray-50 last:border-b-0"
+                                      >
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md ${
+                                          member.unitType === 'gia' ? 'bg-gradient-to-br from-purple-400 to-purple-500' :
+                                          member.unitType === 'leadership' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500' :
+                                          member.unitType === 'ministry' ? 'bg-gradient-to-br from-green-400 to-green-500' :
+                                          member.unitType === 'youth' ? 'bg-gradient-to-br from-blue-400 to-blue-500' :
+                                          member.unitType === 'children' ? 'bg-gradient-to-br from-pink-400 to-pink-500' :
+                                          'bg-gradient-to-br from-gray-400 to-gray-500'
+                                        }`}>
+                                          {member.firstName.charAt(0)}{member.lastName.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-semibold text-gray-900 truncate">
+                                            {member.firstName} {member.lastName}
+                                          </div>
+                                          <div className="text-xs text-gray-600 truncate flex items-center gap-2">
+                                            <span>{member.phone}</span>
+                                            {member.unitType && (
+                                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                member.unitType === 'gia' ? 'bg-purple-100 text-purple-700' :
+                                                member.unitType === 'leadership' ? 'bg-yellow-100 text-yellow-700' :
+                                                member.unitType === 'ministry' ? 'bg-green-100 text-green-700' :
+                                                member.unitType === 'youth' ? 'bg-blue-100 text-blue-700' :
+                                                member.unitType === 'children' ? 'bg-pink-100 text-pink-700' :
+                                                'bg-gray-100 text-gray-600'
+                                              }`}>
+                                                {member.unitType.toUpperCase()}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </button>
+                                    ))
+                                  )}
+                                  {allMembers.length === 0 && !membersLoading && (
+                                    <div className="px-3 py-2 text-sm text-gray-500">
+                                      No members found
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleAssignToMember(visitor._id)}
-                          className="p-2"
+                          onClick={() => setActionMenuOpen(actionMenuOpen === `more-${visitor._id}` ? null : `more-${visitor._id}`)}
+                          className="p-1.5"
                         >
-                          <UserCog className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setActionMenuOpen(actionMenuOpen === visitor._id ? null : visitor._id)}
-                          className="p-2"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreHorizontal className="h-3.5 w-3.5" />
                         </Button>
 
                         <AnimatePresence>
-                          {actionMenuOpen === visitor._id && (
+                          {actionMenuOpen === `more-${visitor._id}` && (
                             <motion.div
                               initial={{ opacity: 0, scale: 0.95 }}
                               animate={{ opacity: 1, scale: 1 }}
@@ -676,7 +934,7 @@ export default function FirstTimers() {
                                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-50"
                                 >
                                   <Edit className="h-4 w-4" />
-                                  Edit
+                                  Edit Full Form
                                 </button>
                                 <button
                                   onClick={() => handleQuickStatusChange(visitor._id, 'converted')}
@@ -692,47 +950,70 @@ export default function FirstTimers() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )
             })
           )}
         </div>
 
         {firstTimers.length === 0 && (
-          <div className="text-center py-12">
-            <UserPlus className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No visitors found</h3>
-            <p className="text-gray-600 mb-4">Start tracking your church visitors and follow-ups.</p>
-            <Button onClick={() => navigate('/first-timers/new')}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center py-16"
+          >
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+              <UserPlus className="h-12 w-12 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No visitors found</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">Start tracking your church visitors and follow-ups to build stronger connections with your community.</p>
+            <Button
+              onClick={() => navigate('/first-timers/new')}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3"
+            >
               <Plus className="h-4 w-4 mr-2" />
-              Add Visitor
+              Add Your First Visitor
             </Button>
-          </div>
+          </motion.div>
         )}
 
-        {/* Pagination */}
+        {/* Enhanced Pagination */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex justify-center">
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                disabled={!pagination.hasPrev || loading}
-                onClick={() => setSearchParams(prev => ({ ...prev, page: prev.page! - 1 }))}
-              >
-                Previous
-              </Button>
-              <span className="px-4 py-2 text-sm text-gray-600">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={!pagination.hasNext || loading}
-                onClick={() => setSearchParams(prev => ({ ...prev, page: prev.page! + 1 }))}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex justify-center mt-8"
+          >
+            <Card className="p-4">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  disabled={!pagination.hasPrev || loading}
+                  onClick={() => setSearchParams(prev => ({ ...prev, page: prev.page! - 1 }))}
+                  className="px-4 py-2"
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Page</span>
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg font-medium">
+                    {pagination.page}
+                  </span>
+                  <span className="text-sm text-gray-600">of {pagination.totalPages}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={!pagination.hasNext || loading}
+                  onClick={() => setSearchParams(prev => ({ ...prev, page: prev.page! + 1 }))}
+                  className="px-4 py-2"
+                >
+                  Next
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
         )}
       </div>
 

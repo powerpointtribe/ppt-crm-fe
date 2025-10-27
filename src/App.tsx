@@ -5,9 +5,11 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 
 // Auth Pages
 import Login from '@/pages/auth/Login'
-import Register from '@/pages/auth/Register'
 import ForgotPassword from '@/pages/auth/ForgotPassword'
 import ResetPassword from '@/pages/auth/ResetPassword'
+
+// Public Pages
+import LandingPage from '@/pages/LandingPage'
 
 // Protected Pages
 import Dashboard from '@/pages/Dashboard'
@@ -40,14 +42,14 @@ function App() {
     <AnimatePresence mode="wait">
       <Routes>
         {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/visitor-registration" element={<PublicVisitorRegistration />} />
 
         {/* Dashboard - Requires Login Only */}
-        <Route path="/" element={
+        <Route path="/dashboard" element={
           <ProtectedRoute>
             <Dashboard />
           </ProtectedRoute>

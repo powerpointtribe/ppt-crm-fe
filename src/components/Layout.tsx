@@ -2,7 +2,6 @@ import { ReactNode, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Sidebar from './Sidebar'
 import Header from './Header'
-import Footer from './Footer'
 import ConnectionStatus from './ConnectionStatus'
 import DevModeIndicator from './DevModeIndicator'
 import { useAppStore } from '@/store'
@@ -49,8 +48,6 @@ export default function Layout({ children, title = 'Dashboard', headerActions }:
         >
           {children}
         </motion.div>
-
-        <Footer />
       </main>
       <DevModeIndicator />
     </div>

@@ -44,7 +44,7 @@ export default function Register() {
     try {
       const { confirmPassword, ...registerData } = data
       await authRegister(registerData)
-      navigate('/')
+      navigate('/dashboard')
     } catch (error: any) {
       console.error('Registration error:', error)
       setError('email', {

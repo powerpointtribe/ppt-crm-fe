@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff, LogIn, Mail, Lock, ArrowLeft, Church, Shield, CheckCircle } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -48,7 +48,7 @@ export default function Login() {
 
       setTimeout(() => {
         debugLog('Navigating to dashboard...')
-        navigate('/')
+        navigate('/dashboard')
       }, 200)
     } catch (error: any) {
       debugLog(`Login error: ${error.message}`)
@@ -81,146 +81,201 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center gradient-bg px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+    <div className="min-h-screen relative mobile-safe no-overflow">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-50 via-background to-accent-50"></div>
+      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+
+      {/* Navigation */}
+      <motion.nav
+        className="relative z-10 p-6"
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-md"
       >
-        <Card className="card-content">
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 0.2, type: 'spring', bounce: 0.6, duration: 0.8 }}
-              className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"
-            >
-              <LogIn className="w-8 h-8 text-white" />
-            </motion.div>
-            <motion.h1
-              className="text-3xl font-bold text-foreground"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              Welcome Back
-            </motion.h1>
-            <motion.p
-              className="text-muted-foreground mt-2"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              PowerPoint Tribe Church Management System
-            </motion.p>
-
-            {import.meta.env.DEV && (
-              <motion.div
-                className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-left"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                <h4 className="text-sm font-medium text-blue-800 mb-2">Test Credentials:</h4>
-                <div className="text-xs text-blue-700 space-y-1">
-                  <p><strong>Email:</strong> admin+4@church.com</p>
-                  <p><strong>Password:</strong> password123</p>
-                </div>
-              </motion.div>
-            )}
-          </div>
-
-          <motion.form
-            onSubmit={handleSubmit(onSubmit)}
-            className="space-y-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-          >
-            <Input
-              {...register('email')}
-              type="email"
-              label="Email Address"
-              placeholder="Enter your email"
-              leftIcon={<Mail className="h-4 w-4" />}
-              error={errors.email?.message}
-            />
-
-            <Input
-              {...register('password')}
-              type={showPassword ? 'text' : 'password'}
-              label="Password"
-              placeholder="Enter your password"
-              leftIcon={<Lock className="h-4 w-4" />}
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              }
-              error={errors.password?.message}
-            />
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-border rounded focus-ring"
-                />
-                <label htmlFor="remember-me" className="text-sm text-muted-foreground">
-                  Remember me
-                </label>
-              </div>
-
-              <Link
-                to="/forgot-password"
-                className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
-              >
-                Forgot password?
-              </Link>
+        <div className="flex items-center justify-between container-safe gap-4">
+          <Link to="/" className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors btn-mobile-safe">
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+            <span className="font-medium text-sm sm:text-base">Back to home</span>
+          </Link>
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl flex items-center justify-center shadow-lg">
+              <Church className="w-6 h-6 text-white" />
             </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold text-foreground">PowerPoint Tribe</span>
+              <span className="text-xs text-muted-foreground font-medium">Management System</span>
+            </div>
+          </div>
+        </div>
+      </motion.nav>
 
-            <Button
-              type="submit"
-              loading={isLoading}
-              className="w-full"
-              size="lg"
-            >
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </Button>
-          </motion.form>
-
+      <div className="relative z-10 flex items-center justify-center section-padding pb-16">
+        <div className="w-full max-w-6xl responsive-grid grid-cols-1 lg:grid-cols-2 items-center">
+          {/* Left Side - Marketing Content */}
           <motion.div
-            className="mt-8 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+            className="hidden lg:block"
           >
-            <p className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Link
-                to="/register"
-                className="font-medium text-primary-600 hover:text-primary-700 transition-colors"
-              >
-                Sign up here
-              </Link>
-            </p>
+            <div className="max-w-lg">
+              <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-6 leading-tight">
+                Welcome back to
+                <br />
+                <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
+                  PowerPoint Tribe
+                </span>
+              </h1>
+              <p className="text-lg lg:text-xl text-muted-foreground mb-8 leading-relaxed">
+                Continue serving PowerPoint Tribe Church with our comprehensive management platform designed for ministry excellence.
+              </p>
+
+              <div className="space-y-4">
+                {[
+                  { icon: CheckCircle, text: "PowerPoint Tribe member directory" },
+                  { icon: Shield, text: "Secure church data platform" },
+                  { icon: Church, text: "Cell group coordination tools" }
+                ].map((feature, index) => (
+                  <motion.div
+                    key={feature.text}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 + (index * 0.1) }}
+                    className="flex items-center space-x-3"
+                  >
+                    <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <feature.icon className="h-4 w-4 text-primary-600" />
+                    </div>
+                    <span className="text-muted-foreground">{feature.text}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </motion.div>
 
-          {/* Decorative elements */}
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-600 to-primary-400 rounded-t-lg"></div>
-        </Card>
-      </motion.div>
+          {/* Right Side - Login Form */}
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+            className="w-full max-w-md mx-auto lg:mx-0"
+          >
+            <Card className="p-8 shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+              <div className="text-center mb-8">
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.3, type: 'spring', bounce: 0.6, duration: 0.8 }}
+                  className="w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg"
+                >
+                  <LogIn className="w-8 h-8 text-white" />
+                </motion.div>
+                <motion.h2
+                  className="text-xl lg:text-2xl font-bold text-foreground"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  Sign In
+                </motion.h2>
+                <motion.p
+                  className="text-muted-foreground mt-2"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  Access your PowerPoint Tribe dashboard
+                </motion.p>
+
+              </div>
+
+              <motion.form
+                onSubmit={handleSubmit(onSubmit)}
+                className="space-y-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+              >
+                <Input
+                  {...register('email')}
+                  type="email"
+                  label="Email Address"
+                  placeholder="Enter your email"
+                  leftIcon={<Mail className="h-4 w-4" />}
+                  error={errors.email?.message}
+                />
+
+                <Input
+                  {...register('password')}
+                  type={showPassword ? 'text' : 'password'}
+                  label="Password"
+                  placeholder="Enter your password"
+                  leftIcon={<Lock className="h-4 w-4" />}
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  }
+                  error={errors.password?.message}
+                />
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      id="remember-me"
+                      name="remember-me"
+                      type="checkbox"
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-border rounded focus-ring"
+                    />
+                    <label htmlFor="remember-me" className="text-sm text-muted-foreground">
+                      Remember me
+                    </label>
+                  </div>
+
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+
+                <Button
+                  type="submit"
+                  loading={isLoading}
+                  className="w-full h-12 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-lg"
+                  size="lg"
+                >
+                  {isLoading ? 'Signing in...' : 'Sign in to Dashboard'}
+                </Button>
+              </motion.form>
+
+              <motion.div
+                className="mt-8 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.9 }}
+              >
+                <p className="text-sm text-muted-foreground">
+                  Access restricted to authorized PowerPoint Tribe leadership and administrators only.
+                </p>
+              </motion.div>
+
+              {/* Decorative elements */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-600 to-accent-600 rounded-t-lg"></div>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
       <DebugPanel />
     </div>
   )

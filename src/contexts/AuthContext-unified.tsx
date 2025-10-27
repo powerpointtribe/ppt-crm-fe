@@ -98,15 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const register = async (data: any) => {
-    try {
-      const response = await membersService.register(data);
-      localStorage.setItem('auth_token', response.access_token);
-      // Handle both 'member' and 'user' properties from API response
-      const memberData = response.member || (response as any).user;
-      setMember(memberData);
-    } catch (error) {
-      throw error;
-    }
+    throw new Error('Registration is disabled. Access is restricted to authorized PowerPoint Tribe leadership only.');
   };
 
   const logout = () => {

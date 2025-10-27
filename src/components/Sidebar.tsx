@@ -24,7 +24,7 @@ const baseMenuItems = [
   {
     icon: LayoutDashboard,
     label: 'Dashboard',
-    path: '/',
+    path: '/dashboard',
     color: 'text-primary-600',
     requiredModule: null // Always visible
   },

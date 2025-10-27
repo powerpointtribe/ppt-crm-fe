@@ -7,18 +7,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary brand colors
+        // PowerPoint Tribe brand colors - Purple/Blue gradient theme
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          50: '#f8f7ff',
+          100: '#f1edff',
+          200: '#e4dcff',
+          300: '#d1c2ff',
+          400: '#b59eff',
+          500: '#9d7aff', // Main brand color
+          600: '#8b5cf6',
+          700: '#7c3aed',
+          800: '#6b21d4',
+          900: '#581c87',
+        },
+        // Accent colors for PowerPoint Tribe
+        accent: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
         },
         // Semantic colors
         background: '#ffffff',
@@ -42,8 +55,8 @@ export default {
           foreground: '#0f172a',
         },
         accent: {
-          DEFAULT: '#f1f5f9',
-          foreground: '#0f172a',
+          DEFAULT: '#eff6ff',
+          foreground: '#1e3a8a',
         },
         destructive: {
           DEFAULT: '#ef4444',

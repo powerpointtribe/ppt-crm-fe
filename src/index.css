@@ -19,12 +19,54 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold text-foreground;
+  /* PowerPoint Tribe Typography System - Optimized for containers */
+  h1 {
+    @apply text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-tight tracking-tight;
+  }
+
+  h3 {
+    @apply text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground leading-snug;
+  }
+
+  h4 {
+    @apply text-lg sm:text-xl lg:text-2xl font-semibold text-foreground leading-snug;
+  }
+
+  h5 {
+    @apply text-base sm:text-lg lg:text-xl font-medium text-foreground leading-normal;
+  }
+
+  h6 {
+    @apply text-sm sm:text-base lg:text-lg font-medium text-foreground leading-normal;
   }
 
   p {
-    @apply text-muted-foreground leading-relaxed;
+    @apply text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed;
+  }
+
+  /* Consistent spacing scale */
+  .section-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-spacing {
+    @apply py-12 sm:py-16 lg:py-20;
+  }
+
+  .container-max {
+    @apply max-w-7xl mx-auto;
+  }
+
+  .content-max {
+    @apply max-w-4xl mx-auto;
+  }
+
+  .text-max {
+    @apply max-w-3xl mx-auto;
   }
 }
 
@@ -221,5 +263,52 @@
 
   .elevation-4 {
     @apply shadow-xl;
+  }
+
+  /* Background Patterns */
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .bg-dot-pattern {
+    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Responsive fixes and overflow prevention */
+  .no-overflow {
+    @apply overflow-hidden;
+  }
+
+  .safe-area {
+    @apply min-h-0 min-w-0;
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  .mobile-safe {
+    @apply max-w-full overflow-x-hidden;
+  }
+
+  /* Responsive grid with proper gap handling */
+  .responsive-grid {
+    @apply grid gap-4 sm:gap-6 lg:gap-8;
+  }
+
+  /* Responsive text that scales properly */
+  .text-responsive {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+
+  /* Safe button sizing for mobile */
+  .btn-mobile-safe {
+    @apply min-h-[44px] px-4 py-3 text-sm sm:text-base;
+  }
+
+  /* Container that prevents overflow */
+  .container-safe {
+    @apply w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8;
   }
 }

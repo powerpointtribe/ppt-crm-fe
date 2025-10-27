@@ -28,7 +28,7 @@ export default function PlaceholderPage({ title, description, moduleName }: Plac
             The {moduleName} module is currently under development and will be available soon.
           </p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

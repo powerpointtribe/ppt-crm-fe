@@ -113,48 +113,6 @@ export default function BulkOperationsDashboard() {
     return `${diffInDays}d ago`
   }
 
-  const bulkOperationTypes = [
-    {
-      title: 'Bulk Upload',
-      description: 'Import data from CSV/Excel files',
-      icon: Upload,
-      gradient: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-50',
-      path: '/bulk-operations/upload',
-      stats: 'Upload data in bulk',
-      entityTypes: ['Members', 'Groups', 'First Timers']
-    },
-    {
-      title: 'Bulk Update',
-      description: 'Update multiple records at once',
-      icon: Edit3,
-      gradient: 'from-green-500 to-green-600',
-      bgColor: 'bg-green-50',
-      path: '/bulk-operations/update',
-      stats: 'Modify existing data',
-      entityTypes: ['Members', 'Groups', 'First Timers']
-    },
-    {
-      title: 'Bulk Delete',
-      description: 'Remove multiple records safely',
-      icon: Trash2,
-      gradient: 'from-red-500 to-red-600',
-      bgColor: 'bg-red-50',
-      path: '/bulk-operations/delete',
-      stats: 'Clean up data',
-      entityTypes: ['Members', 'Groups', 'First Timers']
-    },
-    {
-      title: 'Bulk Export',
-      description: 'Export data to various formats',
-      icon: Download,
-      gradient: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      path: '/bulk-operations/export',
-      stats: 'Download reports',
-      entityTypes: ['CSV', 'Excel', 'JSON']
-    }
-  ]
 
   const entityModules = [
     {
@@ -255,54 +213,13 @@ export default function BulkOperationsDashboard() {
           ))}
         </div>
 
-        {/* Operation Types */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-foreground mb-2">Operation Types</h2>
-            <p className="text-muted-foreground">Choose the type of bulk operation to perform</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {bulkOperationTypes.map((operation, index) => (
-              <motion.div
-                key={operation.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 + index * 0.1 }}
-                onClick={() => navigate(operation.path)}
-                className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:border-gray-300"
-              >
-                <div className={`w-12 h-12 bg-gradient-to-r ${operation.gradient} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <operation.icon className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-2">{operation.title}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{operation.description}</p>
-                <div className="text-xs text-muted-foreground">
-                  {operation.entityTypes.join(' • ')}
-                </div>
-                <div className="mt-4 flex items-center text-primary-600 text-sm font-medium group-hover:text-primary-700">
-                  Start Operation
-                  <ArrowRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
 
         {/* Entity Modules */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
         >
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-foreground mb-2">Entity Management</h2>
-            <p className="text-muted-foreground">Manage bulk operations by entity type</p>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {entityModules.map((module, index) => (
@@ -310,7 +227,7 @@ export default function BulkOperationsDashboard() {
                 key={module.title}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 + index * 0.1 }}
+                transition={{ delay: 0.6 + index * 0.1 }}
                 onClick={() => navigate(module.path)}
                 className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:border-gray-300"
               >
@@ -340,7 +257,7 @@ export default function BulkOperationsDashboard() {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 1.1 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
           >
             <Card className="h-full">
               <div className="p-6">
@@ -392,7 +309,7 @@ export default function BulkOperationsDashboard() {
                         key={activity.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.2 + index * 0.1 }}
+                        transition={{ delay: 0.9 + index * 0.1 }}
                         className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                       >
                         <div className={`w-8 h-8 ${getOperationColor(activity.type)} rounded-full flex items-center justify-center flex-shrink-0`}>
@@ -435,7 +352,7 @@ export default function BulkOperationsDashboard() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 1.2 }}
+            transition={{ duration: 0.5, delay: 0.9 }}
           >
             <Card className="h-full">
               <div className="p-6">
@@ -460,7 +377,7 @@ export default function BulkOperationsDashboard() {
                       key={template.name}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1.3 + index * 0.1 }}
+                      transition={{ delay: 1.0 + index * 0.1 }}
                       className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                     >
                       <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">

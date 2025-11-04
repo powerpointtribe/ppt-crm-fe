@@ -25,6 +25,10 @@ import FirstTimers from '@/pages/FirstTimers/FirstTimers'
 import FirstTimerNew from '@/pages/FirstTimers/FirstTimerNew'
 import FirstTimerDetail from '@/pages/FirstTimers/FirstTimerDetail'
 import FirstTimerEdit from '@/pages/FirstTimers/FirstTimerEdit'
+import ServiceReports from '@/pages/ServiceReports/ServiceReports'
+import ServiceReportNew from '@/pages/ServiceReports/ServiceReportNew'
+import ServiceReportDetail from '@/pages/ServiceReports/ServiceReportDetail'
+import ServiceReportEdit from '@/pages/ServiceReports/ServiceReportEdit'
 import PublicVisitorRegistration from '@/pages/PublicVisitorRegistration'
 import Settings from '@/pages/Settings'
 
@@ -118,6 +122,28 @@ function App() {
         <Route path="/first-timers/:id/edit" element={
           <ProtectedRoute>
             <FirstTimerEdit />
+          </ProtectedRoute>
+        } />
+
+        {/* Service Reports - Under Members section */}
+        <Route path="/members/service-reports" element={
+          <ProtectedRoute>
+            <ServiceReports />
+          </ProtectedRoute>
+        } />
+        <Route path="/members/service-reports/new" element={
+          <ProtectedRoute>
+            <ServiceReportNew />
+          </ProtectedRoute>
+        } />
+        <Route path="/members/service-reports/:id" element={
+          <ProtectedRoute>
+            <ServiceReportDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/members/service-reports/:id/edit" element={
+          <ProtectedRoute>
+            <ServiceReportEdit />
           </ProtectedRoute>
         } />
 

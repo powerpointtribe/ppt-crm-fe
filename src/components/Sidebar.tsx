@@ -15,6 +15,12 @@ import {
   UserCheck,
   GroupIcon,
   Database,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Heart,
+  Building2,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore } from '@/store'
@@ -33,14 +39,44 @@ const baseMenuItems = [
     label: 'Members',
     path: '/members',
     color: 'text-green-600',
-    requiredModule: 'members'
+    requiredModule: 'members',
+    hasDropdown: true,
+    subItems: [
+      {
+        icon: FileText,
+        label: 'Service Reports',
+        path: '/members/service-reports',
+        color: 'text-blue-600'
+      }
+    ]
   },
   {
     icon: GroupIcon,
     label: 'Groups',
     path: '/groups',
     color: 'text-purple-600',
-    requiredModule: 'units'
+    requiredModule: 'units',
+    hasDropdown: true,
+    subItems: [
+      {
+        icon: MapPin,
+        label: 'Districts',
+        path: '/groups?page=1&limit=20&search=&type=district',
+        color: 'text-blue-600'
+      },
+      {
+        icon: Heart,
+        label: 'Ministries',
+        path: '/groups?page=1&limit=20&search=&type=ministry',
+        color: 'text-red-600'
+      },
+      {
+        icon: Building2,
+        label: 'Units',
+        path: '/groups?page=1&limit=20&search=&type=unit',
+        color: 'text-green-600'
+      }
+    ]
   },
   {
     icon: UserPlus,
@@ -70,12 +106,40 @@ export default function Sidebar() {
   const { sidebarCollapsed, setSidebarCollapsed } = useAppStore()
   const [isMobile, setIsMobile] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [openDropdowns, setOpenDropdowns] = useState<string[]>([])
   const { canAccessModule } = useAuth()
 
   // Filter menu items based on user access
   const menuItems = baseMenuItems.filter(item =>
     !item.requiredModule || canAccessModule(item.requiredModule)
   )
+
+  const toggleDropdown = (itemPath: string) => {
+    setOpenDropdowns(prev =>
+      prev.includes(itemPath)
+        ? prev.filter(path => path !== itemPath)
+        : [...prev, itemPath]
+    )
+  }
+
+  const isDropdownOpen = (itemPath: string) => openDropdowns.includes(itemPath)
+
+  const isSubItemActive = (subItems: any[]) => {
+    return subItems?.some(subItem => {
+      if (subItem.path.includes('?')) {
+        const [pathname, queryString] = subItem.path.split('?')
+        const urlParams = new URLSearchParams(queryString)
+        const currentParams = new URLSearchParams(location.search)
+
+        // Check if pathname matches and all query params from subItem are present
+        return location.pathname === pathname &&
+               Array.from(urlParams.entries()).every(([key, value]) =>
+                 currentParams.get(key) === value
+               )
+      }
+      return location.pathname === subItem.path
+    })
+  }
 
   useEffect(() => {
     const checkMobile = () => {
@@ -142,19 +206,96 @@ export default function Sidebar() {
                 <ul className="space-y-2">
                   {menuItems.map((item) => {
                     const isActive = location.pathname === item.path
+                    const hasSubItems = item.hasDropdown && item.subItems
+                    const isDropdownOpenState = isDropdownOpen(item.path)
+                    const hasActiveSubItem = hasSubItems && isSubItemActive(item.subItems)
+
                     return (
                       <li key={item.path}>
-                        <Link
-                          to={item.path}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className={cn(
-                            'nav-link',
-                            isActive && 'nav-link-active bg-primary-50 text-primary-700 border-l-4 border-primary-600'
-                          )}
-                        >
-                          <item.icon className={cn("h-5 w-5 shrink-0", item.color)} />
-                          <span className="font-medium">{item.label}</span>
-                        </Link>
+                        {hasSubItems ? (
+                          <div>
+                            <div className="flex">
+                              <Link
+                                to={item.path}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={cn(
+                                  'nav-link flex-1',
+                                  (isActive || hasActiveSubItem) && 'nav-link-active bg-primary-50 text-primary-700 border-l-4 border-primary-600'
+                                )}
+                              >
+                                <item.icon className={cn("h-5 w-5 shrink-0", item.color)} />
+                                <span className="font-medium">{item.label}</span>
+                              </Link>
+                              <button
+                                onClick={() => toggleDropdown(item.path)}
+                                className={cn(
+                                  'px-3 py-2 hover:bg-muted rounded-r-md transition-colors',
+                                  (isActive || hasActiveSubItem) && 'bg-primary-50 text-primary-700'
+                                )}
+                              >
+                                {isDropdownOpenState ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
+
+                            <AnimatePresence>
+                              {isDropdownOpenState && (
+                                <motion.ul
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="ml-4 mt-1 space-y-1 overflow-hidden"
+                                >
+                                  {item.subItems.map((subItem) => {
+                                    const isSubActive = (() => {
+                                      if (subItem.path.includes('?')) {
+                                        const [pathname, queryString] = subItem.path.split('?')
+                                        const urlParams = new URLSearchParams(queryString)
+                                        const currentParams = new URLSearchParams(location.search)
+                                        return location.pathname === pathname &&
+                                               Array.from(urlParams.entries()).every(([key, value]) =>
+                                                 currentParams.get(key) === value
+                                               )
+                                      }
+                                      return location.pathname === subItem.path
+                                    })()
+                                    return (
+                                      <li key={subItem.path}>
+                                        <Link
+                                          to={subItem.path}
+                                          onClick={() => setMobileMenuOpen(false)}
+                                          className={cn(
+                                            'nav-link text-sm',
+                                            isSubActive && 'nav-link-active bg-primary-50 text-primary-700 border-l-4 border-primary-600'
+                                          )}
+                                        >
+                                          <subItem.icon className={cn("h-4 w-4 shrink-0", subItem.color)} />
+                                          <span className="font-medium">{subItem.label}</span>
+                                        </Link>
+                                      </li>
+                                    )
+                                  })}
+                                </motion.ul>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        ) : (
+                          <Link
+                            to={item.path}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={cn(
+                              'nav-link',
+                              isActive && 'nav-link-active bg-primary-50 text-primary-700 border-l-4 border-primary-600'
+                            )}
+                          >
+                            <item.icon className={cn("h-5 w-5 shrink-0", item.color)} />
+                            <span className="font-medium">{item.label}</span>
+                          </Link>
+                        )}
                       </li>
                     )
                   })}
@@ -211,6 +352,10 @@ export default function Sidebar() {
         <ul className="space-y-1">
           {menuItems.map((item, index) => {
             const isActive = location.pathname === item.path
+            const hasSubItems = item.hasDropdown && item.subItems
+            const isDropdownOpenState = isDropdownOpen(item.path)
+            const hasActiveSubItem = hasSubItems && isSubItemActive(item.subItems)
+
             return (
               <motion.li
                 key={item.path}
@@ -218,48 +363,211 @@ export default function Sidebar() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Link
-                  to={item.path}
-                  className={cn(
-                    'nav-link relative group',
-                    isActive && 'nav-link-active bg-primary-50 text-primary-700'
-                  )}
-                >
-                  <item.icon className={cn(
-                    "h-5 w-5 shrink-0 transition-colors",
-                    isActive ? 'text-primary-600' : item.color
-                  )} />
-
-                  <AnimatePresence>
-                    {!sidebarCollapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.2 }}
-                        className="font-medium"
+                {hasSubItems ? (
+                  <div>
+                    <div className={cn("flex", sidebarCollapsed ? "" : "")}>
+                      <Link
+                        to={item.path}
+                        className={cn(
+                          'nav-link relative group flex-1',
+                          (isActive || hasActiveSubItem) && 'nav-link-active bg-primary-50 text-primary-700',
+                          sidebarCollapsed ? 'justify-center' : ''
+                        )}
                       >
-                        {item.label}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
+                        <item.icon className={cn(
+                          "h-5 w-5 shrink-0 transition-colors",
+                          (isActive || hasActiveSubItem) ? 'text-primary-600' : item.color
+                        )} />
 
-                  {/* Tooltip for collapsed sidebar */}
-                  {sidebarCollapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
-                      {item.label}
+                        <AnimatePresence>
+                          {!sidebarCollapsed && (
+                            <motion.span
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="font-medium"
+                            >
+                              {item.label}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Tooltip for collapsed sidebar */}
+                        {sidebarCollapsed && (
+                          <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
+                            {item.label}
+                          </div>
+                        )}
+
+                        {/* Active indicator */}
+                        {(isActive || hasActiveSubItem) && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r-full"
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                          />
+                        )}
+                      </Link>
+
+                      {!sidebarCollapsed && (
+                        <button
+                          onClick={() => toggleDropdown(item.path)}
+                          className={cn(
+                            'px-3 py-2 hover:bg-muted rounded-r-md transition-colors relative group',
+                            (isActive || hasActiveSubItem) && 'bg-primary-50 text-primary-700'
+                          )}
+                        >
+                          {isDropdownOpenState ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
                     </div>
-                  )}
 
-                  {/* Active indicator */}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r-full"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                </Link>
+                    {/* Dropdown Content */}
+                    <AnimatePresence>
+                      {isDropdownOpenState && !sidebarCollapsed && (
+                        <motion.ul
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="ml-4 mt-1 space-y-1 overflow-hidden"
+                        >
+                          {item.subItems.map((subItem, subIndex) => {
+                            const isSubActive = (() => {
+                              if (subItem.path.includes('?')) {
+                                const [pathname, queryString] = subItem.path.split('?')
+                                const urlParams = new URLSearchParams(queryString)
+                                const currentParams = new URLSearchParams(location.search)
+                                return location.pathname === pathname &&
+                                       Array.from(urlParams.entries()).every(([key, value]) =>
+                                         currentParams.get(key) === value
+                                       )
+                              }
+                              return location.pathname === subItem.path
+                            })()
+                            return (
+                              <motion.li
+                                key={subItem.path}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: subIndex * 0.05 }}
+                              >
+                                <Link
+                                  to={subItem.path}
+                                  className={cn(
+                                    'nav-link relative group text-sm',
+                                    isSubActive && 'nav-link-active bg-primary-50 text-primary-700'
+                                  )}
+                                >
+                                  <subItem.icon className={cn(
+                                    "h-4 w-4 shrink-0 transition-colors",
+                                    isSubActive ? 'text-primary-600' : subItem.color
+                                  )} />
+                                  <span className="font-medium">{subItem.label}</span>
+
+                                  {/* Active indicator for sub items */}
+                                  {isSubActive && (
+                                    <motion.div
+                                      layoutId="activeSubTab"
+                                      className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r-full"
+                                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                    />
+                                  )}
+                                </Link>
+                              </motion.li>
+                            )
+                          })}
+                        </motion.ul>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Collapsed sidebar dropdown menu */}
+                    {sidebarCollapsed && (
+                      <div className="absolute left-full ml-2 top-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
+                        <div className="bg-card border border-border rounded-md shadow-lg py-2 min-w-[200px]">
+                          <div className="px-3 py-2 text-sm font-medium text-muted-foreground border-b border-border">
+                            {item.label}
+                          </div>
+                          {item.subItems.map((subItem) => {
+                            const isSubActive = (() => {
+                              if (subItem.path.includes('?')) {
+                                const [pathname, queryString] = subItem.path.split('?')
+                                const urlParams = new URLSearchParams(queryString)
+                                const currentParams = new URLSearchParams(location.search)
+                                return location.pathname === pathname &&
+                                       Array.from(urlParams.entries()).every(([key, value]) =>
+                                         currentParams.get(key) === value
+                                       )
+                              }
+                              return location.pathname === subItem.path
+                            })()
+                            return (
+                              <Link
+                                key={subItem.path}
+                                to={subItem.path}
+                                className={cn(
+                                  'flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted transition-colors',
+                                  isSubActive && 'bg-primary-50 text-primary-700'
+                                )}
+                              >
+                                <subItem.icon className={cn("h-4 w-4", subItem.color)} />
+                                <span>{subItem.label}</span>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    to={item.path}
+                    className={cn(
+                      'nav-link relative group',
+                      isActive && 'nav-link-active bg-primary-50 text-primary-700'
+                    )}
+                  >
+                    <item.icon className={cn(
+                      "h-5 w-5 shrink-0 transition-colors",
+                      isActive ? 'text-primary-600' : item.color
+                    )} />
+
+                    <AnimatePresence>
+                      {!sidebarCollapsed && (
+                        <motion.span
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          transition={{ duration: 0.2 }}
+                          className="font-medium"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Tooltip for collapsed sidebar */}
+                    {sidebarCollapsed && (
+                      <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
+                        {item.label}
+                      </div>
+                    )}
+
+                    {/* Active indicator */}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r-full"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                  </Link>
+                )}
               </motion.li>
             )
           })}

@@ -50,6 +50,19 @@ export default function PublicVisitorRegistrationForm({
       gender: undefined,
       maritalStatus: undefined,
       occupation: '',
+      alternateContactMethod: '',
+      website: '',
+      socialMediaHandles: {
+        facebook: '',
+        instagram: '',
+        twitter: '',
+        linkedin: '',
+        tiktok: '',
+        other: ''
+      },
+      referredBy: '',
+      serviceExperience: '',
+      profilePhotoUrl: '',
       address: {
         street: '',
         city: '',
@@ -244,7 +257,7 @@ export default function PublicVisitorRegistrationForm({
               transition={{ delay: 0.3 }}
             >
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                What's your first name? ✨
+                What's your name? ✨
               </label>
               <Input
                 {...register('firstName')}
@@ -282,7 +295,7 @@ export default function PublicVisitorRegistrationForm({
           >
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Phone className="w-4 h-4 text-blue-500" />
-              Best phone number to reach you? 📱
+              How can we reach you? 📱
             </label>
             <Input
               {...register('phone')}
@@ -299,7 +312,7 @@ export default function PublicVisitorRegistrationForm({
           >
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Mail className="w-4 h-4 text-green-500" />
-              Email address? (optional) 📧
+              Got another way of reaching you? (Email) 📧
             </label>
             <Input
               type="email"
@@ -358,7 +371,7 @@ export default function PublicVisitorRegistrationForm({
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">📍</div>
-            <h4 className="font-semibold text-gray-800">Where are you from?</h4>
+            <h4 className="font-semibold text-gray-800">Where's your base?</h4>
             <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -371,6 +384,122 @@ export default function PublicVisitorRegistrationForm({
               {...register('address.state')}
               placeholder="Your state"
               className="transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">🎂</div>
+            <h4 className="font-semibold text-gray-800">When did you arrive on the Planet?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+          </div>
+          <Input
+            type="date"
+            {...register('dateOfBirth')}
+            placeholder="Your date of birth"
+            className="transition-all duration-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.37 }}
+          className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">💼</div>
+            <h4 className="font-semibold text-gray-800">Occupation?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+          </div>
+          <Input
+            {...register('occupation')}
+            placeholder="What do you do for work?"
+            className="transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </motion.div>
+
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.41 }}
+          className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl p-4 border border-rose-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">🌐</div>
+            <h4 className="font-semibold text-gray-800">Where do you live on the web?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+          </div>
+          <Input
+            {...register('website')}
+            placeholder="Your website or online presence"
+            className="transition-all duration-300 focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.43 }}
+          className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">📱</div>
+            <h4 className="font-semibold text-gray-800">So where can we find you on Social Media?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              {...register('socialMediaHandles.instagram')}
+              placeholder="Instagram handle"
+              className="transition-all duration-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+            />
+            <Input
+              {...register('socialMediaHandles.facebook')}
+              placeholder="Facebook profile"
+              className="transition-all duration-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+            />
+            <Input
+              {...register('socialMediaHandles.twitter')}
+              placeholder="Twitter/X handle"
+              className="transition-all duration-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+            />
+            <Input
+              {...register('socialMediaHandles.other')}
+              placeholder="Other social media"
+              className="transition-all duration-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+            />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.45 }}
+          className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">🤝</div>
+            <h4 className="font-semibold text-gray-800">Who match made us? / Can you remember who toasted you?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+          </div>
+          <div className="space-y-3">
+            <Input
+              {...register('invitedBy')}
+              placeholder="Who invited you?"
+              className="transition-all duration-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            />
+            <Input
+              {...register('referredBy')}
+              placeholder="Who referred/recommended you?"
+              className="transition-all duration-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
             />
           </div>
         </motion.div>
@@ -414,9 +543,73 @@ export default function PublicVisitorRegistrationForm({
         </motion.div>
 
         <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.47 }}
+          className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">⚡</div>
+            <h4 className="font-semibold text-gray-800">Would you like to join The PowerPoint Tribe?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+          </div>
+          <motion.label
+            whileHover={{ scale: 1.02 }}
+            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 cursor-pointer transition-all duration-200"
+          >
+            <input
+              type="checkbox"
+              {...register('interestedInJoining')}
+              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-5 h-5"
+            />
+            <div>
+              <span className="font-medium text-gray-800">Yes, I'm interested in joining! 🎉</span>
+              <p className="text-xs text-gray-600">I'd love to be part of The PowerPoint Tribe community</p>
+            </div>
+          </motion.label>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.49 }}
+          className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl p-4 border border-cyan-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">✨</div>
+            <h4 className="font-semibold text-gray-800">What did you enjoy about today's service?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+          </div>
+          <Input
+            {...register('serviceExperience')}
+            placeholder="Tell us what made your experience special..."
+            className="transition-all duration-300 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.51 }}
+          className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-4 border border-pink-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">📸</div>
+            <h4 className="font-semibold text-gray-800">Take a Selfie?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+          </div>
+          <Input
+            {...register('profilePhotoUrl')}
+            placeholder="Upload or share a photo link (optional)"
+            className="transition-all duration-300 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+          />
+          <p className="text-xs text-gray-500 mt-2">You can add a photo link or upload one later!</p>
+        </motion.div>
+
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.53 }}
           className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 border border-yellow-200"
         >
           <div className="flex items-center gap-3 mb-3">

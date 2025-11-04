@@ -112,14 +112,14 @@ export const groupsService = {
     return transformPaginatedResponse<Group>(response)
   },
 
-  getDistrictsNeedingPastors: async (): Promise<Group[]> => {
-    const response = await apiService.get<ApiResponse<Group[]>>('/groups/districts/needing-pastors')
-    return response.data?.data || response.data
+  getDistrictsNeedingPastors: async (params?: GroupSearchParams): Promise<PaginatedResponse<Group>> => {
+    const response = await apiService.get<ApiResponse<any>>('/groups/districts/needing-pastors', { params })
+    return transformPaginatedResponse<Group>(response)
   },
 
-  getUnitsNeedingHeads: async (): Promise<Group[]> => {
-    const response = await apiService.get<ApiResponse<Group[]>>('/groups/units/needing-heads')
-    return response.data?.data || response.data
+  getUnitsNeedingHeads: async (params?: GroupSearchParams): Promise<PaginatedResponse<Group>> => {
+    const response = await apiService.get<ApiResponse<any>>('/groups/units/needing-heads', { params })
+    return transformPaginatedResponse<Group>(response)
   },
 
   getMyGroups: async (params?: GroupSearchParams): Promise<PaginatedResponse<Group>> => {

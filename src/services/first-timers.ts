@@ -220,9 +220,9 @@ export const firstTimersService = {
   },
 
   // Additional endpoints
-  getPendingDistrictAssignments: async (): Promise<FirstTimer[]> => {
-    const response = await apiService.get<ApiResponse<FirstTimer[]>>('/first-timers/pending-district')
-    return response.data?.data || response.data
+  getPendingDistrictAssignments: async (params?: FirstTimerSearchParams): Promise<PaginatedResponse<FirstTimer>> => {
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/pending-district', { params })
+    return transformPaginatedResponse<FirstTimer>(response)
   },
 
   bulkUpload: async (formData: FormData): Promise<any> => {

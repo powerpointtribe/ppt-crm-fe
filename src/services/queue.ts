@@ -42,8 +42,10 @@ export const queueService = {
     return response.data || response
   },
 
-  getJobHistory: async (limit: number = 10): Promise<JobHistory> => {
-    const response = await apiService.get<ApiResponse<any>>(`/queue/jobs/history?limit=${limit}`)
+  getJobHistory: async (page: number = 1, limit: number = 10): Promise<JobHistory> => {
+    const response = await apiService.get<ApiResponse<any>>(`/queue/jobs/history`, {
+      params: { page, limit }
+    })
     const backendData = response.data || response
 
     // Backend might return paginated format
@@ -51,7 +53,7 @@ export const queueService = {
       return {
         jobs: backendData.data,
         pagination: {
-          page: backendData.page || 1,
+          page: backendData.page || page,
           limit: backendData.limit || limit,
           total: backendData.total || backendData.data.length,
           totalPages: backendData.totalPages || 1
@@ -64,7 +66,7 @@ export const queueService = {
       return {
         jobs: backendData,
         pagination: {
-          page: 1,
+          page: page,
           limit: limit,
           total: backendData.length,
           totalPages: 1
@@ -75,7 +77,7 @@ export const queueService = {
     return {
       jobs: [],
       pagination: {
-        page: 1,
+        page: page,
         limit: limit,
         total: 0,
         totalPages: 0

@@ -16,6 +16,22 @@ export const publicVisitorRegistrationSchema = z.object({
   gender: z.enum(['male', 'female']).optional(),
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
   occupation: z.string().optional(),
+  alternateContactMethod: z.string().optional(),
+  website: z.string().optional(),
+
+  // Social media handles
+  socialMediaHandles: z.object({
+    facebook: z.string().optional(),
+    instagram: z.string().optional(),
+    twitter: z.string().optional(),
+    linkedin: z.string().optional(),
+    tiktok: z.string().optional(),
+    other: z.string().optional()
+  }).optional(),
+
+  referredBy: z.string().optional(),
+  serviceExperience: z.string().optional(),
+  profilePhotoUrl: z.string().optional(),
 
   // How they heard about us
   howDidYouHear: z.enum(['friend', 'family', 'advertisement', 'online', 'event', 'walkby', 'other']).optional(),
@@ -98,6 +114,12 @@ export const transformToFirstTimerData = (publicData: PublicVisitorRegistrationD
     gender: publicData.gender,
     maritalStatus: publicData.maritalStatus,
     occupation: publicData.occupation,
+    alternateContactMethod: publicData.alternateContactMethod,
+    website: publicData.website,
+    socialMediaHandles: publicData.socialMediaHandles,
+    referredBy: publicData.referredBy,
+    serviceExperience: publicData.serviceExperience,
+    profilePhotoUrl: publicData.profilePhotoUrl,
     address: publicData.address,
     dateOfVisit: publicData.dateOfVisit,
     serviceType: publicData.serviceType,

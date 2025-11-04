@@ -145,7 +145,7 @@ export default function LandingPage() {
                 </h1>
                 <div className="text-max">
                   <p>
-                    Empowering PowerPoint Tribe Church leadership with comprehensive tools to manage members, coordinate cell groups, and nurture spiritual growth across our community.
+                    Empowering PowerPoint Tribe Church leadership with comprehensive tools for membership management, attendance tracking and first timers integration.
                   </p>
                 </div>
               </motion.div>

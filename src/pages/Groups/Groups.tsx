@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Plus, Filter, Download, Users, MapPin, Calendar, Crown, Shield, Star, Settings as SettingsIcon, Eye, Edit, Trash2, Archive, Upload } from 'lucide-react'
 import Layout from '@/components/Layout'
@@ -22,16 +22,19 @@ import { formatDate } from '@/utils/formatters'
 
 export default function Groups() {
   const navigate = useNavigate()
+  const [urlSearchParams, setUrlSearchParams] = useSearchParams()
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
   const [searchParams, setSearchParams] = useState<GroupSearchParams>({
-    page: 1,
-    limit: 20,
-    search: ''
+    page: parseInt(urlSearchParams.get('page') || '1'),
+    limit: parseInt(urlSearchParams.get('limit') || '20'),
+    search: urlSearchParams.get('search') || '',
+    type: (urlSearchParams.get('type') as GroupSearchParams['type']) || undefined
   })
   const [pagination, setPagination] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
+  const [filteredType, setFilteredType] = useState<string | null>(urlSearchParams.get('type'))
 
   // Bulk operations state
   const bulkSelection = useBulkSelection<Group>()
@@ -69,6 +72,18 @@ export default function Groups() {
   }>({
     isOpen: false
   })
+
+  // Update search params when URL changes
+  useEffect(() => {
+    const newParams: GroupSearchParams = {
+      page: parseInt(urlSearchParams.get('page') || '1'),
+      limit: parseInt(urlSearchParams.get('limit') || '20'),
+      search: urlSearchParams.get('search') || '',
+      type: (urlSearchParams.get('type') as GroupSearchParams['type']) || undefined
+    }
+    setSearchParams(newParams)
+    setFilteredType(urlSearchParams.get('type'))
+  }, [urlSearchParams])
 
   useEffect(() => {
     loadGroups()
@@ -113,12 +128,52 @@ export default function Groups() {
     }
   }
 
+  const getPageTitle = () => {
+    if (filteredType) {
+      const typeNames = {
+        district: 'Districts',
+        unit: 'Units',
+        ministry: 'Ministries',
+        fellowship: 'Fellowships',
+        committee: 'Committees'
+      }
+      return typeNames[filteredType as keyof typeof typeNames] || 'Groups'
+    }
+    return 'Groups'
+  }
+
+  const getPageSubtitle = () => {
+    if (filteredType) {
+      const subtitles = {
+        district: 'Manage church districts and their district pastors',
+        unit: 'Manage units and their unit heads',
+        ministry: 'Manage ministries and their leaders',
+        fellowship: 'Manage fellowship groups',
+        committee: 'Manage committees and their members'
+      }
+      return subtitles[filteredType as keyof typeof subtitles] || 'Manage groups'
+    }
+    return 'Manage all groups, districts, units, ministries, and committees'
+  }
+
   const handleSearch = (search: string) => {
-    setSearchParams(prev => ({ ...prev, search, page: 1 }))
+    const newParams = new URLSearchParams(urlSearchParams)
+    newParams.set('search', search)
+    newParams.set('page', '1')
+    setUrlSearchParams(newParams)
   }
 
   const handleFilter = (filters: Partial<GroupSearchParams>) => {
-    setSearchParams(prev => ({ ...prev, ...filters, page: 1 }))
+    const newParams = new URLSearchParams(urlSearchParams)
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        newParams.set(key, value.toString())
+      } else {
+        newParams.delete(key)
+      }
+    })
+    newParams.set('page', '1')
+    setUrlSearchParams(newParams)
   }
 
   // Bulk operations handlers
@@ -276,14 +331,6 @@ export default function Groups() {
 
   // Define bulk actions
   const bulkActions: BulkAction[] = [
-    {
-      id: 'upload',
-      label: 'Upload File',
-      icon: <Upload className="w-4 h-4" />,
-      variant: 'primary',
-      onClick: handleBulkUpload,
-      standalone: true
-    },
     commonBulkActions.export(handleBulkExport),
     {
       id: 'edit',
@@ -348,7 +395,8 @@ export default function Groups() {
   if (loading) {
     return (
       <Layout
-        title="Groups"
+        title={getPageTitle()}
+        subtitle={getPageSubtitle()}
         headerActions={
           <Button onClick={() => navigate('/groups/new')}>
             <Plus className="h-4 w-4 mr-2" />
@@ -363,7 +411,7 @@ export default function Groups() {
 
   if (error) {
     return (
-      <Layout title="Groups">
+      <Layout title={getPageTitle()} subtitle={getPageSubtitle()}>
         <ErrorBoundary
           error={error}
           onRetry={loadGroups}
@@ -377,7 +425,8 @@ export default function Groups() {
 
   return (
     <Layout
-      title="Groups"
+      title={getPageTitle()}
+      subtitle={getPageSubtitle()}
       headerActions={
         <Button onClick={() => navigate('/groups/new')}>
           <Plus className="h-4 w-4 mr-2" />
@@ -394,92 +443,175 @@ export default function Groups() {
           actions={bulkActions}
         />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-600">Total Groups</h3>
-                  <p className="text-2xl font-bold text-blue-600">{stats?.total || 0}</p>
+        {/* Stats Cards - Only show for general groups page */}
+        {!filteredType && (
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Total Groups</h3>
+                    <p className="text-2xl font-bold text-blue-600">{stats?.total || 0}</p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-600" />
                 </div>
-                <Users className="h-8 w-8 text-blue-600" />
-              </div>
-            </Card>
-          </motion.div>
+              </Card>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-600">Selected</h3>
-                  <p className="text-2xl font-bold text-purple-600">{bulkSelection.getSelectedCount()}</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Selected</h3>
+                    <p className="text-2xl font-bold text-purple-600">{bulkSelection.getSelectedCount()}</p>
+                  </div>
+                  <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <div className="h-3 w-3 bg-purple-600 rounded-full"></div>
+                  </div>
                 </div>
-                <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <div className="h-3 w-3 bg-purple-600 rounded-full"></div>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+              </Card>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-600">Active</h3>
-                  <p className="text-2xl font-bold text-green-600">{stats?.active || 0}</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Active</h3>
+                    <p className="text-2xl font-bold text-green-600">{stats?.active || 0}</p>
+                  </div>
+                  <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <div className="h-3 w-3 bg-green-600 rounded-full"></div>
+                  </div>
                 </div>
-                <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <div className="h-3 w-3 bg-green-600 rounded-full"></div>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+              </Card>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-600">Districts</h3>
-                  <p className="text-2xl font-bold text-green-600">{stats?.districts || 0}</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Districts</h3>
+                    <p className="text-2xl font-bold text-green-600">{stats?.districts || 0}</p>
+                  </div>
+                  <MapPin className="h-8 w-8 text-green-600" />
                 </div>
-                <MapPin className="h-8 w-8 text-green-600" />
-              </div>
-            </Card>
-          </motion.div>
+              </Card>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-600">Units</h3>
-                  <p className="text-2xl font-bold text-orange-600">{stats?.units || 0}</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Units</h3>
+                    <p className="text-2xl font-bold text-orange-600">{stats?.units || 0}</p>
+                  </div>
+                  <SettingsIcon className="h-8 w-8 text-orange-600" />
                 </div>
-                <SettingsIcon className="h-8 w-8 text-orange-600" />
-              </div>
-            </Card>
-          </motion.div>
-        </div>
+              </Card>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Subsection Stats - Show specific stats for filtered views */}
+        {filteredType && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Total {getPageTitle()}</h3>
+                    <p className="text-2xl font-bold text-blue-600">{pagination?.total || 0}</p>
+                  </div>
+                  {filteredType === 'district' && <MapPin className="h-8 w-8 text-blue-600" />}
+                  {filteredType === 'unit' && <SettingsIcon className="h-8 w-8 text-blue-600" />}
+                  {filteredType === 'ministry' && <Star className="h-8 w-8 text-blue-600" />}
+                  {filteredType === 'fellowship' && <Users className="h-8 w-8 text-blue-600" />}
+                  {filteredType === 'committee' && <Shield className="h-8 w-8 text-blue-600" />}
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Showing</h3>
+                    <p className="text-2xl font-bold text-green-600">{groups.length}</p>
+                  </div>
+                  <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <div className="h-3 w-3 bg-green-600 rounded-full"></div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Selected</h3>
+                    <p className="text-2xl font-bold text-purple-600">{bulkSelection.getSelectedCount()}</p>
+                  </div>
+                  <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <div className="h-3 w-3 bg-purple-600 rounded-full"></div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">Page</h3>
+                    <p className="text-2xl font-bold text-orange-600">{pagination?.page || 1}</p>
+                    <p className="text-xs text-gray-500">of {pagination?.totalPages || 1}</p>
+                  </div>
+                  <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Calendar className="h-4 w-4 text-orange-600" />
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        )}
+
 
         {/* Search and Filters */}
         <Card className="p-4">
@@ -492,18 +624,20 @@ export default function Groups() {
               />
             </div>
             <div className="flex gap-2">
-              <select
-                value={searchParams.type || ''}
-                onChange={(e) => handleFilter({ type: e.target.value as any || undefined })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Types</option>
-                <option value="district">Districts</option>
-                <option value="unit">Units</option>
-                <option value="fellowship">Fellowships</option>
-                <option value="ministry">Ministries</option>
-                <option value="committee">Committees</option>
-              </select>
+              {!filteredType && (
+                <select
+                  value={searchParams.type || ''}
+                  onChange={(e) => handleFilter({ type: e.target.value as any || undefined })}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Types</option>
+                  <option value="district">Districts</option>
+                  <option value="unit">Units</option>
+                  <option value="fellowship">Fellowships</option>
+                  <option value="ministry">Ministries</option>
+                  <option value="committee">Committees</option>
+                </select>
+              )}
 
               <select
                 value={searchParams.isActive?.toString() || ''}
@@ -659,7 +793,11 @@ export default function Groups() {
               <Button
                 variant="secondary"
                 disabled={!pagination.hasPrev}
-                onClick={() => setSearchParams(prev => ({ ...prev, page: prev.page! - 1 }))}
+                onClick={() => {
+                  const newParams = new URLSearchParams(urlSearchParams)
+                  newParams.set('page', (pagination.page - 1).toString())
+                  setUrlSearchParams(newParams)
+                }}
               >
                 Previous
               </Button>
@@ -669,7 +807,11 @@ export default function Groups() {
               <Button
                 variant="secondary"
                 disabled={!pagination.hasNext}
-                onClick={() => setSearchParams(prev => ({ ...prev, page: prev.page! + 1 }))}
+                onClick={() => {
+                  const newParams = new URLSearchParams(urlSearchParams)
+                  newParams.set('page', (pagination.page + 1).toString())
+                  setUrlSearchParams(newParams)
+                }}
               >
                 Next
               </Button>

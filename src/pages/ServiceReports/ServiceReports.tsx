@@ -48,8 +48,11 @@ export default function ServiceReports() {
 
   useEffect(() => {
     loadReports()
-    loadStats()
   }, [searchParams])
+
+  useEffect(() => {
+    loadStats()
+  }, [])
 
   const loadReports = async () => {
     try {

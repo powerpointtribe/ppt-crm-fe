@@ -99,6 +99,7 @@ export interface ServiceReportStats {
   overall: {
     totalReports: number
     totalAttendance: number
+    highestAttendance: number
     totalFirstTimers: number
     averageAttendance: number
     averageFirstTimers: number

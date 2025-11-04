@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -46,18 +46,26 @@ export default function ServiceReports() {
   const [pagination, setPagination] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
 
-  useEffect(() => {
-    loadReports()
-  }, [searchParams])
+  const memoizedSearchParams = useMemo(() => searchParams, [
+    searchParams.page,
+    searchParams.limit,
+    searchParams.search,
+    searchParams.sortBy,
+    searchParams.sortOrder,
+    searchParams.serviceTag,
+    searchParams.dateFrom,
+    searchParams.dateTo,
+    searchParams.reportedBy,
+    searchParams.serviceName,
+    searchParams.minAttendance,
+    searchParams.maxAttendance,
+    searchParams.minFirstTimers
+  ])
 
-  useEffect(() => {
-    loadStats()
-  }, [])
-
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     try {
       setLoading(true)
-      const result = await serviceReportsService.getServiceReports(searchParams)
+      const result = await serviceReportsService.getServiceReports(memoizedSearchParams)
       setReports(result.items)
       setPagination(result.pagination)
     } catch (err: any) {
@@ -65,16 +73,24 @@ export default function ServiceReports() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [memoizedSearchParams])
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const statsData = await serviceReportsService.getServiceReportStats()
       setStats(statsData)
     } catch (err) {
       console.error('Failed to load stats:', err)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadReports()
+  }, [loadReports])
+
+  useEffect(() => {
+    loadStats()
+  }, [loadStats])
 
   const handleSearch = (query: string) => {
     setSearchParams(prev => ({
@@ -157,8 +173,8 @@ export default function ServiceReports() {
             <Card className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Attendance</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.overall.totalAttendance.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-gray-600">Highest Attendance</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.overall.highestAttendance.toLocaleString()}</p>
                 </div>
                 <Users className="w-8 h-8 text-green-600" />
               </div>

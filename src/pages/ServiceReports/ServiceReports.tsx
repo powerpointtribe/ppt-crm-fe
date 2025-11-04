@@ -165,7 +165,7 @@ export default function ServiceReports() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Reports</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.overall.totalReports}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats?.overall?.totalReports || 0}</p>
                 </div>
                 <FileText className="w-8 h-8 text-blue-600" />
               </div>
@@ -174,7 +174,7 @@ export default function ServiceReports() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Highest Attendance</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.overall.highestAttendance.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-900">{(stats?.overall?.highestAttendance || 0).toLocaleString()}</p>
                 </div>
                 <Users className="w-8 h-8 text-green-600" />
               </div>
@@ -183,7 +183,7 @@ export default function ServiceReports() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Avg Attendance</p>
-                  <p className="text-2xl font-bold text-gray-900">{Math.round(stats.overall.averageAttendance)}</p>
+                  <p className="text-2xl font-bold text-gray-900">{Math.round(stats?.overall?.averageAttendance || 0)}</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-orange-600" />
               </div>
@@ -192,7 +192,7 @@ export default function ServiceReports() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total First Timers</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.overall.totalFirstTimers}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats?.overall?.totalFirstTimers || 0}</p>
                 </div>
                 <UserCheck className="w-8 h-8 text-purple-600" />
               </div>

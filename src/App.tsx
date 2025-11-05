@@ -25,6 +25,7 @@ import FirstTimers from '@/pages/FirstTimers/FirstTimers'
 import FirstTimerNew from '@/pages/FirstTimers/FirstTimerNew'
 import FirstTimerDetail from '@/pages/FirstTimers/FirstTimerDetail'
 import FirstTimerEdit from '@/pages/FirstTimers/FirstTimerEdit'
+import AssignedFirstTimers from '@/pages/FirstTimers/AssignedFirstTimers'
 import ServiceReports from '@/pages/ServiceReports/ServiceReports'
 import ServiceReportNew from '@/pages/ServiceReports/ServiceReportNew'
 import ServiceReportDetail from '@/pages/ServiceReports/ServiceReportDetail'
@@ -122,6 +123,11 @@ function App() {
         <Route path="/first-timers/:id/edit" element={
           <ProtectedRoute>
             <FirstTimerEdit />
+          </ProtectedRoute>
+        } />
+        <Route path="/my-assigned-first-timers" element={
+          <ProtectedRoute>
+            <AssignedFirstTimers />
           </ProtectedRoute>
         } />
 

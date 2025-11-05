@@ -18,6 +18,8 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { SkeletonCard } from '@/components/ui/Skeleton'
+import DemographicsPieChart from '@/components/charts/DemographicsPieChart'
+import CSSPieChart from '@/components/charts/CSSPieChart'
 import { serviceReportsService, ServiceReport, SERVICE_TAG_LABELS } from '@/services/service-reports'
 import { formatDate, formatDateTime } from '@/utils/formatters'
 
@@ -310,7 +312,7 @@ export default function ServiceReportDetail() {
               </Card>
             </motion.div>
 
-            {/* Quick Stats */}
+            {/* Demographics Pie Chart */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -318,7 +320,18 @@ export default function ServiceReportDetail() {
             >
               <Card className="p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Demographics</h3>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-4">
+                  <DemographicsPieChart
+                    data={{
+                      numberOfMales: report.numberOfMales,
+                      numberOfFemales: report.numberOfFemales,
+                      numberOfChildren: report.numberOfChildren,
+                      totalAttendance: report.totalAttendance
+                    }}
+                    size="sm"
+                  />
+                </div>
+                <div className="mt-4 space-y-2 text-sm border-t pt-4">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Adults</span>
                     <span className="font-medium">{report.numberOfMales + report.numberOfFemales}</span>
@@ -326,24 +339,6 @@ export default function ServiceReportDetail() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Children</span>
                     <span className="font-medium">{report.numberOfChildren}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Male %</span>
-                    <span className="font-medium">
-                      {((report.numberOfMales / report.totalAttendance) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Female %</span>
-                    <span className="font-medium">
-                      {((report.numberOfFemales / report.totalAttendance) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Children %</span>
-                    <span className="font-medium">
-                      {((report.numberOfChildren / report.totalAttendance) * 100).toFixed(1)}%
-                    </span>
                   </div>
                 </div>
               </Card>

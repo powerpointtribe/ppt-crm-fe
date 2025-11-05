@@ -83,7 +83,16 @@ const baseMenuItems = [
     label: 'First Timers',
     path: '/first-timers',
     color: 'text-orange-600',
-    requiredModule: 'first_timers'
+    requiredModule: 'first_timers',
+    hasDropdown: true,
+    subItems: [
+      {
+        icon: UserCheck,
+        label: 'My Assignments',
+        path: '/my-assigned-first-timers',
+        color: 'text-blue-600'
+      }
+    ]
   },
   {
     icon: Database,

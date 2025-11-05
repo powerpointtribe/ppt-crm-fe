@@ -12,7 +12,10 @@ export const publicVisitorRegistrationSchema = z.object({
   dateOfVisit: z.string().min(1, 'Date of visit is required'),
 
   // Optional Personal Details
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: z.string().optional().refine((val) => {
+    if (!val || val === '') return true; // Allow empty values
+    return /^\d{4}-\d{2}-\d{2}$/.test(val);
+  }, { message: 'dateOfBirth must be in YYYY-MM-DD format' }),
   gender: z.enum(['male', 'female']).optional(),
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
   occupation: z.string().optional(),
@@ -30,6 +33,7 @@ export const publicVisitorRegistrationSchema = z.object({
   }).optional(),
 
   referredBy: z.string().optional(),
+  invitedBy: z.string().optional(),
   serviceExperience: z.string().optional(),
   profilePhotoUrl: z.string().optional(),
 
@@ -76,6 +80,7 @@ export const publicVisitorRegistrationSchema = z.object({
   // Consent and preferences
   allowFollowUp: z.boolean().default(true),
   preferredContactMethod: z.enum(['phone', 'email', 'sms', 'whatsapp']).optional(),
+  privacyConsent: z.boolean().optional(),
 }).refine((data) => {
   // Validate date of visit is not in the future
   if (data.dateOfVisit) {
@@ -110,7 +115,7 @@ export const transformToFirstTimerData = (publicData: PublicVisitorRegistrationD
     lastName: publicData.lastName,
     phone: publicData.phone,
     email: publicData.email,
-    dateOfBirth: publicData.dateOfBirth,
+    dateOfBirth: publicData.dateOfBirth && publicData.dateOfBirth.trim() !== '' ? publicData.dateOfBirth : undefined,
     gender: publicData.gender,
     maritalStatus: publicData.maritalStatus,
     occupation: publicData.occupation,
@@ -118,6 +123,7 @@ export const transformToFirstTimerData = (publicData: PublicVisitorRegistrationD
     website: publicData.website,
     socialMediaHandles: publicData.socialMediaHandles,
     referredBy: publicData.referredBy,
+    invitedBy: publicData.invitedBy,
     serviceExperience: publicData.serviceExperience,
     profilePhotoUrl: publicData.profilePhotoUrl,
     address: publicData.address,

@@ -13,7 +13,8 @@ import {
   Clock,
   BarChart3,
   CheckCircle,
-  Star
+  Star,
+  UserPlus
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -249,6 +250,147 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Visitor Registration Section */}
+      <section className="py-16 sm:py-20 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-3xl"></div>
+
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl mb-6 shadow-lg">
+                <Heart className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                Welcome to our
+                <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Church Family!
+                </span>
+              </h2>
+              <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                First time here? We'd love to connect with you and help you feel at home.
+              </p>
+            </motion.div>
+
+            {/* Main Content Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              viewport={{ once: true }}
+            >
+              <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-12 border border-gray-100/50 backdrop-blur-sm">
+                <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+                  {/* Left side - Benefits */}
+                  <div className="space-y-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                      What happens next?
+                    </h3>
+
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-bold text-sm">1</span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-1">Quick Registration</h4>
+                          <p className="text-gray-600 text-sm">Share your contact info so we can reach out</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <span className="text-green-600 font-bold text-sm">2</span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-1">Personal Welcome</h4>
+                          <p className="text-gray-600 text-sm">Someone from our team will contact you within 24 hours</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                          <span className="text-purple-600 font-bold text-sm">3</span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-1">Find Your Place</h4>
+                          <p className="text-gray-600 text-sm">We'll help you connect and get involved</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100">
+                      <p className="text-sm text-gray-500 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Takes less than 2 minutes to complete
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right side - CTA */}
+                  <div className="text-center lg:text-left">
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 border border-blue-100">
+                      <div className="mb-6">
+                        <UserPlus className="w-12 h-12 text-blue-600 mx-auto lg:mx-0 mb-4" />
+                        <h4 className="text-xl font-bold text-gray-900 mb-2">Ready to get started?</h4>
+                        <p className="text-gray-600">Join hundreds of others who've found their home here.</p>
+                      </div>
+
+                      <Button
+                        asChild
+                        size="lg"
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 h-14 text-lg font-semibold"
+                      >
+                        <Link to="/visitor-registration">
+                          Register as a Visitor
+                          <ArrowRight className="w-5 h-5 ml-2" />
+                        </Link>
+                      </Button>
+
+                      <p className="text-xs text-gray-500 mt-3">
+                        No spam, just a warm welcome 💙
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Social Proof */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              viewport={{ once: true }}
+              className="text-center mt-8"
+            >
+              <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span>2000+ Members</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-blue-500" />
+                  <span>Safe & Secure</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-red-500" />
+                  <span>Warm Community</span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="section-spacing bg-muted/30">
         <div className="container-max section-padding">
@@ -395,6 +537,24 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
+
+      {/* Floating Action Button for Mobile Visitor Registration */}
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 1, type: "spring", stiffness: 200 }}
+        className="fixed bottom-6 right-6 z-40 sm:hidden"
+      >
+        <Button
+          asChild
+          size="lg"
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200 border-4 border-white"
+        >
+          <Link to="/visitor-registration" aria-label="Register as Visitor">
+            <UserPlus className="w-6 h-6" />
+          </Link>
+        </Button>
+      </motion.div>
 
     </div>
   )

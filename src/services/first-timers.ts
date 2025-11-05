@@ -11,6 +11,41 @@ export interface FollowUpRecord {
   nextFollowUpDate?: string
 }
 
+export interface CallReport {
+  _id: string
+  firstTimerId: string
+  callMadeBy: string
+  callDate: string
+  status: 'successful' | 'no_answer' | 'busy' | 'not_interested' | 'interested' | 'follow_up_needed' | 'completed'
+  notes: string
+  deductions?: string
+
+  // Service attendance tracking
+  attended2ndService: boolean
+  attended3rdService: boolean
+  attended4thService: boolean
+
+  contactMethod: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit' | 'video_call'
+  nextFollowUpDate?: string
+  reportNumber: number // 1-4
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateCallReportData {
+  firstTimerId: string
+  callDate: string
+  status: CallReport['status']
+  notes: string
+  deductions?: string
+  attended2ndService?: boolean
+  attended3rdService?: boolean
+  attended4thService?: boolean
+  contactMethod: CallReport['contactMethod']
+  nextFollowUpDate?: string
+  reportNumber: number
+}
+
 export interface Address {
   street?: string
   city?: string
@@ -38,7 +73,7 @@ export interface FirstTimer {
   address?: Address
   dateOfVisit: string
   serviceType?: string
-  howDidYouHear?: 'friend' | 'family' | 'advertisement' | 'online' | 'event' | 'walkby' | 'other'
+  howDidYouHear?: 'friend' | 'family' | 'advertisement' | 'online' | 'event' | 'walkby' | 'website' | 'social_media' | 'other'
   visitorType?: 'first_time' | 'returning' | 'new_to_area' | 'church_shopping'
   familyMembers?: FamilyMember[]
   interests?: string[]
@@ -52,11 +87,36 @@ export interface FirstTimer {
   }
   status: 'not_contacted' | 'contacted' | 'scheduled_visit' | 'visited' | 'joined_group' | 'converted' | 'lost_contact'
   assignedTo?: string
+  followUpPerson?: string
+  giaLeader?: string
   followUps: FollowUpRecord[]
   notes?: string
   converted: boolean
   convertedToMemberId?: string
   dateConverted?: string
+
+  // New enhanced fields
+  stage: 'new' | 'engaged' | 'closed'
+  interestedInJoining: boolean
+  integrationStage: 'none' | 'assigned_to_district' | 'started_cohort' | 'baptism_class' | 'baptized' | 'cell_group' | 'ministry_assigned' | 'leadership_training' | 'fully_integrated'
+  integrationStageDate?: string
+  assignedDistrict?: string
+  districtAssignmentDate?: string
+
+  // Pre-filled message system
+  preFilledMessage?: string
+  messageScheduledTime?: string
+  messageSent: boolean
+  messageSentAt?: string
+
+  // Call reports tracking
+  callReportsCount: number
+
+  // Member conversion
+  memberRecord?: string
+  memberCreatedAt?: string
+  pendingDistrictAssignment: boolean
+
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -204,7 +264,11 @@ export const firstTimersService = {
   },
 
   bulkAssign: async (data: BulkAssignData): Promise<any> => {
-    const response = await apiService.post<ApiResponse<any>>('/first-timers/bulk-assign', data)
+    const assignments = data.firstTimerIds.map(firstTimerId => ({
+      firstTimerId,
+      memberId: data.assignedTo
+    }))
+    const response = await apiService.post<ApiResponse<any>>('/first-timers/bulk-assign', { assignments })
     return response.data?.data || response.data
   },
 
@@ -237,5 +301,85 @@ export const firstTimersService = {
   getSampleCSV: async (): Promise<any> => {
     const response = await apiService.get<ApiResponse<any>>('/first-timers/sample-csv')
     return response.data || response
+  },
+
+  // Public form configuration
+  getPublicFormConfig: async (): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/public/form-config')
+    return transformSingleResponse(response)
+  },
+
+  // Call Reports
+  getCallReports: async (firstTimerId: string): Promise<CallReport[]> => {
+    const response = await apiService.get<ApiResponse<CallReport[]>>(`/first-timers/${firstTimerId}/call-reports`)
+    return response.data?.data || response.data || []
+  },
+
+  createCallReport: async (data: CreateCallReportData): Promise<CallReport> => {
+    const response = await apiService.post<ApiResponse<CallReport>>(`/first-timers/${data.firstTimerId}/call-reports`, data)
+    return transformSingleResponse<CallReport>(response) as CallReport
+  },
+
+  updateCallReport: async (id: string, data: Partial<CreateCallReportData>): Promise<CallReport> => {
+    const response = await apiService.patch<ApiResponse<CallReport>>(`/first-timers/call-reports/${id}`, data)
+    return transformSingleResponse<CallReport>(response) as CallReport
+  },
+
+  deleteCallReport: async (id: string): Promise<void> => {
+    await apiService.delete(`/first-timers/call-reports/${id}`)
+  },
+
+  getCallReportsSummary: async (firstTimerId: string): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>(`/first-timers/${firstTimerId}/call-reports/summary`)
+    return transformSingleResponse(response)
+  },
+
+  // Pre-filled Messages
+  setPreFilledMessage: async (firstTimerId: string, message: string, scheduledTime?: string): Promise<void> => {
+    await apiService.post(`/first-timers/${firstTimerId}/set-message`, {
+      message,
+      scheduledTime
+    })
+  },
+
+  setBulkPreFilledMessage: async (firstTimerIds: string[], message: string, scheduledTime?: string): Promise<void> => {
+    await apiService.post('/first-timers/bulk-set-message', {
+      firstTimerIds,
+      message,
+      scheduledTime
+    })
+  },
+
+  // Assignment with notifications
+  assignForFollowUp: async (firstTimerId: string, assigneeId: string): Promise<FirstTimer> => {
+    const response = await apiService.patch<ApiResponse<FirstTimer>>(`/first-timers/${firstTimerId}/assign`, {
+      followUpPersonId: assigneeId
+    })
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  bulkAssignForFollowUp: async (assignments: Array<{firstTimerId: string, assigneeId: string}>): Promise<any> => {
+    const response = await apiService.post<ApiResponse<any>>('/first-timers/bulk-assign-followup', {
+      assignments
+    })
+    return response.data?.data || response.data
+  },
+
+  // Integration Stage Management
+  updateIntegrationStage: async (firstTimerId: string, integrationStage: string, assignedDistrict?: string): Promise<FirstTimer> => {
+    const response = await apiService.patch<ApiResponse<FirstTimer>>(`/first-timers/${firstTimerId}/integration-stage`, {
+      integrationStage,
+      assignedDistrict
+    })
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  // Close First Timer
+  closeFirstTimer: async (firstTimerId: string, reason: 'unwilling' | 'became_member', memberRecordId?: string): Promise<FirstTimer> => {
+    const response = await apiService.post<ApiResponse<FirstTimer>>(`/first-timers/${firstTimerId}/close`, {
+      reason,
+      memberRecordId
+    })
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
   },
 }

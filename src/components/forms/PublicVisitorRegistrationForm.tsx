@@ -4,11 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Trash2, User, Phone, Mail,
-  ChevronLeft, ChevronRight, Check, AlertCircle, Calendar, Heart
+  ChevronLeft, ChevronRight, Check, AlertCircle, Calendar, Heart, Clock
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Card from '@/components/ui/Card'
+import ImageUpload from '@/components/ui/ImageUpload'
 import { publicVisitorRegistrationSchema, PublicVisitorRegistrationData } from '@/schemas/publicVisitorRegistration'
 import { cn } from '@/utils/cn'
 
@@ -23,20 +24,15 @@ export default function PublicVisitorRegistrationForm({
   loading = false,
   onSuccess
 }: PublicVisitorRegistrationFormProps) {
-  const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const totalSteps = 2
-
-  // Reset submitting state when step changes
-  useEffect(() => {
-    setIsSubmitting(false)
-  }, [currentStep])
+  const [progress, setProgress] = useState(0)
 
   const {
     register,
     handleSubmit,
     watch,
     control,
+    setValue,
     formState: { errors },
     reset
   } = useForm<PublicVisitorRegistrationData>({
@@ -61,6 +57,7 @@ export default function PublicVisitorRegistrationForm({
         other: ''
       },
       referredBy: '',
+      invitedBy: '',
       serviceExperience: '',
       profilePhotoUrl: '',
       address: {
@@ -89,6 +86,65 @@ export default function PublicVisitorRegistrationForm({
     }
   })
 
+  // Watch all form values for progress calculation
+  const watchedValues = watch()
+
+  // Calculate progress based on filled fields
+  const calculateProgress = () => {
+    const requiredFields = ['firstName', 'lastName', 'phone', 'dateOfVisit']
+    const optionalFields = [
+      'email', 'dateOfBirth', 'gender', 'occupation', 'address.city', 'address.state',
+      'website', 'socialMediaHandles.instagram', 'socialMediaHandles.facebook',
+      'invitedBy', 'referredBy', 'howDidYouHear', 'interestedInJoining',
+      'serviceExperience', 'profilePhotoUrl', 'prayerRequests', 'allowFollowUp',
+      'preferredContactMethod'
+    ]
+
+    const allFields = [...requiredFields, ...optionalFields]
+    let filledCount = 0
+
+    // Check required fields (higher weight)
+    requiredFields.forEach(field => {
+      const value = field.includes('.') ?
+        field.split('.').reduce((obj, key) => obj?.[key], watchedValues) :
+        watchedValues[field as keyof PublicVisitorRegistrationData]
+
+      if (value && value.toString().trim()) {
+        filledCount += 2 // Required fields count double
+      }
+    })
+
+    // Check optional fields
+    optionalFields.forEach(field => {
+      const value = field.includes('.') ?
+        field.split('.').reduce((obj, key) => obj?.[key], watchedValues) :
+        watchedValues[field as keyof PublicVisitorRegistrationData]
+
+      if (value && value.toString().trim()) {
+        filledCount += 1
+      }
+    })
+
+    // Special handling for arrays
+    if (watchedValues.prayerRequests?.length > 0) {
+      filledCount += 1
+    }
+
+    const maxPossibleScore = requiredFields.length * 2 + optionalFields.length
+    return Math.min(100, Math.round((filledCount / maxPossibleScore) * 100))
+  }
+
+  // Update progress when form values change
+  useEffect(() => {
+    const newProgress = calculateProgress()
+    console.log('Progress calculated:', newProgress, 'Required fields filled:', {
+      firstName: watchedValues.firstName,
+      lastName: watchedValues.lastName,
+      phone: watchedValues.phone,
+      dateOfVisit: watchedValues.dateOfVisit
+    })
+    setProgress(newProgress)
+  }, [watchedValues])
 
   const {
     fields: prayerFields,
@@ -102,151 +158,69 @@ export default function PublicVisitorRegistrationForm({
   const handleFormSubmit = async (data: PublicVisitorRegistrationData) => {
     try {
       setIsSubmitting(true)
+      console.log('Form submission started')
       console.log('Form data being submitted:', data)
+      console.log('Form progress:', progress)
       await onSubmit(data)
+      console.log('Form submission successful')
       reset()
       if (onSuccess) {
         onSuccess()
       }
     } catch (error) {
       console.error('Form submission error:', error)
+      throw error // Re-throw to ensure error is handled properly
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const nextStep = () => {
-    setIsSubmitting(false) // Reset submitting state when navigating
-    setCurrentStep(prev => Math.min(prev + 1, totalSteps))
-  }
-
-  const prevStep = () => {
-    setIsSubmitting(false) // Reset submitting state when navigating
-    setCurrentStep(prev => Math.max(prev - 1, 1))
-  }
-
-  const stepConfig = [
-    {
-      id: 1,
-      title: 'About You',
-      subtitle: 'Just the basics',
-      icon: User,
-      color: 'text-blue-600 bg-blue-100'
-    },
-    {
-      id: 2,
-      title: 'Connect & Finish',
-      subtitle: 'How we can stay in touch',
-      icon: Heart,
-      color: 'text-green-600 bg-green-100'
-    }
-  ]
-
-  const renderStepIndicator = () => (
-    <div className="mb-6">
-      {/* Desktop Progress Bar */}
-      <div className="hidden lg:block">
-        <div className="flex items-center justify-between relative">
-          {/* Progress Line */}
-          <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-200 z-0">
-            <motion.div
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-              initial={{ width: 0 }}
-              animate={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%` }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-            />
+  const renderProgressIndicator = () => (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+            <User className="w-5 h-5 text-white" />
           </div>
-
-          {stepConfig.map((step, index) => {
-            const isActive = step.id === currentStep
-            const isCompleted = step.id < currentStep
-            const Icon = step.icon
-
-            return (
-              <motion.div
-                key={step.id}
-                className="relative z-10 flex flex-col items-center"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <motion.div
-                  className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-2 transition-all duration-300",
-                    isActive && "bg-blue-600 text-white border-blue-600 shadow-blue-200",
-                    isCompleted && "bg-green-600 text-white border-green-600 shadow-green-200",
-                    !isActive && !isCompleted && "bg-white text-gray-400 border-gray-300"
-                  )}
-                  whileHover={{ scale: 1.05 }}
-                >
-                  {isCompleted ? (
-                    <Check className="w-5 h-5" />
-                  ) : (
-                    <Icon className="w-5 h-5" />
-                  )}
-                </motion.div>
-                <div className="mt-3 text-center max-w-24">
-                  <div className={cn(
-                    "text-xs font-medium",
-                    isActive && "text-blue-600",
-                    isCompleted && "text-green-600",
-                    !isActive && !isCompleted && "text-gray-500"
-                  )}>
-                    {step.title}
-                  </div>
-                </div>
-              </motion.div>
-            )
-          })}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Visitor Registration</h3>
+            <p className="text-sm text-gray-600">Tell us about yourself</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-bold text-gray-900">{progress}%</div>
+          <div className="text-xs text-gray-500">Complete</div>
         </div>
       </div>
 
-      {/* Mobile Progress Bar */}
-      <div className="lg:hidden">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-sm text-gray-500">
-            Step {currentStep} of {totalSteps}
-          </div>
-          <div className="text-sm font-medium text-gray-900">
-            {Math.round((currentStep / totalSteps) * 100)}% Complete
-          </div>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <motion.div
-            className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${(currentStep / totalSteps) * 100}%` }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-          />
-        </div>
-        <div className="mt-3 text-center">
-          <div className="flex items-center justify-center gap-2 text-blue-600">
-            {React.createElement(stepConfig[currentStep - 1].icon, { className: "w-4 h-4" })}
-            <span className="font-medium text-sm">{stepConfig[currentStep - 1].title}</span>
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            {stepConfig[currentStep - 1].subtitle}
-          </div>
-        </div>
+      {/* Animated Progress Bar */}
+      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+        <motion.div
+          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        />
+      </div>
+
+      {/* Progress Milestones */}
+      <div className="flex justify-between mt-2 text-xs text-gray-500">
+        <span className={progress >= 25 ? "text-blue-600 font-medium" : ""}>Started</span>
+        <span className={progress >= 50 ? "text-blue-600 font-medium" : ""}>Halfway</span>
+        <span className={progress >= 75 ? "text-blue-600 font-medium" : ""}>Almost Done</span>
+        <span className={progress >= 100 ? "text-green-600 font-medium" : ""}>Complete!</span>
       </div>
     </div>
   )
 
-  const renderStep1 = () => (
+  const renderAllFields = () => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
       className="space-y-6"
     >
-      {/* Step Header with Clear Boundary */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-800 mb-1">Step 1: About You</h3>
-        <p className="text-sm text-gray-600">Just the essentials</p>
-      </div>
-
-      {/* Essential Info Only */}
+      {/* Essential Information */}
       <div className="space-y-6">
         {/* Name Fields Group */}
         <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500">
@@ -343,26 +317,8 @@ export default function PublicVisitorRegistrationForm({
             />
           </motion.div>
         </div>
-      </div>
-    </motion.div>
-  )
 
-  const renderStep2 = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-6"
-    >
-      {/* Step Header with Clear Boundary */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 text-center shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-800 mb-1">Step 2: Connect & Finish</h3>
-        <p className="text-sm text-gray-600">Almost done! Help us stay connected</p>
-      </div>
-
-      {/* Optional Info in Fun Cards */}
-      <div className="space-y-4">
+        {/* Additional Information from Step 2 */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -404,6 +360,7 @@ export default function PublicVisitorRegistrationForm({
             {...register('dateOfBirth')}
             placeholder="Your date of birth"
             className="transition-all duration-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            error={errors.dateOfBirth?.message}
           />
         </motion.div>
 
@@ -424,7 +381,6 @@ export default function PublicVisitorRegistrationForm({
             className="transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
         </motion.div>
-
 
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -593,17 +549,21 @@ export default function PublicVisitorRegistrationForm({
           transition={{ delay: 0.51 }}
           className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-4 border border-pink-200"
         >
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-4">
             <div className="text-2xl">📸</div>
             <h4 className="font-semibold text-gray-800">Take a Selfie?</h4>
             <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
           </div>
-          <Input
-            {...register('profilePhotoUrl')}
-            placeholder="Upload or share a photo link (optional)"
-            className="transition-all duration-300 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+          <ImageUpload
+            value={watch('profilePhotoUrl')}
+            onChange={(url) => setValue('profilePhotoUrl', url)}
+            placeholder="Upload your photo"
+            maxSizeMB={5}
+            className="max-w-[200px] mx-auto"
           />
-          <p className="text-xs text-gray-500 mt-2">You can add a photo link or upload one later!</p>
+          <p className="text-xs text-gray-500 mt-3 text-center">
+            Share a photo so we can recognize you when you visit! 📷
+          </p>
         </motion.div>
 
         <motion.div
@@ -714,101 +674,64 @@ export default function PublicVisitorRegistrationForm({
     </motion.div>
   )
 
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1: return renderStep1()
-      case 2: return renderStep2()
-      default: return renderStep1()
-    }
-  }
 
   return (
     <div className="max-w-4xl mx-auto">
       <form onSubmit={handleSubmit(handleFormSubmit, (errors) => {
         console.log('Form validation errors:', errors)
-      })} className="space-y-4">
-        <Card className="p-4 md:p-6 shadow-lg border-0 bg-white">
-          {renderStepIndicator()}
-          <AnimatePresence mode="wait">
-            <div key={currentStep}>
-              {renderCurrentStep()}
-            </div>
-          </AnimatePresence>
+      })} className="space-y-6">
+        <Card className="p-6 md:p-8 shadow-lg border-0 bg-white">
+          {renderProgressIndicator()}
+          {renderAllFields()}
         </Card>
 
-        {/* Navigation */}
+        {/* Submit Button */}
         <Card className="p-4 bg-gray-50 border-0">
-          <div className="flex justify-between items-center">
-            <div>
-              {currentStep > 1 && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={prevStep}
-                    className="flex items-center gap-2 hover:shadow-md transition-all duration-200"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
-                  </Button>
-                </motion.div>
-              )}
-            </div>
+          <div className="flex flex-col items-center gap-4">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full max-w-md"
+            >
+              <Button
+                type="submit"
+                loading={isSubmitting}
+                disabled={progress < 25} // Require at least basic info
+                onClick={() => console.log('Submit button clicked, progress:', progress, 'disabled:', progress < 25)}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 h-12 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  'Submitting...'
+                ) : progress >= 100 ? (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Complete Registration ✨
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Submit Registration
+                  </>
+                )}
+              </Button>
+            </motion.div>
 
-            <div className="flex items-center gap-3">
-              {currentStep < totalSteps ? (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    type="button"
-                    onClick={nextStep}
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    Continue
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={`submit-button-${currentStep}`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    type="submit"
-                    loading={isSubmitting}
-                    className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    {isSubmitting ? (
-                      'Submitting...'
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Complete Registration ✨
-                      </>
-                    )}
-                  </Button>
-                </motion.div>
-              )}
-            </div>
-          </div>
-
-          {/* Progress Summary */}
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <div>
-                Step {currentStep} of {totalSteps} • {stepConfig[currentStep - 1].title}
-              </div>
+            {/* Security & Progress Info */}
+            <div className="flex items-center justify-center gap-6 text-xs text-gray-600">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 <span>Secure & Confidential</span>
               </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-3 h-3" />
+                <span>Takes 2-3 minutes</span>
+              </div>
+              {progress >= 25 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                  <span>Ready to submit</span>
+                </div>
+              )}
             </div>
           </div>
         </Card>

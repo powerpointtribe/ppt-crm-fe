@@ -28,6 +28,7 @@ import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { SkeletonDashboard } from '@/components/ui/Skeleton'
 import BulkUploadModal from '@/components/ui/BulkUploadModal'
+import ExportFilterModal from '@/components/ui/ExportFilterModal'
 import { bulkOperationsService, BulkOperationType } from '@/services/bulkOperations'
 
 interface BulkOperationStats {
@@ -67,6 +68,15 @@ export default function BulkOperationsDashboard() {
   }>({
     isOpen: false,
     entityType: '',
+    entityName: ''
+  })
+  const [exportFilter, setExportFilter] = useState<{
+    isOpen: boolean
+    entityType: 'members' | 'groups' | 'first-timers'
+    entityName: string
+  }>({
+    isOpen: false,
+    entityType: 'members',
     entityName: ''
   })
   const navigate = useNavigate()
@@ -151,8 +161,12 @@ export default function BulkOperationsDashboard() {
         })
         break
       case 'Export':
-        console.log('Exporting data for:', entityType)
-        handleExport(entityType)
+        console.log('Opening export filter modal for:', entityType)
+        setExportFilter({
+          isOpen: true,
+          entityType: entityType as 'members' | 'groups' | 'first-timers',
+          entityName
+        })
         break
       case 'Template':
         console.log('Downloading template for:', entityType)
@@ -209,17 +223,84 @@ export default function BulkOperationsDashboard() {
     console.log('Template download completed for:', entityType)
   }
 
-  const handleExport = async (entityType: string) => {
+  const handleExportWithFilters = async (filters: any) => {
     try {
-      console.log('Attempting to export data for:', entityType)
-      await bulkOperationsService.exportEntities(entityType, {})
-      console.log('Export completed for:', entityType)
+      console.log('Attempting to export data for:', exportFilter.entityType, 'with filters:', filters)
+
+      // Transform frontend filter format to backend format
+      const backendFilters = transformFiltersForBackend(filters, exportFilter.entityType)
+
+      await bulkOperationsService.exportEntities(exportFilter.entityType, backendFilters)
+      console.log('Export completed for:', exportFilter.entityType)
       // You could add a toast notification here for success
     } catch (error) {
       console.error('Error exporting data:', error)
       // You could add a toast notification here for error
-      alert(`Failed to export ${entityType} data. Please try again.`)
+      alert(`Failed to export ${exportFilter.entityType} data. Please try again.`)
     }
+  }
+
+  const transformFiltersForBackend = (filters: any, entityType: string) => {
+    const backendFilters: any = {}
+
+    // Common filters
+    if (filters.searchText) {
+      backendFilters.$or = [
+        { firstName: { $regex: filters.searchText, $options: 'i' } },
+        { lastName: { $regex: filters.searchText, $options: 'i' } },
+        { email: { $regex: filters.searchText, $options: 'i' } },
+        { phone: { $regex: filters.searchText, $options: 'i' } }
+      ]
+    }
+
+    // Date range filters
+    if (filters.dateFrom || filters.dateTo) {
+      const dateField = entityType === 'members' ? 'dateJoined' :
+                       entityType === 'first-timers' ? 'dateOfVisit' : 'createdAt'
+
+      backendFilters[dateField] = {}
+      if (filters.dateFrom) {
+        backendFilters[dateField].$gte = new Date(filters.dateFrom)
+      }
+      if (filters.dateTo) {
+        backendFilters[dateField].$lte = new Date(filters.dateTo + 'T23:59:59.999Z')
+      }
+    }
+
+    // Entity-specific filters
+    if (entityType === 'members') {
+      if (filters.membershipStatus) backendFilters.membershipStatus = filters.membershipStatus
+      if (filters.gender) backendFilters.gender = filters.gender
+      if (filters.maritalStatus) backendFilters.maritalStatus = filters.maritalStatus
+      if (filters.district) backendFilters.district = { $regex: filters.district, $options: 'i' }
+
+      // Age filters (convert to date of birth range)
+      if (filters.ageMin || filters.ageMax) {
+        const now = new Date()
+        backendFilters.dateOfBirth = {}
+
+        if (filters.ageMax) {
+          const minDate = new Date(now.getFullYear() - filters.ageMax - 1, now.getMonth(), now.getDate())
+          backendFilters.dateOfBirth.$gte = minDate
+        }
+        if (filters.ageMin) {
+          const maxDate = new Date(now.getFullYear() - filters.ageMin, now.getMonth(), now.getDate())
+          backendFilters.dateOfBirth.$lte = maxDate
+        }
+      }
+    } else if (entityType === 'groups') {
+      if (filters.groupType) backendFilters.type = filters.groupType
+      if (filters.isActive !== undefined) backendFilters.isActive = filters.isActive
+      if (filters.maxCapacity) backendFilters.maxCapacity = { $lte: filters.maxCapacity }
+    } else if (entityType === 'first-timers') {
+      if (filters.status) backendFilters.status = filters.status
+      if (filters.interestedInJoining !== undefined) backendFilters.interestedInJoining = filters.interestedInJoining
+      if (filters.converted !== undefined) backendFilters.converted = filters.converted
+      if (filters.howDidYouHear) backendFilters.howDidYouHear = filters.howDidYouHear
+      if (filters.visitorType) backendFilters.visitorType = filters.visitorType
+    }
+
+    return backendFilters
   }
 
   const handleUploadSuccess = async (result: any) => {
@@ -578,6 +659,15 @@ export default function BulkOperationsDashboard() {
         entityType={bulkUpload.entityType}
         onSuccess={handleUploadSuccess}
         templateColumns={[]}
+      />
+
+      {/* Export Filter Modal */}
+      <ExportFilterModal
+        isOpen={exportFilter.isOpen}
+        onClose={() => setExportFilter({ isOpen: false, entityType: 'members', entityName: '' })}
+        onExport={handleExportWithFilters}
+        entityType={exportFilter.entityType}
+        entityName={exportFilter.entityName}
       />
     </Layout>
   )

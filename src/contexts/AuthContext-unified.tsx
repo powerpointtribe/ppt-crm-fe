@@ -30,6 +30,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
+  refreshAuth: () => Promise<void>;
   canAccessModule: (module: string) => boolean;
   hasSystemRole: (role: string) => boolean;
   hasLeadershipRole: (role: 'district_pastor' | 'unit_head' | 'champ') => boolean;
@@ -59,26 +60,98 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  // Initialize cached permissions synchronously
+  const initCachedPermissions = () => {
+    const cachedPerms = localStorage.getItem('cached_permissions');
+    if (cachedPerms) {
+      try {
+        return JSON.parse(cachedPerms);
+      } catch (e) {
+        console.error('Failed to parse cached permissions:', e);
+      }
+    }
+    return null;
+  };
+
   const [member, setMember] = useState<Member | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [cachedPermissions, setCachedPermissions] = useState<{
+    accessibleModules: string[];
+    systemRoles: string[];
+    role?: string;
+  } | null>(initCachedPermissions);
 
   useEffect(() => {
+    console.log('AuthProvider initialized with cached permissions:', cachedPermissions);
+    console.log('Current localStorage cached_permissions:', localStorage.getItem('cached_permissions'));
+    console.log('Current localStorage auth_token:', !!localStorage.getItem('auth_token'));
     checkAuthStatus();
   }, []);
+
+  // Add a retry mechanism for when user comes back online
+  useEffect(() => {
+    const handleOnline = () => {
+      const token = localStorage.getItem('auth_token');
+      if (token && !member) {
+        console.log('Network restored, attempting to restore user session');
+        checkAuthStatus();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [member]);
 
   const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      if (token) {
-        const memberProfile = await membersService.getProfile();
-        setMember(memberProfile);
+      if (!token) {
+        setIsLoading(false);
+        return;
       }
+
+      // Try to get user profile to validate token
+      const memberProfile = await membersService.getProfile();
+      setMember(memberProfile);
+
+      // Cache permissions for offline use
+      const permissions = {
+        accessibleModules: memberProfile.accessibleModules || [],
+        systemRoles: memberProfile.systemRoles || [],
+        role: (memberProfile as any)?.role
+      };
+      setCachedPermissions(permissions);
+      localStorage.setItem('cached_permissions', JSON.stringify(permissions));
     } catch (error: any) {
       console.error('Auth check failed:', error);
-      // Only remove token if it's specifically an authentication error (401)
-      // Don't remove token for network errors or other temporary issues
-      if (error.code === 401 || error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+
+      // Only remove token for authentication errors, not network errors
+      const isAuthError = error.code === 401 ||
+                         error.code === 'UNAUTHORIZED' ||
+                         error.message?.includes('401') ||
+                         error.message?.includes('Unauthorized') ||
+                         error.message?.includes('invalid token') ||
+                         error.message?.includes('expired');
+
+      const isNetworkError = error.code === 'NETWORK_ERROR' ||
+                            error.message === 'Network Error' ||
+                            error.code === 'ERR_NETWORK' ||
+                            !navigator.onLine;
+
+      if (isAuthError) {
+        console.log('Authentication error detected, clearing token and permissions');
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('cached_permissions');
+        setMember(null);
+        setCachedPermissions(null);
+      } else if (isNetworkError) {
+        console.log('Network error detected, keeping token and user session');
+        // For network errors, try to preserve the session by keeping existing member data
+        // We'll keep the user logged in but they might see cached data
+      } else {
+        console.log('Unknown error, keeping token but clearing member data temporarily');
+        // For other errors, keep token but clear member data
+        // This allows for retry on next page load
       }
     } finally {
       setIsLoading(false);
@@ -103,17 +176,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('cached_permissions');
     setMember(null);
+    setCachedPermissions(null);
+  };
+
+  const refreshAuth = async () => {
+    await checkAuthStatus();
   };
 
   // Access control helper methods
   const canAccessModule = (module: string): boolean => {
-    // Handle both array format and fallback for super_admin
+    // Use current member data if available
     if (member?.accessibleModules?.includes) {
-      return member.accessibleModules.includes(module);
+      const hasAccess = member.accessibleModules.includes(module);
+      console.log(`Permission check for module '${module}': ${hasAccess} (from current member data)`);
+      return hasAccess;
+    }
+    // Fallback to cached permissions during loading
+    if (cachedPermissions?.accessibleModules?.includes) {
+      const hasAccess = cachedPermissions.accessibleModules.includes(module);
+      console.log(`Permission check for module '${module}': ${hasAccess} (from cached permissions)`);
+      return hasAccess;
     }
     // Allow super_admin access to all modules
-    return (member as any)?.role === 'super_admin' || false;
+    const isSuperAdmin = (member as any)?.role === 'super_admin' || cachedPermissions?.role === 'super_admin';
+    console.log(`Permission check for module '${module}': ${isSuperAdmin} (super_admin access)`);
+    return isSuperAdmin || false;
   };
 
   const hasSystemRole = (role: string): boolean => {
@@ -121,8 +210,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (member?.systemRoles?.includes) {
       return member.systemRoles.includes(role);
     }
-    // Check single role field from API
-    return (member as any)?.role === role || false;
+    // Fallback to cached permissions during loading
+    if (cachedPermissions?.systemRoles?.includes) {
+      return cachedPermissions.systemRoles.includes(role);
+    }
+    // Check single role field from API or cached data
+    return (member as any)?.role === role || cachedPermissions?.role === role || false;
   };
 
   const hasLeadershipRole = (role: 'district_pastor' | 'unit_head' | 'champ'): boolean => {
@@ -153,18 +246,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                    (member as any)?.role === 'super_admin' ||
                    false;
 
+  // More comprehensive authentication check
+  const hasToken = !!localStorage.getItem('auth_token');
+  const isAuthenticated = !!member || (hasToken && !!cachedPermissions);
+
   // Module-specific access checks
   const canManageMembers = canAccessModule('members');
   const canAccessFirstTimers = canAccessModule('first_timers');
   const canManageGroups = canAccessModule('units');
 
+  // Debug logging for computed properties
+  console.log('AuthContext computed properties:', {
+    member: !!member,
+    cachedPermissions: !!cachedPermissions,
+    hasToken,
+    isAuthenticated,
+    isLoading,
+    canManageMembers,
+    canAccessFirstTimers,
+    canManageGroups,
+    isAdmin
+  });
+
   const value: AuthContextType = {
     member,
     isLoading,
-    isAuthenticated: !!member,
+    isAuthenticated,
     login,
     register,
     logout,
+    refreshAuth,
     canAccessModule,
     hasSystemRole,
     hasLeadershipRole,

@@ -26,9 +26,16 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  // If not authenticated, redirect to login
-  if (!isAuthenticated) {
-    debugLog('Not authenticated, redirecting to login')
+  // If we have a token but no member data (possibly due to network issues),
+  // allow access but the components will handle the lack of member data
+  if (hasToken && !member) {
+    debugLog('Token exists but no member data, allowing access with limited functionality')
+    return <>{children}</>
+  }
+
+  // If not authenticated and no token, redirect to login
+  if (!isAuthenticated && !hasToken) {
+    debugLog('Not authenticated and no token, redirecting to login')
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

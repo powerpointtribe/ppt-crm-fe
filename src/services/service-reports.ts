@@ -249,4 +249,11 @@ export const serviceReportsService = {
       label,
     }))
   },
+
+  getAttendanceChartData: async (limit: number = 10): Promise<any[]> => {
+    const response = await apiService.get<ApiResponse<any[]>>('/service-reports/chart-data', {
+      params: { limit }
+    })
+    return transformSingleResponse<any[]>(response) as any[]
+  },
 }

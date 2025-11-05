@@ -16,6 +16,17 @@ import {
   UserCheck,
   BarChart3
 } from 'lucide-react'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar
+} from 'recharts'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -45,6 +56,7 @@ export default function ServiceReports() {
   })
   const [pagination, setPagination] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
+  const [chartData, setChartData] = useState<any[]>([])
 
   const memoizedSearchParams = useMemo(() => searchParams, [
     searchParams.page,
@@ -84,13 +96,23 @@ export default function ServiceReports() {
     }
   }, [])
 
+  const loadChartData = useCallback(async () => {
+    try {
+      const data = await serviceReportsService.getAttendanceChartData(10)
+      setChartData(data)
+    } catch (err) {
+      console.error('Failed to load chart data:', err)
+    }
+  }, [])
+
   useEffect(() => {
     loadReports()
   }, [loadReports])
 
   useEffect(() => {
     loadStats()
-  }, [loadStats])
+    loadChartData()
+  }, [loadStats, loadChartData])
 
   const handleSearch = (query: string) => {
     setSearchParams(prev => ({
@@ -140,85 +162,213 @@ export default function ServiceReports() {
   return (
     <Layout>
       <div className="p-6 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <FileText className="w-8 h-8 text-blue-600" />
-              Service Reports
-            </h1>
-            <p className="text-gray-600 mt-1">Track and manage service attendance reports</p>
+        {/* Modern Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 rounded-2xl p-8 text-white shadow-xl">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <FileText className="w-8 h-8" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold mb-2">Service Reports</h1>
+                  <p className="text-blue-100 text-lg">Track attendance trends and service insights</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => navigate('/members/service-reports/new')}
+                className="bg-white text-blue-600 hover:bg-blue-50 border-0 shadow-lg px-6 py-3 text-base font-semibold"
+                size="lg"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Create New Report
+              </Button>
+            </div>
           </div>
-          <Button
-            onClick={() => navigate('/members/service-reports/new')}
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New Report
-          </Button>
-        </div>
+        </motion.div>
 
-        {/* Stats Cards */}
+        {/* Modern Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="p-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8"
+          >
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 border border-blue-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Reports</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats?.overall?.totalReports || 0}</p>
+                  <p className="text-blue-700 font-semibold text-sm uppercase tracking-wide mb-2">Total Reports</p>
+                  <p className="text-3xl font-bold text-blue-900">{stats?.overall?.totalReports || 0}</p>
                 </div>
-                <FileText className="w-8 h-8 text-blue-600" />
+                <div className="p-3 bg-blue-600 rounded-xl">
+                  <FileText className="w-8 h-8 text-white" />
+                </div>
               </div>
-            </Card>
-            <Card className="p-4">
+            </div>
+
+            <div className="bg-gradient-to-br from-emerald-50 to-green-100 rounded-2xl p-6 border border-emerald-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Highest Attendance</p>
-                  <p className="text-2xl font-bold text-gray-900">{(stats?.overall?.highestAttendance || 0).toLocaleString()}</p>
+                  <p className="text-emerald-700 font-semibold text-sm uppercase tracking-wide mb-2">Highest Attendance</p>
+                  <p className="text-3xl font-bold text-emerald-900">{(stats?.overall?.highestAttendance || 0).toLocaleString()}</p>
                 </div>
-                <Users className="w-8 h-8 text-green-600" />
+                <div className="p-3 bg-emerald-600 rounded-xl">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
               </div>
-            </Card>
-            <Card className="p-4">
+            </div>
+
+            <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 border border-amber-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Avg Attendance</p>
-                  <p className="text-2xl font-bold text-gray-900">{Math.round(stats?.overall?.averageAttendance || 0)}</p>
+                  <p className="text-amber-700 font-semibold text-sm uppercase tracking-wide mb-2">Avg Attendance</p>
+                  <p className="text-3xl font-bold text-amber-900">{Math.round(stats?.overall?.averageAttendance || 0)}</p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-orange-600" />
+                <div className="p-3 bg-amber-600 rounded-xl">
+                  <TrendingUp className="w-8 h-8 text-white" />
+                </div>
               </div>
-            </Card>
-            <Card className="p-4">
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-6 border border-purple-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total First Timers</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats?.overall?.totalFirstTimers || 0}</p>
+                  <p className="text-purple-700 font-semibold text-sm uppercase tracking-wide mb-2">Total First Timers</p>
+                  <p className="text-3xl font-bold text-purple-900">{stats?.overall?.totalFirstTimers || 0}</p>
                 </div>
-                <UserCheck className="w-8 h-8 text-purple-600" />
+                <div className="p-3 bg-purple-600 rounded-xl">
+                  <UserCheck className="w-8 h-8 text-white" />
+                </div>
               </div>
-            </Card>
-          </div>
+            </div>
+          </motion.div>
         )}
 
-        {/* Search and Filters */}
-        <Card className="p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <SearchInput
-                placeholder="Search service reports..."
-                onSearch={handleSearch}
-                className="w-full"
-              />
-            </div>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filters
-            </Button>
-          </div>
-        </Card>
+        {/* Modern Attendance Chart */}
+        {chartData.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100 mb-8">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
+                    <BarChart3 className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Attendance Trends</h2>
+                    <p className="text-gray-600">Last 10 services performance overview</p>
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-lg">
+                  <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-indigo-700">Attendance</span>
+                </div>
+              </div>
 
-        {/* Reports Table */}
-        <Card>
+              <div className="h-96 bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-xl p-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                    <defs>
+                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.6}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" stroke="#94a3b8" />
+                    <XAxis
+                      dataKey="formattedDate"
+                      tick={{ fontSize: 12, fill: '#64748b' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12, fill: '#64748b' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        <span className="font-semibold text-indigo-700">{value}</span>,
+                        <span className="text-gray-600">Attendance</span>
+                      ]}
+                      labelFormatter={(label) => {
+                        const item = chartData.find(d => d.formattedDate === label)
+                        return item ? (
+                          <div className="font-semibold text-gray-900">
+                            {item.serviceName}
+                            <div className="text-sm text-gray-500 font-normal">{item.date}</div>
+                          </div>
+                        ) : label
+                      }}
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: 'none',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                        padding: '12px 16px'
+                      }}
+                      cursor={{ fill: 'rgba(79, 70, 229, 0.05)' }}
+                    />
+                    <Bar
+                      dataKey="attendance"
+                      fill="url(#barGradient)"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={60}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Modern Search and Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <SearchInput
+                    placeholder="Search by service name, date, or reporter..."
+                    onSearch={handleSearch}
+                    className="w-full pl-10 py-3 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  />
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 hover:from-gray-100 hover:to-gray-200 rounded-xl transition-all duration-200"
+              >
+                <Filter className="w-4 h-4" />
+                Advanced Filters
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Modern Reports Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           {loading ? (
             <SkeletonTable rows={10} />
           ) : error ? (
@@ -231,39 +381,40 @@ export default function ServiceReports() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                       Service
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                       Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                       Attendance
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                       First Timers
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                       Tags
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                       Reported By
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {reports.map((report) => (
+                <tbody>
+                  {reports.map((report, index) => (
                     <motion.tr
                       key={report._id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="hover:bg-gray-50"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="border-b border-gray-50 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 transition-all duration-200"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
@@ -304,12 +455,13 @@ export default function ServiceReports() {
                           {formatDate(report.createdAt)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => navigate(`/members/service-reports/${report._id}`)}
+                            className="p-2 h-9 w-9 bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 rounded-lg"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -317,6 +469,7 @@ export default function ServiceReports() {
                             size="sm"
                             variant="outline"
                             onClick={() => navigate(`/members/service-reports/${report._id}/edit`)}
+                            className="p-2 h-9 w-9 bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100 rounded-lg"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -324,6 +477,7 @@ export default function ServiceReports() {
                             size="sm"
                             variant="outline"
                             onClick={() => generatePdf(report._id)}
+                            className="p-2 h-9 w-9 bg-green-50 border-green-200 text-green-600 hover:bg-green-100 rounded-lg"
                           >
                             <Download className="w-4 h-4" />
                           </Button>
@@ -331,7 +485,7 @@ export default function ServiceReports() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleDelete(report._id)}
-                            className="text-red-600 hover:text-red-700"
+                            className="p-2 h-9 w-9 bg-red-50 border-red-200 text-red-600 hover:bg-red-100 rounded-lg"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -343,34 +497,41 @@ export default function ServiceReports() {
               </table>
 
               {reports.length === 0 && (
-                <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No service reports found</h3>
-                  <p className="text-gray-600 mb-4">Get started by creating your first service report.</p>
-                  <Button onClick={() => navigate('/members/service-reports/new')}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Service Report
+                <div className="text-center py-16">
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                    <FileText className="w-10 h-10 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">No service reports found</h3>
+                  <p className="text-gray-600 mb-8 max-w-md mx-auto">Get started by creating your first service report to track attendance and service insights.</p>
+                  <Button
+                    onClick={() => navigate('/members/service-reports/new')}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-8 py-3"
+                    size="lg"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Create Your First Report
                   </Button>
                 </div>
               )}
             </div>
           )}
 
-          {/* Pagination */}
+          {/* Modern Pagination */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="border-t border-gray-200 px-6 py-3">
+            <div className="border-t border-gray-100 bg-gray-50 px-8 py-4 rounded-b-2xl">
               <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-                  {pagination.total} results
+                <div className="text-sm text-gray-600 font-medium">
+                  Showing <span className="text-gray-900">{((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
+                  <span className="text-gray-900">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{' '}
+                  <span className="text-gray-900">{pagination.total}</span> results
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handlePageChange(pagination.page - 1)}
                     disabled={!pagination.hasPrev}
+                    className="px-4 py-2 bg-white border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium"
                   >
                     Previous
                   </Button>
@@ -379,6 +540,7 @@ export default function ServiceReports() {
                     variant="outline"
                     onClick={() => handlePageChange(pagination.page + 1)}
                     disabled={!pagination.hasNext}
+                    className="px-4 py-2 bg-white border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium"
                   >
                     Next
                   </Button>
@@ -386,7 +548,8 @@ export default function ServiceReports() {
               </div>
             </div>
           )}
-        </Card>
+          </div>
+        </motion.div>
       </div>
     </Layout>
   )

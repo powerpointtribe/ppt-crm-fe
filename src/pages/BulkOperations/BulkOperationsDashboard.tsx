@@ -18,13 +18,17 @@ import {
   Database,
   FileSpreadsheet,
   Import,
-  ArrowRight
+  ArrowRight,
+  Settings,
+  RefreshCw
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { SkeletonDashboard } from '@/components/ui/Skeleton'
+import BulkUploadModal from '@/components/ui/BulkUploadModal'
+import { bulkOperationsService, BulkOperationType } from '@/services/bulkOperations'
 
 interface BulkOperationStats {
   totalOperations: number
@@ -42,9 +46,29 @@ interface BulkOperationStats {
   }>
 }
 
+interface EntityTemplate {
+  entityType: string
+  name: string
+  headers: string[]
+  required: string[]
+}
+
+type ActiveView = 'dashboard' | 'upload' | 'export' | 'history'
+
 export default function BulkOperationsDashboard() {
   const [stats, setStats] = useState<BulkOperationStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activeView, setActiveView] = useState<ActiveView>('dashboard')
+  const [selectedEntityType, setSelectedEntityType] = useState<string>('')
+  const [bulkUpload, setBulkUpload] = useState<{
+    isOpen: boolean
+    entityType: string
+    entityName: string
+  }>({
+    isOpen: false,
+    entityType: '',
+    entityName: ''
+  })
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -53,9 +77,11 @@ export default function BulkOperationsDashboard() {
 
   const loadStats = async () => {
     try {
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
+      const statsData = await bulkOperationsService.getOperationsStats()
+      setStats(statsData)
+    } catch (error) {
+      console.error('Error loading bulk operations stats:', error)
+      // Fallback to mock data if API fails
       setStats({
         totalOperations: 156,
         successfulOperations: 142,
@@ -91,12 +117,11 @@ export default function BulkOperationsDashboard() {
           }
         ]
       })
-    } catch (error) {
-      console.error('Error loading bulk operations stats:', error)
     } finally {
       setLoading(false)
     }
   }
+
 
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date()
@@ -113,6 +138,94 @@ export default function BulkOperationsDashboard() {
     return `${diffInDays}d ago`
   }
 
+  const handleEntityAction = (entityType: string, entityName: string, action: string) => {
+    console.log('handleEntityAction called:', { entityType, entityName, action })
+
+    switch (action) {
+      case 'Upload':
+        console.log('Opening upload modal for:', entityType)
+        setBulkUpload({
+          isOpen: true,
+          entityType,
+          entityName
+        })
+        break
+      case 'Export':
+        console.log('Exporting data for:', entityType)
+        handleExport(entityType)
+        break
+      case 'Template':
+        console.log('Downloading template for:', entityType)
+        handleDownloadTemplate(entityType)
+        break
+      default:
+        console.log('Unknown action:', action)
+        break
+    }
+  }
+
+  const handleDownloadTemplate = (entityType: string) => {
+    console.log('Downloading template for:', entityType)
+
+    const templates = {
+      members: {
+        headers: ['firstName', 'lastName', 'email', 'phone', 'gender', 'dateOfBirth', 'maritalStatus', 'district', 'unit'],
+        example: ['John', 'Doe', 'john.doe@example.com', '+1234567890', 'male', '1990-01-01', 'single', 'District 1', 'Unit A']
+      },
+      groups: {
+        headers: ['name', 'description', 'type', 'district', 'unit', 'capacity', 'meetingDay', 'meetingTime'],
+        example: ['Bible Study Group', 'Weekly Bible study and fellowship', 'bible_study', 'District 1', 'Unit A', '20', 'Wednesday', '19:00']
+      },
+      'first-timers': {
+        headers: ['firstName', 'lastName', 'email', 'phone', 'gender', 'ageGroup', 'maritalStatus', 'serviceDate', 'invitedBy'],
+        example: ['Jane', 'Smith', 'jane.smith@example.com', '+1234567890', 'female', 'adult', 'single', '2024-01-15', 'John Doe']
+      }
+    }
+
+    const template = templates[entityType as keyof typeof templates]
+    if (!template) {
+      console.error('Template not found for:', entityType)
+      return
+    }
+
+    // Create CSV content
+    const csvContent = [
+      template.headers.join(','),
+      template.example.join(',')
+    ].join('\n')
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `${entityType}-template.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    console.log('Template download completed for:', entityType)
+  }
+
+  const handleExport = async (entityType: string) => {
+    try {
+      console.log('Attempting to export data for:', entityType)
+      await bulkOperationsService.exportEntities(entityType, {})
+      console.log('Export completed for:', entityType)
+      // You could add a toast notification here for success
+    } catch (error) {
+      console.error('Error exporting data:', error)
+      // You could add a toast notification here for error
+      alert(`Failed to export ${entityType} data. Please try again.`)
+    }
+  }
+
+  const handleUploadSuccess = async (result: any) => {
+    setBulkUpload({ isOpen: false, entityType: '', entityName: '' })
+    await loadStats() // Refresh stats after successful upload
+  }
 
   const entityModules = [
     {
@@ -120,7 +233,7 @@ export default function BulkOperationsDashboard() {
       description: 'Bulk operations for church members',
       icon: Users,
       gradient: 'from-emerald-500 to-emerald-600',
-      path: '/bulk-operations/members',
+      entityType: 'members',
       operations: ['Upload', 'Update', 'Export', 'Delete']
     },
     {
@@ -128,7 +241,7 @@ export default function BulkOperationsDashboard() {
       description: 'Manage groups in bulk',
       icon: Group,
       gradient: 'from-violet-500 to-violet-600',
-      path: '/bulk-operations/groups',
+      entityType: 'groups',
       operations: ['Upload', 'Update', 'Export']
     },
     {
@@ -136,7 +249,7 @@ export default function BulkOperationsDashboard() {
       description: 'Process visitor data efficiently',
       icon: UserPlus,
       gradient: 'from-orange-500 to-orange-600',
-      path: '/bulk-operations/first-timers',
+      entityType: 'first-timers',
       operations: ['Upload', 'Update', 'Export']
     }
   ]
@@ -228,24 +341,38 @@ export default function BulkOperationsDashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 + index * 0.1 }}
-                onClick={() => navigate(module.path)}
-                className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:border-gray-300"
+                className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 group hover:border-gray-300"
               >
                 <div className={`w-12 h-12 bg-gradient-to-r ${module.gradient} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                   <module.icon className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">{module.title}</h3>
                 <p className="text-sm text-muted-foreground mb-4">{module.description}</p>
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {module.operations.map((op) => (
-                    <Badge key={op} variant="secondary" className="text-xs">
-                      {op}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex items-center text-primary-600 text-sm font-medium group-hover:text-primary-700">
-                  Manage {module.title}
-                  <ArrowRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleEntityAction(module.entityType, module.title, 'Upload')
+                    }}
+                    className="text-xs"
+                  >
+                    <Upload className="h-3 w-3 mr-1" />
+                    Upload
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleEntityAction(module.entityType, module.title, 'Export')
+                    }}
+                    className="text-xs"
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Export
+                  </Button>
                 </div>
               </motion.div>
             ))}
@@ -340,7 +467,12 @@ export default function BulkOperationsDashboard() {
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-border">
-                  <Button variant="ghost" size="sm" className="w-full text-sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-sm"
+                    onClick={() => setActiveView('history')}
+                  >
                     View All Operations
                   </Button>
                 </div>
@@ -366,19 +498,46 @@ export default function BulkOperationsDashboard() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {[
-                    { name: 'Member Upload Template', type: 'CSV', icon: Users, description: 'Template for bulk member uploads' },
-                    { name: 'Group Import Template', type: 'Excel', icon: Group, description: 'Format for group data imports' },
-                    { name: 'First Timer Template', type: 'CSV', icon: UserPlus, description: 'Visitor registration template' },
-                    { name: 'Bulk Operations Guide', type: 'PDF', icon: FileText, description: 'Complete guide to bulk operations' }
+                    {
+                      name: 'Members Template',
+                      entityType: 'members',
+                      icon: Users,
+                      description: 'CSV template with member fields'
+                    },
+                    {
+                      name: 'Groups Template',
+                      entityType: 'groups',
+                      icon: Group,
+                      description: 'CSV template with group fields'
+                    },
+                    {
+                      name: 'First Timers Template',
+                      entityType: 'first-timers',
+                      icon: UserPlus,
+                      description: 'CSV template with visitor fields'
+                    },
+                    {
+                      name: 'Operations Guide',
+                      entityType: 'guide',
+                      icon: FileText,
+                      description: 'Step-by-step instructions'
+                    }
                   ].map((template, index) => (
                     <motion.div
                       key={template.name}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 1.0 + index * 0.1 }}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (template.entityType === 'guide') {
+                          window.open('/docs/bulk-operations-guide.pdf', '_blank')
+                        } else {
+                          handleDownloadTemplate(template.entityType)
+                        }
+                      }}
                     >
                       <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <template.icon className="h-4 w-4 text-gray-600" />
@@ -388,7 +547,7 @@ export default function BulkOperationsDashboard() {
                         <p className="text-xs text-muted-foreground">{template.description}</p>
                       </div>
                       <Badge variant="outline" className="text-xs">
-                        {template.type}
+                        {template.entityType === 'guide' ? 'PDF' : 'CSV'}
                       </Badge>
                       <Download className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
                     </motion.div>
@@ -396,8 +555,13 @@ export default function BulkOperationsDashboard() {
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-border">
-                  <Button variant="ghost" size="sm" className="w-full text-sm">
-                    View All Templates
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-sm"
+                    onClick={() => window.open('/docs/bulk-operations-guide.pdf', '_blank')}
+                  >
+                    View Complete Guide
                   </Button>
                 </div>
               </div>
@@ -405,6 +569,16 @@ export default function BulkOperationsDashboard() {
           </motion.div>
         </div>
       </div>
+
+      {/* Bulk Upload Modal */}
+      <BulkUploadModal
+        isOpen={bulkUpload.isOpen}
+        onClose={() => setBulkUpload({ isOpen: false, entityType: '', entityName: '' })}
+        entityName={bulkUpload.entityName}
+        entityType={bulkUpload.entityType}
+        onSuccess={handleUploadSuccess}
+        templateColumns={[]}
+      />
     </Layout>
   )
 }

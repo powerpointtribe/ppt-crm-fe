@@ -2,8 +2,9 @@ import { useState, useRef } from 'react'
 import { Upload, FileText, AlertCircle, CheckCircle, X, Download, Eye } from 'lucide-react'
 import Modal from './Modal'
 import Button from './Button'
-import { bulkOperationsService } from '@/services/bulkOperations'
+import { bulkOperationsService, BulkOperationType } from '@/services/bulkOperations'
 import { BulkOperationProgress } from '@/utils/bulkOperations'
+import ValidationUtils from '@/utils/validation'
 
 interface BulkUploadModalProps {
   isOpen: boolean
@@ -102,22 +103,89 @@ export default function BulkUploadModal({
 
   const parseFile = async (file: File) => {
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      // Use the new preview functionality
+      const previewResult = await bulkOperationsService.previewBulkOperation(
+        entityType,
+        file,
+        BulkOperationType.CREATE
+      )
 
-      // Parse file and get preview data
-      const response = await bulkOperationsService.parseUploadFile(entityType, formData)
+      if (previewResult.successfulRecords) {
+        // Additional client-side validation
+        const clientValidationErrors = validateClientSide(previewResult.successfulRecords, entityType)
 
-      if (response.success && response.data) {
-        setPreviewData(response.data.slice(0, 10)) // Show first 10 rows for preview
-        setValidationErrors(response.validationErrors || [])
+        setPreviewData(previewResult.successfulRecords.slice(0, 10)) // Show first 10 rows for preview
+
+        // Combine server and client validation errors
+        const allErrors = [
+          ...previewResult.failedRecords.map(fr => fr.errors).flat(),
+          ...clientValidationErrors
+        ]
+        setValidationErrors(allErrors)
         setCurrentStep('preview')
       } else {
-        setUploadError(response.message || 'Failed to parse file')
+        setUploadError(previewResult.message || 'Failed to parse file')
       }
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Failed to parse file')
     }
+  }
+
+  const validateClientSide = (records: any[], entityType: string): string[] => {
+    const errors: string[] = []
+
+    records.forEach((record, index) => {
+      const rowNumber = index + 2 // Account for header row
+
+      // Validate email if present
+      if (record.email) {
+        const emailValidation = ValidationUtils.validateEmail(record.email)
+        if (!emailValidation.isValid) {
+          errors.push(`Row ${rowNumber}: ${emailValidation.error}`)
+        }
+      }
+
+      // Validate phone if present
+      if (record.phone) {
+        const phoneValidation = ValidationUtils.validatePhone(record.phone)
+        if (!phoneValidation.isValid) {
+          errors.push(`Row ${rowNumber}: ${phoneValidation.error}`)
+        }
+      }
+
+      // Validate emergency contact email if present
+      if (record.emergencyContactEmail) {
+        const emergencyEmailValidation = ValidationUtils.validateOptionalEmail(record.emergencyContactEmail)
+        if (!emergencyEmailValidation.isValid) {
+          errors.push(`Row ${rowNumber}: Emergency contact - ${emergencyEmailValidation.error}`)
+        }
+      }
+
+      // Validate emergency contact phone if present
+      if (record.emergencyContactPhone) {
+        const emergencyPhoneValidation = ValidationUtils.validateOptionalPhone(record.emergencyContactPhone)
+        if (!emergencyPhoneValidation.isValid) {
+          errors.push(`Row ${rowNumber}: Emergency contact - ${emergencyPhoneValidation.error}`)
+        }
+      }
+
+      // Entity-specific validations
+      if (entityType === 'members') {
+        // Members require email
+        if (!record.email) {
+          errors.push(`Row ${rowNumber}: Email is required for members`)
+        }
+      }
+
+      if (entityType === 'first-timers') {
+        // First-timers require phone
+        if (!record.phone) {
+          errors.push(`Row ${rowNumber}: Phone is required for first-timers`)
+        }
+      }
+    })
+
+    return errors
   }
 
   const handleUpload = async () => {
@@ -126,12 +194,11 @@ export default function BulkUploadModal({
     setCurrentStep('processing')
 
     try {
-      const formData = new FormData()
-      formData.append('file', selectedFile)
-
       const result = await bulkOperationsService.bulkUpload(
         entityType,
-        formData,
+        selectedFile,
+        BulkOperationType.CREATE,
+        {},
         (progressUpdate) => {
           setProgress(progressUpdate)
         }
@@ -169,20 +236,11 @@ export default function BulkUploadModal({
     }
   }
 
-  const downloadTemplate = () => {
-    if (templateColumns.length > 0) {
-      const csvContent = templateColumns.join(',')
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob)
-        link.setAttribute('href', url)
-        link.setAttribute('download', `${entityType}_template.csv`)
-        link.style.visibility = 'hidden'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
+  const downloadTemplate = async () => {
+    try {
+      await bulkOperationsService.downloadTemplate(entityType)
+    } catch (error) {
+      console.error('Error downloading template:', error)
     }
   }
 
@@ -389,27 +447,29 @@ export default function BulkUploadModal({
         <div className="bg-gray-50 rounded-lg p-4 space-y-2">
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
-              <span className="font-medium text-green-600">{results.processedCount}</span>
+              <span className="font-medium text-green-600">{results.successCount}</span>
               <p className="text-gray-600">Successful</p>
             </div>
             <div>
-              <span className="font-medium text-red-600">{results.failedCount}</span>
+              <span className="font-medium text-red-600">{results.errorCount}</span>
               <p className="text-gray-600">Failed</p>
             </div>
             <div>
-              <span className="font-medium text-blue-600">{results.processedCount + results.failedCount}</span>
+              <span className="font-medium text-blue-600">{results.totalCount}</span>
               <p className="text-gray-600">Total</p>
             </div>
           </div>
 
-          {results.errors && results.errors.length > 0 && (
+          {results.failedRecords && results.failedRecords.length > 0 && (
             <details className="mt-4">
               <summary className="cursor-pointer text-sm text-red-600 font-medium">
-                View Errors ({results.errors.length})
+                View Errors ({results.failedRecords.length})
               </summary>
               <div className="mt-2 text-xs text-red-700 space-y-1 max-h-32 overflow-y-auto">
-                {results.errors.map((error: string, index: number) => (
-                  <div key={index}>• {error}</div>
+                {results.failedRecords.map((failedRecord: any, index: number) => (
+                  <div key={index}>
+                    • Row {failedRecord.row}: {failedRecord.errors.join(', ')}
+                  </div>
                 ))}
               </div>
             </details>

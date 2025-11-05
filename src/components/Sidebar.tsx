@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -107,12 +107,18 @@ export default function Sidebar() {
   const [isMobile, setIsMobile] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([])
-  const { canAccessModule } = useAuth()
+  const { canAccessModule, member, isLoading } = useAuth()
 
-  // Filter menu items based on user access
-  const menuItems = baseMenuItems.filter(item =>
-    !item.requiredModule || canAccessModule(item.requiredModule)
-  )
+  // Memoize menu items to prevent unnecessary re-filtering
+  const menuItems = useMemo(() => {
+    const filtered = baseMenuItems.filter(item => {
+      const hasAccess = !item.requiredModule || canAccessModule(item.requiredModule);
+      console.log(`Sidebar: ${item.label} (${item.requiredModule}) -> ${hasAccess} [member: ${!!member}, loading: ${isLoading}]`);
+      return hasAccess;
+    });
+    console.log('Sidebar: Filtered menu items:', filtered.map(item => item.label));
+    return filtered;
+  }, [canAccessModule, member, isLoading])
 
   const toggleDropdown = (itemPath: string) => {
     setOpenDropdowns(prev =>

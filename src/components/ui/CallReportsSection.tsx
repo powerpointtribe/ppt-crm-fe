@@ -163,25 +163,85 @@ export default function CallReportsSection({
           )}
         </div>
 
-        {/* Summary Stats */}
+        {/* Enhanced Summary Stats */}
         {summary && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{summary.completedReports}</div>
-              <div className="text-sm text-gray-600">Reports Completed</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{summary.remainingReports}</div>
-              <div className="text-sm text-gray-600">Reports Remaining</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Service Attendance</div>
-              <div className="flex justify-center space-x-2 mt-1">
-                <span className={`w-3 h-3 rounded-full ${summary.serviceAttendance?.attended2nd ? 'bg-green-500' : 'bg-gray-300'}`} title="2nd Service"></span>
-                <span className={`w-3 h-3 rounded-full ${summary.serviceAttendance?.attended3rd ? 'bg-green-500' : 'bg-gray-300'}`} title="3rd Service"></span>
-                <span className={`w-3 h-3 rounded-full ${summary.serviceAttendance?.attended4th ? 'bg-green-500' : 'bg-gray-300'}`} title="4th Service"></span>
+          <div className="space-y-4 mb-6">
+            {/* Main Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{summary.completedReports}</div>
+                <div className="text-sm text-gray-600">Reports Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">{summary.remainingReports}</div>
+                <div className="text-sm text-gray-600">Reports Remaining</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Service Attendance</div>
+                <div className="flex justify-center space-x-2 mt-1">
+                  <span className={`w-3 h-3 rounded-full ${summary.serviceAttendance?.attended2nd ? 'bg-green-500' : 'bg-gray-300'}`} title="2nd Service"></span>
+                  <span className={`w-3 h-3 rounded-full ${summary.serviceAttendance?.attended3rd ? 'bg-green-500' : 'bg-gray-300'}`} title="3rd Service"></span>
+                  <span className={`w-3 h-3 rounded-full ${summary.serviceAttendance?.attended4th ? 'bg-green-500' : 'bg-gray-300'}`} title="4th Service"></span>
+                </div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${summary.isOverdue ? 'text-red-600' : 'text-green-600'}`}>
+                  {summary.isOverdue ? 'OVERDUE' : 'ON TIME'}
+                </div>
+                <div className="text-sm text-gray-600">Follow-up Status</div>
               </div>
             </div>
+
+            {/* Additional Analytics */}
+            {(summary.statusBreakdown || summary.contactMethodBreakdown || summary.avgDaysBetweenReports) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Status Breakdown */}
+                {summary.statusBreakdown && Object.keys(summary.statusBreakdown).length > 0 && (
+                  <div className="p-3 bg-white border rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Status Breakdown</h4>
+                    <div className="space-y-1">
+                      {Object.entries(summary.statusBreakdown).map(([status, count]) => (
+                        <div key={status} className="flex justify-between text-xs">
+                          <span className="text-gray-600 capitalize">{status.replace('_', ' ')}</span>
+                          <span className="font-medium">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Contact Method Breakdown */}
+                {summary.contactMethodBreakdown && Object.keys(summary.contactMethodBreakdown).length > 0 && (
+                  <div className="p-3 bg-white border rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Contact Methods</h4>
+                    <div className="space-y-1">
+                      {Object.entries(summary.contactMethodBreakdown).map(([method, count]) => (
+                        <div key={method} className="flex justify-between text-xs">
+                          <span className="text-gray-600 capitalize">{method.replace('_', ' ')}</span>
+                          <span className="font-medium">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Average Days */}
+                {summary.avgDaysBetweenReports && (
+                  <div className="p-3 bg-white border rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Follow-up Timing</h4>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-purple-600">{summary.avgDaysBetweenReports}</div>
+                      <div className="text-xs text-gray-600">Avg days between reports</div>
+                    </div>
+                    {summary.nextFollowUpDate && (
+                      <div className="mt-2 text-xs text-gray-600 text-center">
+                        Next: {formatDate(summary.nextFollowUpDate)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

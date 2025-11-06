@@ -17,7 +17,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   redirectTo = '/dashboard',
   requireAll = false
 }) => {
-  const { hasSystemRole, isAuthenticated, member } = useAuth()
+  const { isAuthenticated, member } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -27,16 +27,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     return <Navigate to="/login" replace />
   }
 
-  const hasAccess = requireAll
-    ? allowedRoles.every(role => hasSystemRole(role))
-    : allowedRoles.some(role => hasSystemRole(role))
-
-  if (!hasAccess) {
-    if (fallback) {
-      return <>{fallback}</>
-    }
-    return <Navigate to={redirectTo} replace />
-  }
-
+  // Role restrictions removed - always allow access to authenticated users
+  console.log(`RoleGuard: Allowing access without role check for roles: ${allowedRoles.join(', ')}`)
   return <>{children}</>
 }

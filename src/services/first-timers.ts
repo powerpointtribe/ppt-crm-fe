@@ -350,6 +350,76 @@ export const firstTimersService = {
     })
   },
 
+  // Message History and Management
+  getMessageHistory: async (firstTimerId: string): Promise<any[]> => {
+    const response = await apiService.get<ApiResponse<any[]>>(`/first-timers/${firstTimerId}/message-history`)
+    return transformSingleResponse(response) as any[]
+  },
+
+  getScheduledMessage: async (firstTimerId: string): Promise<any | null> => {
+    const response = await apiService.get<ApiResponse<any>>(`/first-timers/${firstTimerId}/scheduled-message`)
+    return transformSingleResponse(response)
+  },
+
+  editScheduledMessage: async (firstTimerId: string, message: string, scheduledTime?: string): Promise<void> => {
+    await apiService.patch(`/first-timers/${firstTimerId}/edit-message`, {
+      message,
+      scheduledTime
+    })
+  },
+
+  cancelScheduledMessage: async (firstTimerId: string): Promise<void> => {
+    await apiService.delete(`/first-timers/${firstTimerId}/cancel-message`)
+  },
+
+  getAllMessageHistory: async (page: number = 1, limit: number = 20, status?: string): Promise<{messages: any[], total: number}> => {
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/messages/history', {
+      params: { page, limit, status }
+    })
+    return transformSingleResponse(response) as {messages: any[], total: number}
+  },
+
+  // Daily Messaging
+  getDailyMessage: async (date: string): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>(`/first-timers/daily-message/${date}`)
+    return transformSingleResponse(response)
+  },
+
+  getDailyMessages: async (page: number = 1, limit: number = 20, status?: string): Promise<{messages: any[], total: number}> => {
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/daily-messages', {
+      params: { page, limit, status }
+    })
+    return transformSingleResponse(response) as {messages: any[], total: number}
+  },
+
+  createDailyMessage: async (data: {
+    date: string
+    message: string
+    scheduledTime?: string
+    autoSend: boolean
+    firstTimerIds: string[]
+  }): Promise<any> => {
+    const response = await apiService.post<ApiResponse<any>>('/first-timers/daily-message', data)
+    return transformSingleResponse(response)
+  },
+
+  sendDailyMessageNow: async (dailyMessageId: string): Promise<void> => {
+    await apiService.post(`/first-timers/daily-message/${dailyMessageId}/send-now`)
+  },
+
+  updateDailyMessage: async (dailyMessageId: string, data: {
+    message: string
+    scheduledTime?: string
+    autoSend: boolean
+  }): Promise<any> => {
+    const response = await apiService.patch<ApiResponse<any>>(`/first-timers/daily-message/${dailyMessageId}`, data)
+    return transformSingleResponse(response)
+  },
+
+  deleteDailyMessage: async (dailyMessageId: string): Promise<void> => {
+    await apiService.delete(`/first-timers/daily-message/${dailyMessageId}`)
+  },
+
   // Assignment with notifications
   assignForFollowUp: async (firstTimerId: string, assigneeId: string): Promise<FirstTimer> => {
     const response = await apiService.patch<ApiResponse<FirstTimer>>(`/first-timers/${firstTimerId}/assign`, {
@@ -381,5 +451,45 @@ export const firstTimersService = {
       memberRecordId
     })
     return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  // Call Reports Analytics
+  getGlobalCallReportsAnalytics: async (): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/call-reports/analytics/global')
+    return transformSingleResponse(response)
+  },
+
+  getTeamPerformanceAnalytics: async (): Promise<any[]> => {
+    const response = await apiService.get<ApiResponse<any[]>>('/first-timers/call-reports/analytics/team-performance')
+    return transformSingleResponse(response) as any[]
+  },
+
+  getOverdueCallReports: async (): Promise<any[]> => {
+    const response = await apiService.get<ApiResponse<any[]>>('/first-timers/call-reports/overdue')
+    return transformSingleResponse(response) as any[]
+  },
+
+  searchCallReports: async (params: {
+    page?: number
+    limit?: number
+    status?: string
+    contactMethod?: string
+    callMadeBy?: string
+    fromDate?: string
+    toDate?: string
+    firstTimerName?: string
+  }): Promise<{
+    reports: CallReport[]
+    total: number
+    pagination: {
+      page: number
+      limit: number
+      totalPages: number
+      hasNext: boolean
+      hasPrev: boolean
+    }
+  }> => {
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/call-reports/search', { params })
+    return transformSingleResponse(response) as any
   },
 }

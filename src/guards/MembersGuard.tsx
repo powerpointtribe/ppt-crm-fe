@@ -1,7 +1,6 @@
 import React from 'react'
-import { ModuleAccessGuard } from './ModuleAccessGuard'
-import { UnitTypeGuard } from './UnitTypeGuard'
-import { LeadershipGuard } from './LeadershipGuard'
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext-unified'
 
 interface MembersGuardProps {
   children: React.ReactNode
@@ -14,34 +13,13 @@ export const MembersGuard: React.FC<MembersGuardProps> = ({
   fallback,
   redirectTo = '/dashboard'
 }) => {
-  return (
-    <ModuleAccessGuard
-      module="members"
-      fallback={
-        // If they can't access via module permission, check if they're GIA or leadership
-        <UnitTypeGuard
-          allowedUnitTypes={['gia']}
-          fallback={
-            <LeadershipGuard
-              allowDistrictPastors={true}
-              allowUnitHeads={true}
-              allowChamps={true}
-              allowPastors={true}
-              allowAdmins={true}
-              fallback={fallback}
-              redirectTo={redirectTo}
-            >
-              {children}
-            </LeadershipGuard>
-          }
-          redirectTo={redirectTo}
-        >
-          {children}
-        </UnitTypeGuard>
-      }
-      redirectTo={redirectTo}
-    >
-      {children}
-    </ModuleAccessGuard>
-  )
+  const { isAuthenticated } = useAuth()
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Permission restrictions removed - always allow access to authenticated users
+  console.log('MembersGuard: Allowing access without permission check')
+  return <>{children}</>
 }

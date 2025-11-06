@@ -21,6 +21,8 @@ import {
   Heart,
   Building2,
   FileText,
+  MessageCircle,
+  Phone,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore } from '@/store'
@@ -91,6 +93,18 @@ const baseMenuItems = [
         label: 'My Assignments',
         path: '/my-assigned-first-timers',
         color: 'text-blue-600'
+      },
+      {
+        icon: MessageCircle,
+        label: 'Service Messaging',
+        path: '/first-timers/service-messaging',
+        color: 'text-purple-600'
+      },
+      {
+        icon: Phone,
+        label: 'Call Reports',
+        path: '/first-timers/call-reports',
+        color: 'text-green-600'
       }
     ]
   },
@@ -116,18 +130,13 @@ export default function Sidebar() {
   const [isMobile, setIsMobile] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([])
-  const { canAccessModule, member, isLoading } = useAuth()
+  const { member, isLoading } = useAuth()
 
-  // Memoize menu items to prevent unnecessary re-filtering
+  // Remove permission filtering - show all menu items
   const menuItems = useMemo(() => {
-    const filtered = baseMenuItems.filter(item => {
-      const hasAccess = !item.requiredModule || canAccessModule(item.requiredModule);
-      console.log(`Sidebar: ${item.label} (${item.requiredModule}) -> ${hasAccess} [member: ${!!member}, loading: ${isLoading}]`);
-      return hasAccess;
-    });
-    console.log('Sidebar: Filtered menu items:', filtered.map(item => item.label));
-    return filtered;
-  }, [canAccessModule, member, isLoading])
+    console.log('Sidebar: Showing all menu items without permission filtering');
+    return baseMenuItems;
+  }, [])
 
   const toggleDropdown = (itemPath: string) => {
     setOpenDropdowns(prev =>

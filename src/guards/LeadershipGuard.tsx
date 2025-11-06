@@ -23,7 +23,7 @@ export const LeadershipGuard: React.FC<LeadershipGuardProps> = ({
   allowPastors = true,
   allowAdmins = true
 }) => {
-  const { isAuthenticated, member, hasSystemRole } = useAuth()
+  const { isAuthenticated, member } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -33,21 +33,7 @@ export const LeadershipGuard: React.FC<LeadershipGuardProps> = ({
     return <Navigate to="/login" replace />
   }
 
-  const { leadershipRoles } = member
-
-  const hasAccess =
-    (allowAdmins && hasSystemRole('admin')) ||
-    (allowPastors && hasSystemRole('pastor')) ||
-    (allowDistrictPastors && leadershipRoles?.isDistrictPastor) ||
-    (allowUnitHeads && leadershipRoles?.isUnitHead) ||
-    (allowChamps && leadershipRoles?.isChamp)
-
-  if (!hasAccess) {
-    if (fallback) {
-      return <>{fallback}</>
-    }
-    return <Navigate to={redirectTo} replace />
-  }
-
+  // Leadership restrictions removed - always allow access to authenticated users
+  console.log('LeadershipGuard: Allowing access without leadership check')
   return <>{children}</>
 }

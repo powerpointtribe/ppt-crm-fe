@@ -15,18 +15,13 @@ export const ModuleAccessGuard: React.FC<ModuleAccessGuardProps> = ({
   fallback,
   redirectTo = '/dashboard'
 }) => {
-  const { canAccessModule, isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 
-  if (!canAccessModule(module)) {
-    if (fallback) {
-      return <>{fallback}</>
-    }
-    return <Navigate to={redirectTo} replace />
-  }
-
+  // Permission restrictions removed - always allow access to authenticated users
+  console.log(`ModuleAccessGuard: Allowing access to module '${module}' without permission check`)
   return <>{children}</>
 }

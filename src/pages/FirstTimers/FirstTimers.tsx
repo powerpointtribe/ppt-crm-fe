@@ -39,13 +39,17 @@ export default function FirstTimers() {
   const [membersLoading, setMembersLoading] = useState(false)
   const [selectedAssignee, setSelectedAssignee] = useState('')
 
-  const loadFirstTimers = useCallback(async () => {
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState<any>(null)
+
+  const loadFirstTimers = useCallback(async (page: number = currentPage) => {
     try {
       setLoading(true)
       setError(null)
       const params: FirstTimerSearchParams = {
-        page: 1,
-        limit: 50,
+        page,
+        limit: 10,
         search: searchQuery,
         status: statusFilter || undefined,
         assignedTo: assignedFilter || undefined,
@@ -56,6 +60,8 @@ export default function FirstTimers() {
       }
       const response = await firstTimersService.getFirstTimers(params)
       setFirstTimers(response.items || [])
+      setPagination(response.pagination)
+      setCurrentPage(page)
     } catch (error: any) {
       console.error('Error loading first timers:', error)
       setError({
@@ -66,7 +72,7 @@ export default function FirstTimers() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter])
+  }, [searchQuery, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, currentPage])
 
   const loadStats = useCallback(async () => {
     try {
@@ -83,8 +89,10 @@ export default function FirstTimers() {
   }, [])
 
   useEffect(() => {
-    loadFirstTimers()
-  }, [loadFirstTimers])
+    // Reset to page 1 when filters change
+    setCurrentPage(1)
+    loadFirstTimers(1)
+  }, [searchQuery, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter])
 
   useEffect(() => {
     loadStats()
@@ -144,6 +152,27 @@ export default function FirstTimers() {
     setHowDidYouHearFilter('')
     setDateFromFilter('')
     setDateToFilter('')
+  }
+
+  // Pagination handlers
+  const handlePrevPage = () => {
+    if (pagination && pagination.hasPrev) {
+      const prevPage = currentPage - 1
+      loadFirstTimers(prevPage)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (pagination && pagination.hasNext) {
+      const nextPage = currentPage + 1
+      loadFirstTimers(nextPage)
+    }
+  }
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && pagination && page <= pagination.totalPages) {
+      loadFirstTimers(page)
+    }
   }
 
   const hasActiveFilters = !!(
@@ -580,6 +609,96 @@ export default function FirstTimers() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between sm:px-6">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  {/* Mobile pagination */}
+                  <Button
+                    variant="secondary"
+                    onClick={handlePrevPage}
+                    disabled={!pagination.hasPrev}
+                    className="relative inline-flex items-center px-4 py-2 text-sm font-medium"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={handleNextPage}
+                    disabled={!pagination.hasNext}
+                    className="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium"
+                  >
+                    Next
+                  </Button>
+                </div>
+
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing{' '}
+                      <span className="font-medium">{((currentPage - 1) * 10) + 1}</span>
+                      {' '}to{' '}
+                      <span className="font-medium">
+                        {Math.min(currentPage * 10, pagination.total)}
+                      </span>
+                      {' '}of{' '}
+                      <span className="font-medium">{pagination.total}</span>
+                      {' '}results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      {/* Previous button */}
+                      <button
+                        onClick={handlePrevPage}
+                        disabled={!pagination.hasPrev}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+
+                      {/* Page numbers */}
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        let pageNum
+                        if (pagination.totalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1
+                        } else if (currentPage >= pagination.totalPages - 2) {
+                          pageNum = pagination.totalPages - 4 + i
+                        } else {
+                          pageNum = currentPage - 2 + i
+                        }
+
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              pageNum === currentPage
+                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        )
+                      })}
+
+                      {/* Next button */}
+                      <button
+                        onClick={handleNextPage}
+                        disabled={!pagination.hasNext}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
             </div>
           </>
         )}

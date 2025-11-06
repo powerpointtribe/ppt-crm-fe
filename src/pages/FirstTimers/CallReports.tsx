@@ -111,13 +111,10 @@ export default function CallReports() {
 
       const response = await callReportsService.searchReports(searchParams)
 
-      if (response.success) {
-        setReports(response.data.data || [])
-        setPagination(response.data)
-        setCurrentPage(page)
-      } else {
-        throw new Error(response.message || 'Failed to load call reports')
-      }
+      // The transformSingleResponse already extracts the data
+      setReports(response.reports || [])
+      setPagination(response.pagination || {})
+      setCurrentPage(page)
     } catch (err: any) {
       console.error('Error loading call reports:', err)
       setError(err)
@@ -135,12 +132,11 @@ export default function CallReports() {
         callReportsService.getTeamPerformance()
       ])
 
-      if (globalAnalytics.success && teamPerformance.success) {
-        setAnalytics({
-          ...globalAnalytics.data,
-          teamPerformance: teamPerformance.data
-        })
-      }
+      // The transformSingleResponse already extracts the data
+      setAnalytics({
+        ...globalAnalytics,
+        teamPerformance: teamPerformance
+      })
     } catch (err: any) {
       console.error('Error loading analytics:', err)
       showToast('Failed to load analytics', 'error')
@@ -242,19 +238,21 @@ export default function CallReports() {
         <Card className="p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Status Distribution</h3>
           <div className="space-y-3">
-            {analytics?.statusDistribution?.map((item, index) => (
+            {Array.isArray(analytics?.statusDistribution) ? analytics.statusDistribution.map((item, index) => (
               <div key={index} className="flex justify-between items-center">
                 <span className="text-sm text-gray-600 capitalize">{item.status}</span>
                 <Badge variant={getStatusBadgeColor(item.status)}>{item.count}</Badge>
               </div>
-            ))}
+            )) : (
+              <p className="text-sm text-gray-500">No status data available</p>
+            )}
           </div>
         </Card>
 
         <Card className="p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Methods</h3>
           <div className="space-y-3">
-            {analytics?.methodDistribution?.map((item, index) => (
+            {Array.isArray(analytics?.methodDistribution) ? analytics.methodDistribution.map((item, index) => (
               <div key={index} className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   {getMethodIcon(item.method)}
@@ -262,7 +260,9 @@ export default function CallReports() {
                 </div>
                 <Badge variant="info">{item.count}</Badge>
               </div>
-            ))}
+            )) : (
+              <p className="text-sm text-gray-500">No method data available</p>
+            )}
           </div>
         </Card>
       </div>
@@ -286,7 +286,7 @@ export default function CallReports() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {analytics?.teamPerformance?.map((member, index) => (
+              {Array.isArray(analytics?.teamPerformance) ? analytics.teamPerformance.map((member, index) => (
                 <tr key={index}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -302,7 +302,13 @@ export default function CallReports() {
                     </Badge>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan={3} className="px-6 py-4 text-center text-sm text-gray-500">
+                    No team performance data available
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

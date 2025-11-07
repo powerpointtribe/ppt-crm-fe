@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, BrowserRouter } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import Layout from '@/components/Layout'
 import ProtectedRoute from '@/components/ProtectedRoute'
@@ -46,6 +46,7 @@ import Analytics from '@/pages/Reports/Analytics'
 
 function App() {
   return (
+    <BrowserRouter>
     <AnimatePresence mode="wait">
       <Routes>
         {/* Public Routes */}
@@ -209,6 +210,7 @@ function App() {
         } />
       </Routes>
     </AnimatePresence>
+    </BrowserRouter>
   )
 }
 

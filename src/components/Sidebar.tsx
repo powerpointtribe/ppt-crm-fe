@@ -96,7 +96,7 @@ const baseMenuItems = [
       },
       {
         icon: MessageCircle,
-        label: 'Service Messaging',
+        label: 'Messaging',
         path: '/first-timers/service-messaging',
         color: 'text-purple-600'
       },

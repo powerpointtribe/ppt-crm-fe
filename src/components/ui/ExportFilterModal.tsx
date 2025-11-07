@@ -34,7 +34,7 @@ interface FilterOptions {
 
   // First Timer filters
   status?: string
-  interestedInJoining?: boolean
+  interestedInJoining?: string
   converted?: boolean
   howDidYouHear?: string
   visitorType?: string
@@ -341,8 +341,9 @@ export default function ExportFilterModal({
                   onChange={(e) => handleFilterChange('interestedInJoining', e.target.value === '' ? undefined : e.target.value === 'true')}
                 >
                   <option value="">All</option>
-                  <option value="true">Interested</option>
-                  <option value="false">Not Interested</option>
+                  <option value="yes">Interested</option>
+                  <option value="maybe">Maybe</option>
+                  <option value="no">Not Interested</option>
                 </select>
               </div>
             </div>

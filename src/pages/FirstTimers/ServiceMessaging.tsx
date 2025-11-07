@@ -60,7 +60,7 @@ interface FirstTimerSummary {
   messageSentAt?: string
 }
 
-export default function ServiceMessaging() {
+export default function Messaging() {
   const [serviceDays, setServiceDays] = useState<ServiceDay[]>([])
   const [selectedService, setSelectedService] = useState<ServiceDay | null>(null)
   const [firstTimers, setFirstTimers] = useState<FirstTimerSummary[]>([])
@@ -99,14 +99,14 @@ export default function ServiceMessaging() {
               limit: 10
             })
 
-            // Check for existing message or auto-create entry
+            // Check for existing message (no auto-creation)
             let message: ServiceMessage | undefined
             try {
-              // This now auto-creates draft entries if first timers exist but no message entry exists
+              // Only get existing messages, don't auto-create
               message = await firstTimersService.getDailyMessage(day.date)
             } catch (error) {
-              // Error getting/creating message
-              console.error(`Failed to get/create daily message for ${day.date}:`, error)
+              // Message doesn't exist yet - this is expected
+              // console.log(`No daily message found for ${day.date}, will need to create manually`)
             }
 
             return {
@@ -344,7 +344,7 @@ export default function ServiceMessaging() {
 
   return (
     <Layout
-      title="Service Messaging"
+      title="Messaging"
       subtitle="Manage messages for first timers from service days"
     >
       <div className="space-y-6">

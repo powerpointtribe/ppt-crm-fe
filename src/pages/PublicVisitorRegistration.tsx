@@ -85,37 +85,6 @@ export default function PublicVisitorRegistration() {
                 transition={{ delay: 0.5 }}
                 className="space-y-6"
               >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Heart className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Welcome to the Family</h3>
-                    <p className="text-sm text-gray-600">
-                      You're now part of our church community
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Users className="w-6 h-6 text-green-600" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Connect & Grow</h3>
-                    <p className="text-sm text-gray-600">
-                      We'll help you find ways to connect and grow in faith
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Star className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Make a Difference</h3>
-                    <p className="text-sm text-gray-600">
-                      Discover opportunities to serve and make an impact
-                    </p>
-                  </div>
-                </div>
 
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-200">
                   <h4 className="font-semibold text-gray-900 mb-2">What's Next?</h4>
@@ -175,48 +144,6 @@ export default function PublicVisitorRegistration() {
               </p>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
-            >
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <Users className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 text-sm mb-1">Connect</h3>
-                  <p className="text-xs text-gray-600">
-                    Find your place in our church family
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-green-100">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <Heart className="w-4 h-4 text-green-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 text-sm mb-1">Care</h3>
-                  <p className="text-xs text-gray-600">
-                    Let us pray for and support you
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-100">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <Star className="w-4 h-4 text-purple-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 text-sm mb-1">Grow</h3>
-                  <p className="text-xs text-gray-600">
-                    Discover opportunities to serve
-                  </p>
-                </div>
-              </div>
-            </motion.div>
           </div>
         </motion.div>
 

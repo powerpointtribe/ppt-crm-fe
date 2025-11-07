@@ -20,21 +20,10 @@ export const publicVisitorRegistrationSchema = z.object({
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
   occupation: z.string().optional(),
   alternateContactMethod: z.string().optional(),
-  website: z.string().optional(),
 
-  // Social media handles
-  socialMediaHandles: z.object({
-    facebook: z.string().optional(),
-    instagram: z.string().optional(),
-    twitter: z.string().optional(),
-    linkedin: z.string().optional(),
-    tiktok: z.string().optional(),
-    other: z.string().optional()
-  }).optional(),
 
-  referredBy: z.string().optional(),
-  invitedBy: z.string().optional(),
-  serviceExperience: z.string().optional(),
+  serviceExperience: z.array(z.string()).optional().default([]),
+  serviceExperienceOther: z.string().optional(),
   profilePhotoUrl: z.string().optional(),
 
   // How they heard about us
@@ -43,14 +32,8 @@ export const publicVisitorRegistrationSchema = z.object({
   // Service type they attended
   serviceType: z.string().optional(),
 
-  // Address (Optional but encouraged)
-  address: z.object({
-    street: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    zipCode: z.string().optional(),
-    country: z.string().optional()
-  }).optional(),
+  // Address - single field for home address
+  address: z.string().optional(),
 
   // Family members who attended
   familyMembers: z.array(z.object({
@@ -64,8 +47,6 @@ export const publicVisitorRegistrationSchema = z.object({
   interests: z.array(z.string()).optional().default([]),
   servingInterests: z.array(z.string()).optional().default([]),
 
-  // Prayer requests (optional)
-  prayerRequests: z.array(z.string()).optional().default([]),
 
   // Emergency contact (encouraged for families with children)
   emergencyContact: z.object({
@@ -76,6 +57,9 @@ export const publicVisitorRegistrationSchema = z.object({
 
   // Additional comments/notes
   comments: z.string().optional(),
+
+  // PowerPoint Tribe interest
+  interestedInJoining: z.enum(['yes', 'no', 'maybe']).optional(),
 
   // Consent and preferences
   allowFollowUp: z.boolean().default(true),
@@ -120,23 +104,26 @@ export const transformToFirstTimerData = (publicData: PublicVisitorRegistrationD
     maritalStatus: publicData.maritalStatus,
     occupation: publicData.occupation,
     alternateContactMethod: publicData.alternateContactMethod,
-    website: publicData.website,
-    socialMediaHandles: publicData.socialMediaHandles,
-    referredBy: publicData.referredBy,
-    invitedBy: publicData.invitedBy,
-    serviceExperience: publicData.serviceExperience,
+    serviceExperience: Array.isArray(publicData.serviceExperience) ?
+      publicData.serviceExperience.join(', ') + (publicData.serviceExperienceOther ? ` | Other: ${publicData.serviceExperienceOther}` : '') :
+      publicData.serviceExperience,
     profilePhotoUrl: publicData.profilePhotoUrl,
-    address: publicData.address,
+    address: publicData.address ? {
+      street: publicData.address,
+      country: 'Nigeria'
+    } : undefined,
     dateOfVisit: publicData.dateOfVisit,
     serviceType: publicData.serviceType,
     howDidYouHear: publicData.howDidYouHear,
     visitorType: 'first_time' as const, // Default for public registration
     familyMembers: publicData.familyMembers || [],
     interests: publicData.interests || [],
-    prayerRequests: publicData.prayerRequests || [],
     servingInterests: publicData.servingInterests || [],
     emergencyContact: publicData.emergencyContact?.name ? publicData.emergencyContact : undefined,
-    notes: publicData.comments ? `Self-registered visitor. Comments: ${publicData.comments}${publicData.preferredContactMethod ? ` | Preferred contact: ${publicData.preferredContactMethod}` : ''}${publicData.allowFollowUp ? '' : ' | Requested NO follow-up'}` : undefined,
+    interestedInJoining: publicData.interestedInJoining && ['yes', 'no', 'maybe'].includes(publicData.interestedInJoining)
+      ? publicData.interestedInJoining
+      : undefined,
+    notes: publicData.comments ? `Self-registered visitor. Comments: ${publicData.comments}${publicData.preferredContactMethod ? ` | Preferred contact: ${publicData.preferredContactMethod}` : ''}${publicData.allowFollowUp ? '' : ' | Requested NO follow-up'}${publicData.interestedInJoining ? ` | PowerPoint Tribe interest: ${publicData.interestedInJoining}` : ''}` : undefined,
     // Admin fields set to defaults
     status: 'not_contacted' as const,
     converted: false,

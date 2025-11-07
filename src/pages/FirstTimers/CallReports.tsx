@@ -38,7 +38,7 @@ interface CallReport {
     phone: string
     email?: string
   }
-  status: 'pending' | 'contacted' | 'scheduled' | 'not_interested' | 'converted'
+  status: 'willing_to_join' | 'committed_to_another_church' | 'unreachable' | 'others' | 'pending' | 'contacted' | 'scheduled' | 'not_interested' | 'converted'
   contactMethod: 'phone' | 'whatsapp' | 'sms' | 'email' | 'in_person'
   callMadeBy: {
     _id: string
@@ -64,6 +64,10 @@ interface CallReportsAnalytics {
   teamPerformance: Array<{
     member: { firstName: string; lastName: string }
     reportCount: number
+    contactCount: number
+    pendingFollowUps: number
+    totalAssigned: number
+    closedCount: number
     conversionRate: number
   }>
 }
@@ -284,7 +288,10 @@ export default function CallReports() {
                   Team Member
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Reports Made
+                  Contacts Made
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pending Follow Ups
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Conversion Rate
@@ -300,7 +307,10 @@ export default function CallReports() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{member.reportCount}</div>
+                    <div className="text-sm text-gray-900">{member.contactCount || member.reportCount}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{member.pendingFollowUps || 0}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant={member.conversionRate > 50 ? 'success' : 'warning'}>
@@ -310,7 +320,7 @@ export default function CallReports() {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={3} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
                     No team performance data available
                   </td>
                 </tr>
@@ -364,6 +374,11 @@ export default function CallReports() {
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">All Statuses</option>
+                <option value="willing_to_join">Willing to Join</option>
+                <option value="committed_to_another_church">Committed to Another Church</option>
+                <option value="unreachable">Unreachable</option>
+                <option value="others">Others</option>
+                {/* Legacy statuses for backward compatibility */}
                 <option value="pending">Pending</option>
                 <option value="contacted">Contacted</option>
                 <option value="scheduled">Scheduled</option>
@@ -424,7 +439,7 @@ export default function CallReports() {
                   Contact Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Notes
                 </th>
               </tr>
             </thead>

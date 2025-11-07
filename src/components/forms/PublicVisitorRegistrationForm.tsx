@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, Trash2, User, Phone, Mail,
-  ChevronLeft, ChevronRight, Check, AlertCircle, Calendar, Heart, Clock
+  User, Phone, Mail,
+  Check, Calendar, Heart, Clock
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -47,33 +47,16 @@ export default function PublicVisitorRegistrationForm({
       maritalStatus: undefined,
       occupation: '',
       alternateContactMethod: '',
-      website: '',
-      socialMediaHandles: {
-        facebook: '',
-        instagram: '',
-        twitter: '',
-        linkedin: '',
-        tiktok: '',
-        other: ''
-      },
-      referredBy: '',
-      invitedBy: '',
-      serviceExperience: '',
+      serviceExperience: [],
+      serviceExperienceOther: '',
       profilePhotoUrl: '',
-      address: {
-        street: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        country: 'Nigeria'
-      },
+      address: '',
       dateOfVisit: new Date().toISOString().split('T')[0],
       serviceType: '',
       howDidYouHear: undefined,
       familyMembers: [],
       interests: [],
       servingInterests: [],
-      prayerRequests: [],
       emergencyContact: {
         name: '',
         relationship: '',
@@ -82,7 +65,8 @@ export default function PublicVisitorRegistrationForm({
       comments: '',
       allowFollowUp: true,
       preferredContactMethod: undefined,
-      privacyConsent: false
+      privacyConsent: false,
+      interestedInJoining: undefined
     }
   })
 
@@ -91,16 +75,14 @@ export default function PublicVisitorRegistrationForm({
 
   // Calculate progress based on filled fields
   const calculateProgress = () => {
-    const requiredFields = ['firstName', 'lastName', 'phone', 'dateOfVisit']
+    // Only count visible fields that user can interact with
+    const requiredFields = ['firstName', 'lastName', 'phone']
     const optionalFields = [
-      'email', 'dateOfBirth', 'gender', 'occupation', 'address.city', 'address.state',
-      'website', 'socialMediaHandles.instagram', 'socialMediaHandles.facebook',
-      'invitedBy', 'referredBy', 'howDidYouHear', 'interestedInJoining',
-      'serviceExperience', 'profilePhotoUrl', 'prayerRequests', 'allowFollowUp',
-      'preferredContactMethod'
+      'email', 'dateOfBirth', 'gender', 'occupation', 'address',
+      'howDidYouHear', 'interestedInJoining',
+      'serviceExperience', 'profilePhotoUrl'
     ]
 
-    const allFields = [...requiredFields, ...optionalFields]
     let filledCount = 0
 
     // Check required fields (higher weight)
@@ -126,10 +108,11 @@ export default function PublicVisitorRegistrationForm({
     })
 
     // Special handling for arrays
-    if (watchedValues.prayerRequests?.length > 0) {
+    if (watchedValues.serviceExperience?.length > 0) {
       filledCount += 1
     }
 
+    // Calculate score based only on visible fields
     const maxPossibleScore = requiredFields.length * 2 + optionalFields.length
     return Math.min(100, Math.round((filledCount / maxPossibleScore) * 100))
   }
@@ -146,14 +129,6 @@ export default function PublicVisitorRegistrationForm({
     setProgress(newProgress)
   }, [watchedValues])
 
-  const {
-    fields: prayerFields,
-    append: appendPrayer,
-    remove: removePrayer
-  } = useFieldArray({
-    control,
-    name: 'prayerRequests'
-  })
 
   const handleFormSubmit = async (data: PublicVisitorRegistrationData) => {
     try {
@@ -298,25 +273,6 @@ export default function PublicVisitorRegistrationForm({
           </motion.div>
         </div>
 
-        {/* Visit Date Group */}
-        <div className="bg-purple-50 rounded-lg p-4 border-l-4 border-purple-500">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-          >
-            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-purple-500" />
-              When did you visit us? 🗓️
-            </label>
-            <Input
-              type="date"
-              {...register('dateOfVisit')}
-              error={errors.dateOfVisit?.message}
-              className="transition-all duration-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:scale-[1.02]"
-            />
-          </motion.div>
-        </div>
 
         {/* Additional Information from Step 2 */}
         <motion.div
@@ -327,21 +283,14 @@ export default function PublicVisitorRegistrationForm({
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">📍</div>
-            <h4 className="font-semibold text-gray-800">Where's your base?</h4>
+            <h4 className="font-semibold text-gray-800">Where is your base?</h4>
             <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Input
-              {...register('address.city')}
-              placeholder="Your city"
-              className="transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <Input
-              {...register('address.state')}
-              placeholder="Your state"
-              className="transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+          <Input
+            {...register('address')}
+            placeholder="Enter your address (e.g., Lagos, Nigeria)"
+            className="transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
         </motion.div>
 
         <motion.div
@@ -382,83 +331,8 @@ export default function PublicVisitorRegistrationForm({
           />
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.41 }}
-          className="bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl p-4 border border-rose-200"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="text-2xl">🌐</div>
-            <h4 className="font-semibold text-gray-800">Where do you live on the web?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
-          </div>
-          <Input
-            {...register('website')}
-            placeholder="Your website or online presence"
-            className="transition-all duration-300 focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-          />
-        </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.43 }}
-          className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-200"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="text-2xl">📱</div>
-            <h4 className="font-semibold text-gray-800">So where can we find you on Social Media?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Input
-              {...register('socialMediaHandles.instagram')}
-              placeholder="Instagram handle"
-              className="transition-all duration-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-            />
-            <Input
-              {...register('socialMediaHandles.facebook')}
-              placeholder="Facebook profile"
-              className="transition-all duration-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-            />
-            <Input
-              {...register('socialMediaHandles.twitter')}
-              placeholder="Twitter/X handle"
-              className="transition-all duration-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-            />
-            <Input
-              {...register('socialMediaHandles.other')}
-              placeholder="Other social media"
-              className="transition-all duration-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-            />
-          </div>
-        </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.45 }}
-          className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="text-2xl">🤝</div>
-            <h4 className="font-semibold text-gray-800">Who match made us? / Can you remember who toasted you?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
-          </div>
-          <div className="space-y-3">
-            <Input
-              {...register('invitedBy')}
-              placeholder="Who invited you?"
-              className="transition-all duration-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-            />
-            <Input
-              {...register('referredBy')}
-              placeholder="Who referred/recommended you?"
-              className="transition-all duration-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-            />
-          </div>
-        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, x: 20 }}
@@ -509,20 +383,41 @@ export default function PublicVisitorRegistrationForm({
             <h4 className="font-semibold text-gray-800">Would you like to join The PowerPoint Tribe?</h4>
             <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
           </div>
-          <motion.label
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 cursor-pointer transition-all duration-200"
-          >
-            <input
-              type="checkbox"
-              {...register('interestedInJoining')}
-              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-5 h-5"
-            />
-            <div>
-              <span className="font-medium text-gray-800">Yes, I'm interested in joining! 🎉</span>
-              <p className="text-xs text-gray-600">I'd love to be part of The PowerPoint Tribe community</p>
-            </div>
-          </motion.label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              { value: 'yes', label: 'Yes! 🎉', desc: "I'd love to join!", color: 'emerald' },
+              { value: 'maybe', label: 'Maybe 🤔', desc: "I'm considering it", color: 'yellow' },
+              { value: 'no', label: 'Not now 😊', desc: "Thanks, but not at this time", color: 'gray' }
+            ].map((option) => (
+              <motion.label
+                key={option.value}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={cn(
+                  "flex flex-col gap-2 p-3 rounded-lg border border-gray-200 cursor-pointer transition-all duration-200",
+                  option.color === 'emerald' && "hover:border-emerald-400 hover:bg-emerald-50",
+                  option.color === 'yellow' && "hover:border-yellow-400 hover:bg-yellow-50",
+                  option.color === 'gray' && "hover:border-gray-400 hover:bg-gray-50"
+                )}
+              >
+                <input
+                  type="radio"
+                  {...register('interestedInJoining')}
+                  value={option.value}
+                  className={cn(
+                    "w-4 h-4",
+                    option.color === 'emerald' && "text-emerald-600 focus:ring-emerald-500",
+                    option.color === 'yellow' && "text-yellow-600 focus:ring-yellow-500",
+                    option.color === 'gray' && "text-gray-600 focus:ring-gray-500"
+                  )}
+                />
+                <div className="flex-1">
+                  <span className="font-medium text-gray-800 text-sm">{option.label}</span>
+                  <p className="text-xs text-gray-600">{option.desc}</p>
+                </div>
+              </motion.label>
+            ))}
+          </div>
         </motion.div>
 
         <motion.div
@@ -536,11 +431,62 @@ export default function PublicVisitorRegistrationForm({
             <h4 className="font-semibold text-gray-800">What did you enjoy about today's service?</h4>
             <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
           </div>
-          <Input
-            {...register('serviceExperience')}
-            placeholder="Tell us what made your experience special..."
-            className="transition-all duration-300 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-          />
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { value: 'The Message', label: '💬 The Message', desc: 'Inspiring word from God' },
+                { value: 'Fellowship/Warmth', label: '🤝 Fellowship/Warmth', desc: 'Great community feel' },
+                { value: 'The Music/Worship', label: '🎵 The Music/Worship', desc: 'Amazing worship experience' },
+                { value: 'Others', label: '✨ Others', desc: 'Something else special' }
+              ].map((option) => {
+                const currentValues = watch('serviceExperience') || []
+                const isChecked = currentValues.includes(option.value)
+
+                return (
+                  <motion.label
+                    key={option.value}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-cyan-400 hover:bg-cyan-50 cursor-pointer transition-all duration-200"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        const currentValues = watch('serviceExperience') || []
+                        if (e.target.checked) {
+                          setValue('serviceExperience', [...currentValues, option.value])
+                        } else {
+                          setValue('serviceExperience', currentValues.filter(v => v !== option.value))
+                        }
+                      }}
+                      className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 w-5 h-5"
+                    />
+                    <div>
+                      <span className="font-medium text-gray-800 text-sm">{option.label}</span>
+                      <p className="text-xs text-gray-600">{option.desc}</p>
+                    </div>
+                  </motion.label>
+                )
+              })}
+            </div>
+
+            {/* Conditional Others field */}
+            {(watch('serviceExperience') || []).includes('Others') && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-3"
+              >
+                <Input
+                  {...register('serviceExperienceOther')}
+                  placeholder="Please tell us what else made your experience special..."
+                  className="transition-all duration-300 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                />
+              </motion.div>
+            )}
+          </div>
         </motion.div>
 
         <motion.div
@@ -570,106 +516,22 @@ export default function PublicVisitorRegistrationForm({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.53 }}
-          className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 border border-yellow-200"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="text-2xl">🙏</div>
-            <h4 className="font-semibold text-gray-800">Any prayer requests?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
-          </div>
-          <div className="space-y-2">
-            {prayerFields.map((field, index) => (
-              <motion.div
-                key={field.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2"
-              >
-                <Input
-                  {...register(`prayerRequests.${index}`)}
-                  placeholder="Share what's on your heart..."
-                  className="flex-1 transition-all duration-300 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                />
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={() => removePrayer(index)}
-                  className="p-2 hover:scale-110 transition-transform"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </motion.div>
-            ))}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => appendPrayer('')}
-              className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 hover:scale-105 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              Add prayer request
-            </Button>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200"
+          className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-4 border border-orange-200"
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">💬</div>
-            <h4 className="font-semibold text-gray-800">Stay connected</h4>
+            <h4 className="font-semibold text-gray-800">Any comments or additional information?</h4>
+            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
           </div>
-          <div className="space-y-3">
-            <motion.label
-              whileHover={{ scale: 1.02 }}
-              className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-purple-400 hover:bg-purple-50 cursor-pointer transition-all duration-200"
-            >
-              <input
-                type="checkbox"
-                {...register('allowFollowUp')}
-                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-5 h-5"
-              />
-              <div>
-                <span className="font-medium text-gray-800">Yes, I'd love to hear from you! 💕</span>
-                <p className="text-xs text-gray-600">Someone from our team will reach out to connect</p>
-              </div>
-            </motion.label>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                How would you prefer we contact you? 📞
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {[
-                  { value: 'phone', label: '📱 Call', emoji: '📱' },
-                  { value: 'email', label: '📧 Email', emoji: '📧' },
-                  { value: 'sms', label: '💬 Text', emoji: '💬' },
-                  { value: 'whatsapp', label: '📲 WhatsApp', emoji: '📲' }
-                ].map((option) => (
-                  <motion.label
-                    key={option.value}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 hover:border-purple-400 hover:bg-purple-50 cursor-pointer transition-all duration-200"
-                  >
-                    <input
-                      type="radio"
-                      {...register('preferredContactMethod')}
-                      value={option.value}
-                      className="text-purple-500 focus:ring-purple-500"
-                    />
-                    <span className="text-sm font-medium">{option.label}</span>
-                  </motion.label>
-                ))}
-              </div>
-            </div>
-          </div>
+          <textarea
+            {...register('comments')}
+            placeholder="Feel free to share anything else you'd like us to know..."
+            className="w-full p-3 border border-gray-200 rounded-lg transition-all duration-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+            rows={3}
+          />
         </motion.div>
+
+
       </div>
     </motion.div>
   )

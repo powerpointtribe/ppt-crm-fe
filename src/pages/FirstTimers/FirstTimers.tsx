@@ -405,12 +405,6 @@ export default function FirstTimers() {
             <option value="new">New</option>
             <option value="engaged">Engaged</option>
             <option value="closed">Closed</option>
-            {/* Legacy statuses for backward compatibility */}
-            <option value="not_contacted">Not Contacted</option>
-            <option value="contacted">Contacted</option>
-            <option value="visited">Visited</option>
-            <option value="converted">Converted</option>
-            <option value="lost_contact">Lost Contact</option>
           </select>
         </div>
 

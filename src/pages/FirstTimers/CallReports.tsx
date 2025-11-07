@@ -38,7 +38,7 @@ interface CallReport {
     phone: string
     email?: string
   }
-  status: 'willing_to_join' | 'committed_to_another_church' | 'unreachable' | 'others' | 'pending' | 'contacted' | 'scheduled' | 'not_interested' | 'converted'
+  status: 'willing_to_join' | 'committed_to_another_church' | 'unreachable' | 'others'
   contactMethod: 'phone' | 'whatsapp' | 'sms' | 'email' | 'in_person'
   callMadeBy: {
     _id: string
@@ -378,12 +378,6 @@ export default function CallReports() {
                 <option value="committed_to_another_church">Committed to Another Church</option>
                 <option value="unreachable">Unreachable</option>
                 <option value="others">Others</option>
-                {/* Legacy statuses for backward compatibility */}
-                <option value="pending">Pending</option>
-                <option value="contacted">Contacted</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="not_interested">Not Interested</option>
-                <option value="converted">Converted</option>
               </select>
               <select
                 value={methodFilter}

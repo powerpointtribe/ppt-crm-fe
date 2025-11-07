@@ -288,7 +288,7 @@ export default function PublicVisitorRegistrationForm({
           </div>
           <Input
             {...register('address')}
-            placeholder="Enter your address (e.g., Lagos, Nigeria)"
+            placeholder="Enter your home address "
             className="transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </motion.div>
@@ -387,7 +387,7 @@ export default function PublicVisitorRegistrationForm({
             {[
               { value: 'yes', label: 'Yes! 🎉', desc: "I'd love to join!", color: 'emerald' },
               { value: 'maybe', label: 'Maybe 🤔', desc: "I'm considering it", color: 'yellow' },
-              { value: 'no', label: 'Not now 😊', desc: "Thanks, but not at this time", color: 'gray' }
+              { value: 'no', label: 'No 😊', desc: "Thanks, but not at this time", color: 'gray' }
             ].map((option) => (
               <motion.label
                 key={option.value}

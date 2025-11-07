@@ -221,7 +221,11 @@ export default function FollowUpHistory({
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <User className="w-3 h-3" />
-                        Contacted by: {followUp.contactedBy}
+                        Contacted by: {
+                          typeof followUp.contactedBy === 'string'
+                            ? followUp.contactedBy
+                            : `${followUp.contactedBy.firstName} ${followUp.contactedBy.lastName}`
+                        }
                       </div>
                       {followUp.nextFollowUpDate && (
                         <div className="flex items-center gap-1 text-blue-600">

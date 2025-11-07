@@ -7,7 +7,12 @@ export interface FollowUpRecord {
   method: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit' | 'video_call'
   notes: string
   outcome: 'successful' | 'no_answer' | 'busy' | 'not_interested' | 'interested' | 'follow_up_needed'
-  contactedBy: string
+  contactedBy: string | {
+    _id: string
+    firstName: string
+    lastName: string
+    email?: string
+  }
   nextFollowUpDate?: string
 }
 

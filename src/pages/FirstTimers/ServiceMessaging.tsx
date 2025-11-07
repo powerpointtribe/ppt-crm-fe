@@ -353,8 +353,11 @@ export default function Messaging() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Calendar className="h-5 w-5 text-blue-600" />
-              Service Days
+              Message Drafts Management
             </h3>
+            <div className="text-sm text-gray-600">
+              {serviceDays.filter(d => d.hasMessage).length} drafts created
+            </div>
           </div>
 
           {loading ? (
@@ -420,6 +423,7 @@ export default function Messaging() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleViewMessage(serviceDay)}
+                            title="View message details"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -428,6 +432,7 @@ export default function Messaging() {
                             size="sm"
                             onClick={() => handleEditMessage(serviceDay)}
                             disabled={serviceDay.message?.status === 'sent'}
+                            title={serviceDay.message?.status === 'sent' ? 'Cannot edit sent message' : 'Edit draft'}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -436,6 +441,7 @@ export default function Messaging() {
                             size="sm"
                             onClick={() => handleDeleteMessage(serviceDay)}
                             disabled={serviceDay.message?.status === 'sent'}
+                            title={serviceDay.message?.status === 'sent' ? 'Cannot delete sent message' : 'Delete draft'}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -444,9 +450,10 @@ export default function Messaging() {
                         <Button
                           size="sm"
                           onClick={() => handleAddMessage(serviceDay)}
+                          title="Create message draft"
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Add Message
+                          Create Draft
                         </Button>
                       )}
                     </div>

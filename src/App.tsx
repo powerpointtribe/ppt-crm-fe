@@ -46,7 +46,6 @@ import Analytics from '@/pages/Reports/Analytics'
 
 function App() {
   return (
-    <BrowserRouter>
     <AnimatePresence mode="wait">
       <Routes>
         {/* Public Routes */}
@@ -210,7 +209,6 @@ function App() {
         } />
       </Routes>
     </AnimatePresence>
-    </BrowserRouter>
   )
 }
 

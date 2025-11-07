@@ -188,7 +188,7 @@ export default function ServiceReportForm({
                   type="number"
                   min="0"
                   value={formData.numberOfFemales}
-                  onChange={(e) => handleInputChange('numberOfFemales', parseInt(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('numberOfFemales', parseInt(e.target.value))}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -202,7 +202,7 @@ export default function ServiceReportForm({
                   type="number"
                   min="0"
                   value={formData.numberOfChildren}
-                  onChange={(e) => handleInputChange('numberOfChildren', parseInt(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('numberOfChildren', parseInt(e.target.value))}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -217,7 +217,7 @@ export default function ServiceReportForm({
                   type="number"
                   min="0"
                   value={formData.numberOfFirstTimers}
-                  onChange={(e) => handleInputChange('numberOfFirstTimers', parseInt(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('numberOfFirstTimers', parseInt(e.target.value))}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -234,7 +234,7 @@ export default function ServiceReportForm({
                   type="number"
                   min="0"
                   value={formData.totalAttendance}
-                  onChange={(e) => handleInputChange('totalAttendance', parseInt(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('totalAttendance', parseInt(e.target.value))}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />

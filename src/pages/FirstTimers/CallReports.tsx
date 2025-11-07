@@ -132,6 +132,12 @@ export default function CallReports() {
         callReportsService.getTeamPerformance()
       ])
 
+      // Debug: log the response structure
+      console.log('DEBUG: Analytics responses:', {
+        globalAnalytics,
+        teamPerformance
+      })
+
       // The transformSingleResponse already extracts the data
       setAnalytics({
         ...globalAnalytics,

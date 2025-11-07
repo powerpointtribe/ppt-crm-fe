@@ -429,7 +429,7 @@ export const firstTimersService = {
   },
 
   bulkAssignForFollowUp: async (assignments: Array<{firstTimerId: string, assigneeId: string}>): Promise<any> => {
-    const response = await apiService.post<ApiResponse<any>>('/first-timers/bulk-assign-followup', {
+    const response = await apiService.post<ApiResponse<any>>('/first-timers/bulk-assign', {
       assignments
     })
     return response.data?.data || response.data

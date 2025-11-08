@@ -502,7 +502,7 @@ export default function BulkUploadModal({
     <Modal isOpen={isOpen} onClose={handleClose} className="max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">
-          Bulk Upload {entityName}
+          {entityName} - Bulk Upload
         </h2>
         <button
           onClick={handleClose}

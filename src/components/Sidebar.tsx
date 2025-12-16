@@ -23,6 +23,11 @@ import {
   FileText,
   MessageCircle,
   Phone,
+  Package,
+  Shield,
+  Archive,
+  Activity,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore } from '@/store'
@@ -85,7 +90,7 @@ const baseMenuItems = [
     label: 'First Timers',
     path: '/first-timers',
     color: 'text-orange-600',
-    requiredModule: 'first_timers',
+    requiredModule: 'first-timers',
     hasDropdown: true,
     subItems: [
       {
@@ -109,11 +114,74 @@ const baseMenuItems = [
     ]
   },
   {
+    icon: Package,
+    label: 'Inventory',
+    path: '/inventory',
+    color: 'text-blue-600',
+    requiredModule: 'inventory',
+    hasDropdown: true,
+    subItems: [
+      {
+        icon: Package,
+        label: 'Items',
+        path: '/inventory/items',
+        color: 'text-blue-600'
+      },
+      {
+        icon: Archive,
+        label: 'Categories',
+        path: '/inventory/categories',
+        color: 'text-purple-600'
+      },
+      {
+        icon: Activity,
+        label: 'Movements',
+        path: '/inventory/movements',
+        color: 'text-green-600'
+      },
+      {
+        icon: BarChart3,
+        label: 'Reports',
+        path: '/inventory/reports',
+        color: 'text-orange-600'
+      }
+    ]
+  },
+  {
+    icon: Shield,
+    label: 'Audit',
+    path: '/audit',
+    color: 'text-red-600',
+    requiredModule: 'audit-logs',
+    hasDropdown: true,
+    subItems: [
+      {
+        icon: FileText,
+        label: 'Logs',
+        path: '/audit/logs',
+        color: 'text-red-600'
+      },
+      {
+        icon: BarChart3,
+        label: 'Reports',
+        path: '/audit/reports',
+        color: 'text-orange-600'
+      }
+    ]
+  },
+  {
     icon: Database,
     label: 'Bulk Operations',
     path: '/bulk-operations',
     color: 'text-purple-600',
     requiredModule: null // Available to all authenticated users
+  },
+  {
+    icon: Shield,
+    label: 'Roles',
+    path: '/roles',
+    color: 'text-indigo-600',
+    requiredModule: 'roles' // Requires roles module access
   },
   {
     icon: Settings,
@@ -130,13 +198,29 @@ export default function Sidebar() {
   const [isMobile, setIsMobile] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([])
-  const { member, isLoading } = useAuth()
+  const { member, isLoading, canAccessModule } = useAuth()
 
-  // Remove permission filtering - show all menu items
+  // Filter menu items based on user permissions
   const menuItems = useMemo(() => {
-    console.log('Sidebar: Showing all menu items without permission filtering');
-    return baseMenuItems;
-  }, [])
+    if (!member) {
+      console.log('Sidebar: No member data, showing only public items');
+      return baseMenuItems.filter(item => item.requiredModule === null);
+    }
+
+    const filtered = baseMenuItems.filter(item => {
+      // Always show items with no required module
+      if (item.requiredModule === null) {
+        return true;
+      }
+      // Check if user has access to the required module
+      const hasAccess = canAccessModule(item.requiredModule);
+      console.log(`Sidebar: Item '${item.label}' requires module '${item.requiredModule}', access: ${hasAccess}`);
+      return hasAccess;
+    });
+
+    console.log(`Sidebar: Showing ${filtered.length} of ${baseMenuItems.length} menu items`);
+    return filtered;
+  }, [member, canAccessModule])
 
   const toggleDropdown = (itemPath: string) => {
     setOpenDropdowns(prev =>

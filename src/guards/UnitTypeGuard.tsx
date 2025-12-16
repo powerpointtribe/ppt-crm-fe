@@ -25,7 +25,18 @@ export const UnitTypeGuard: React.FC<UnitTypeGuardProps> = ({
     return <Navigate to="/login" replace />
   }
 
-  // Unit type restrictions removed - always allow access to authenticated users
-  console.log(`UnitTypeGuard: Allowing access without unit type check for types: ${allowedUnitTypes.join(', ')}`)
+  // Check if member's unit type matches allowed types
+  const memberUnitType = member.unitType
+  const hasAccess = memberUnitType && allowedUnitTypes.includes(memberUnitType as any)
+
+  console.log(`UnitTypeGuard: Member unit type: ${memberUnitType}, Allowed: ${allowedUnitTypes.join(', ')}, Access: ${hasAccess}`)
+
+  if (!hasAccess) {
+    if (fallback) {
+      return <>{fallback}</>
+    }
+    return <Navigate to={redirectTo} replace />
+  }
+
   return <>{children}</>
 }

@@ -27,7 +27,20 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     return <Navigate to="/login" replace />
   }
 
-  // Role restrictions removed - always allow access to authenticated users
-  console.log(`RoleGuard: Allowing access without role check for roles: ${allowedRoles.join(', ')}`)
+  // Check if member has the required role(s)
+  const memberRoles = member.systemRoles || []
+  const hasRequiredRole = requireAll
+    ? allowedRoles.every(role => memberRoles.includes(role))
+    : allowedRoles.some(role => memberRoles.includes(role))
+
+  console.log(`RoleGuard: Checking roles. Required: ${allowedRoles.join(', ')}, Member has: ${memberRoles.join(', ')}, Access: ${hasRequiredRole}`)
+
+  if (!hasRequiredRole) {
+    if (fallback) {
+      return <>{fallback}</>
+    }
+    return <Navigate to={redirectTo} replace />
+  }
+
   return <>{children}</>
 }

@@ -199,49 +199,49 @@ export default function ServiceReports() {
             transition={{ delay: 0.1 }}
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8"
           >
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 border border-blue-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-700 font-semibold text-sm uppercase tracking-wide mb-2">Total Reports</p>
                   <p className="text-3xl font-bold text-blue-900">{stats?.overall?.totalReports || 0}</p>
                 </div>
-                <div className="p-3 bg-blue-600 rounded-xl">
+                <div className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
                   <FileText className="w-8 h-8 text-white" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-emerald-50 to-green-100 rounded-2xl p-6 border border-emerald-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div className="bg-green-50 rounded-2xl p-6 border border-green-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-emerald-700 font-semibold text-sm uppercase tracking-wide mb-2">Highest Attendance</p>
-                  <p className="text-3xl font-bold text-emerald-900">{(stats?.overall?.highestAttendance || 0).toLocaleString()}</p>
+                  <p className="text-green-700 font-semibold text-sm uppercase tracking-wide mb-2">Highest Attendance</p>
+                  <p className="text-3xl font-bold text-green-900">{(stats?.overall?.highestAttendance || 0).toLocaleString()}</p>
                 </div>
-                <div className="p-3 bg-emerald-600 rounded-xl">
+                <div className="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl">
                   <Users className="w-8 h-8 text-white" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 border border-amber-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div className="bg-amber-50 rounded-2xl p-6 border border-amber-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-amber-700 font-semibold text-sm uppercase tracking-wide mb-2">Avg Attendance</p>
                   <p className="text-3xl font-bold text-amber-900">{Math.round(stats?.overall?.averageAttendance || 0)}</p>
                 </div>
-                <div className="p-3 bg-amber-600 rounded-xl">
+                <div className="p-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl">
                   <TrendingUp className="w-8 h-8 text-white" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-6 border border-purple-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div className="bg-purple-50 rounded-2xl p-6 border border-purple-200/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-purple-700 font-semibold text-sm uppercase tracking-wide mb-2">Total First Timers</p>
                   <p className="text-3xl font-bold text-purple-900">{stats?.overall?.totalFirstTimers || 0}</p>
                 </div>
-                <div className="p-3 bg-purple-600 rounded-xl">
+                <div className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl">
                   <UserCheck className="w-8 h-8 text-white" />
                 </div>
               </div>

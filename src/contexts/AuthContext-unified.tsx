@@ -1,27 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { membersService } from '@/services/members-unified';
-
-interface Member {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  systemRoles: string[];
-  unitType?: string;
-  membershipStatus: string;
-  district?: any;
-  unit?: any;
-  accessibleModules: string[];
-  leadershipRoles: {
-    isDistrictPastor: boolean;
-    isUnitHead: boolean;
-    isChamp: boolean;
-    pastorsDistrict?: string;
-    leadsUnit?: string;
-    champForDistrict?: string;
-  };
-}
+import { permissionsService, UserPermissionsResponse } from '@/services/permissions';
+import { Member, Role } from '@/types';
 
 interface AuthContextType {
   member: Member | null;
@@ -31,6 +11,9 @@ interface AuthContextType {
   register: (data: any) => Promise<void>;
   logout: () => void;
   refreshAuth: () => Promise<void>;
+  hasPermission: (permission: string) => boolean; // NEW: Check specific permission
+  hasAnyPermission: (permissions: string[]) => boolean; // NEW: Check if has any of the permissions
+  hasAllPermissions: (permissions: string[]) => boolean; // NEW: Check if has all permissions
   canAccessModule: (module: string) => boolean;
   hasSystemRole: (role: string) => boolean;
   hasLeadershipRole: (role: 'district_pastor' | 'unit_head' | 'champ') => boolean;
@@ -78,6 +61,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [cachedPermissions, setCachedPermissions] = useState<{
     accessibleModules: string[];
     systemRoles: string[];
+    permissions: string[]; // NEW: Cached permissions
+    permissionsGrouped: Record<string, string[]>; // NEW: Cached grouped permissions
     role?: string;
   } | null>(initCachedPermissions);
 
@@ -112,16 +97,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Try to get user profile to validate token
       const memberProfile = await membersService.getProfile();
-      setMember(memberProfile);
 
-      // Cache permissions for offline use
-      const permissions = {
-        accessibleModules: memberProfile.accessibleModules || [],
-        systemRoles: memberProfile.systemRoles || [],
-        role: (memberProfile as any)?.role
-      };
-      setCachedPermissions(permissions);
-      localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      // Fetch user permissions from backend
+      try {
+        const userPermissions = await permissionsService.getUserPermissions();
+
+        // Merge member profile with permissions
+        const memberWithPermissions = {
+          ...memberProfile,
+          role: userPermissions.role,
+          permissions: userPermissions.permissions,
+          permissionsGrouped: userPermissions.permissionsGrouped,
+        };
+
+        setMember(memberWithPermissions);
+
+        // Cache permissions for offline use
+        const permissions = {
+          accessibleModules: memberProfile.accessibleModules || [],
+          systemRoles: memberProfile.systemRoles || [],
+          permissions: userPermissions.permissions,
+          permissionsGrouped: userPermissions.permissionsGrouped,
+          role: userPermissions.role.name
+        };
+        setCachedPermissions(permissions);
+        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      } catch (permError) {
+        console.error('Failed to fetch permissions, using profile data only:', permError);
+        // Fallback to just profile data if permissions fetch fails
+        setMember(memberProfile);
+        const permissions = {
+          accessibleModules: memberProfile.accessibleModules || [],
+          systemRoles: memberProfile.systemRoles || [],
+          permissions: [],
+          permissionsGrouped: {},
+          role: (memberProfile as any)?.role
+        };
+        setCachedPermissions(permissions);
+        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      }
     } catch (error: any) {
       console.error('Auth check failed:', error);
 
@@ -162,9 +176,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await membersService.login({ email, password });
       localStorage.setItem('auth_token', response.access_token);
+
       // Handle both 'member' and 'user' properties from API response
       const memberData = response.member || (response as any).user;
-      setMember(memberData);
+
+      // Fetch user permissions after login
+      try {
+        const userPermissions = await permissionsService.getUserPermissions();
+
+        // Merge member data with permissions
+        const memberWithPermissions = {
+          ...memberData,
+          role: userPermissions.role,
+          permissions: userPermissions.permissions,
+          permissionsGrouped: userPermissions.permissionsGrouped,
+        };
+
+        setMember(memberWithPermissions);
+
+        // Cache permissions for offline use
+        const permissions = {
+          accessibleModules: memberData.accessibleModules || [],
+          systemRoles: memberData.systemRoles || [],
+          permissions: userPermissions.permissions,
+          permissionsGrouped: userPermissions.permissionsGrouped,
+          role: userPermissions.role.name
+        };
+        setCachedPermissions(permissions);
+        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      } catch (permError) {
+        console.error('Failed to fetch permissions after login, using member data only:', permError);
+        // Fallback to just member data if permissions fetch fails
+        setMember(memberData);
+        const permissions = {
+          accessibleModules: memberData.accessibleModules || [],
+          systemRoles: memberData.systemRoles || [],
+          permissions: [],
+          permissionsGrouped: {},
+          role: (memberData as any)?.role
+        };
+        setCachedPermissions(permissions);
+        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      }
     } catch (error) {
       throw error;
     }
@@ -186,23 +239,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Access control helper methods
-  const canAccessModule = (module: string): boolean => {
-    // Use current member data if available
-    if (member?.accessibleModules?.includes) {
-      const hasAccess = member.accessibleModules.includes(module);
-      console.log(`Permission check for module '${module}': ${hasAccess} (from current member data)`);
-      return hasAccess;
+
+  /**
+   * Check if user has a specific permission (e.g., 'members:create')
+   */
+  const hasPermission = (permission: string): boolean => {
+    // Use current member permissions if available
+    if (member?.permissions?.includes) {
+      const has = member.permissions.includes(permission);
+      console.log(`Permission check for '${permission}': ${has} (from member data)`);
+      return has;
     }
     // Fallback to cached permissions during loading
-    if (cachedPermissions?.accessibleModules?.includes) {
-      const hasAccess = cachedPermissions.accessibleModules.includes(module);
-      console.log(`Permission check for module '${module}': ${hasAccess} (from cached permissions)`);
+    if (cachedPermissions?.permissions?.includes) {
+      const has = cachedPermissions.permissions.includes(permission);
+      console.log(`Permission check for '${permission}': ${has} (from cache)`);
+      return has;
+    }
+    console.log(`Permission check for '${permission}': false (no permissions data)`);
+    return false;
+  };
+
+  /**
+   * Check if user has ANY of the specified permissions
+   */
+  const hasAnyPermission = (permissions: string[]): boolean => {
+    return permissions.some(perm => hasPermission(perm));
+  };
+
+  /**
+   * Check if user has ALL of the specified permissions
+   */
+  const hasAllPermissions = (permissions: string[]): boolean => {
+    return permissions.every(perm => hasPermission(perm));
+  };
+
+  /**
+   * Check if user can access a module based on their permissions
+   * Derives module access from permissions (e.g., if user has 'members:view', they can access 'members' module)
+   */
+  const canAccessModule = (module: string): boolean => {
+    // Check if user has any permission for the module
+    if (member?.permissionsGrouped?.[module]?.length > 0) {
+      console.log(`Module access for '${module}': true (has ${member.permissionsGrouped[module].length} permissions)`);
+      return true;
+    }
+    if (cachedPermissions?.permissionsGrouped?.[module]?.length > 0) {
+      console.log(`Module access for '${module}': true (cached: ${cachedPermissions.permissionsGrouped[module].length} permissions)`);
+      return true;
+    }
+    // Fallback to accessibleModules from backend if permissions not loaded
+    if (member?.accessibleModules?.includes) {
+      const hasAccess = member.accessibleModules.includes(module);
+      console.log(`Module access for '${module}': ${hasAccess} (from accessibleModules)`);
       return hasAccess;
     }
-    // Allow super_admin access to all modules
-    const isSuperAdmin = (member as any)?.role === 'super_admin' || cachedPermissions?.role === 'super_admin';
-    console.log(`Permission check for module '${module}': ${isSuperAdmin} (super_admin access)`);
-    return isSuperAdmin || false;
+    if (cachedPermissions?.accessibleModules?.includes) {
+      const hasAccess = cachedPermissions.accessibleModules.includes(module);
+      console.log(`Module access for '${module}': ${hasAccess} (from cached accessibleModules)`);
+      return hasAccess;
+    }
+    console.log(`Module access for '${module}': false (no module data)`);
+    return false;
   };
 
   const hasSystemRole = (role: string): boolean => {
@@ -252,7 +350,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Module-specific access checks
   const canManageMembers = canAccessModule('members');
-  const canAccessFirstTimers = canAccessModule('first_timers');
+  const canAccessFirstTimers = canAccessModule('first-timers');
   const canManageGroups = canAccessModule('units');
 
   // Debug logging for computed properties
@@ -276,6 +374,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     refreshAuth,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
     canAccessModule,
     hasSystemRole,
     hasLeadershipRole,

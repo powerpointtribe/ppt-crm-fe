@@ -1,89 +1,9 @@
 import { apiService } from './api'
 import { transformPaginatedResponse, transformSingleResponse } from '@/utils/apiResponseTransform'
+import { Member } from '@/types'
 
-export interface Member {
-  _id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  dateOfBirth: string
-  gender: 'male' | 'female'
-  maritalStatus: 'single' | 'married' | 'divorced' | 'widowed'
-
-  // Authentication fields
-  isActive: boolean
-  lastLogin?: string
-
-  // System access control
-  systemRoles: string[]
-  unitType?: 'gia' | 'district' | 'ministry_unit' | 'leadership_unit'
-  accessibleModules: string[]
-
-  // Church membership
-  membershipStatus: 'new_convert' | 'worker' | 'volunteer' | 'leader' | 'district_pastor' | 'champ' | 'unit_head' | 'inactive' | 'transferred'
-  dateJoined: string
-  baptismDate?: string
-  confirmationDate?: string
-
-  // Church structure
-  district?: any
-  unit?: any
-  additionalGroups?: string[]
-
-  // Leadership roles
-  leadershipRoles: {
-    isDistrictPastor: boolean
-    isChamp: boolean
-    isUnitHead: boolean
-    champForDistrict?: string
-    leadsUnit?: string
-    pastorsDistrict?: string
-  }
-
-  // Personal info
-  address?: {
-    street: string
-    city: string
-    state: string
-    zipCode?: string
-    country: string
-  }
-  ministries?: string[]
-  skills?: string[]
-  occupation?: string
-  workAddress?: string
-
-  // Family
-  spouse?: any
-  children?: any[]
-  parent?: any
-  emergencyContact?: {
-    name: string
-    relationship: string
-    phone: string
-    email?: string
-  }
-
-  // Spiritual journey
-  spiritualJourney: {
-    foundationClass: { completed: boolean; completionDate?: string }
-    baptismClass: { completed: boolean; completionDate?: string }
-    membershipClass: { completed: boolean; completionDate?: string }
-    leadershipClass: { completed: boolean; completionDate?: string }
-  }
-
-  // System fields
-  notes?: string
-  profilePicture?: string
-  engagement: {
-    lastAttendance?: string
-    attendanceCount: number
-    engagementScore: number
-  }
-  createdAt: string
-  updatedAt: string
-}
+// Re-export Member for backward compatibility
+export type { Member }
 
 export interface LoginCredentials {
   email: string

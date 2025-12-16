@@ -1,7 +1,16 @@
+// Role interface for permission-based access control
+export interface Role {
+  id: string
+  name: string
+  displayName: string
+  level: number
+}
+
 // User interface is now replaced by Member from members-unified.ts
 // All user-related functionality should use the Member interface instead
 export interface Member {
   _id: string
+  id?: string // Alias for _id (used in auth context)
   firstName: string
   lastName: string
   email: string
@@ -14,7 +23,12 @@ export interface Member {
   isActive: boolean
   lastLogin?: string
 
-  // System access control
+  // System access control (NEW permission-based system)
+  role?: Role // NEW: Single role with permissions
+  permissions?: string[] // NEW: Flat array of permission names (e.g., ['members:create', 'members:view'])
+  permissionsGrouped?: Record<string, string[]> // NEW: Permissions grouped by module
+
+  // Legacy access control (deprecated, kept for backward compatibility)
   systemRoles: string[]
   unitType?: 'gia' | 'district' | 'ministry_unit' | 'leadership_unit'
   accessibleModules: string[]

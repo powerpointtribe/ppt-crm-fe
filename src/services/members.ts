@@ -1,61 +1,16 @@
 import { apiService } from './api'
 import { ApiResponse } from '@/types/api'
 import { transformPaginatedResponse, transformSingleResponse, transformArrayResponse } from '@/utils/apiResponseTransform'
+import { Member } from '@/types'
 
-export interface Address {
-  street: string
-  city: string
-  state: string
-  zipCode: string
-  country: string
-}
+// LEGACY FILE: This service is deprecated. Use members-unified.ts instead.
+// These type aliases are kept for backward compatibility
+export type Address = NonNullable<Member['address']>
+export type LeadershipRoles = Member['leadershipRoles']
+export type EmergencyContact = NonNullable<Member['emergencyContact']>
 
-export interface LeadershipRoles {
-  isDistrictPastor: boolean
-  isChamp: boolean
-  isUnitHead: boolean
-  champForDistrict?: string
-  leadsUnit?: string
-  pastorsDistrict?: string
-}
-
-export interface EmergencyContact {
-  name: string
-  relationship: string
-  phone: string
-  email?: string
-}
-
-export interface Member {
-  _id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  dateOfBirth: string
-  gender: 'male' | 'female'
-  maritalStatus: 'single' | 'married' | 'divorced' | 'widowed'
-  address: Address
-  district: string
-  unit?: string
-  additionalGroups?: string[]
-  leadershipRoles: LeadershipRoles
-  membershipStatus: 'new_convert' | 'worker' | 'volunteer' | 'leader' | 'district_pastor' | 'champ' | 'unit_head' | 'inactive' | 'transferred'
-  dateJoined: string
-  baptismDate?: string
-  confirmationDate?: string
-  ministries?: string[]
-  skills?: string[]
-  occupation?: string
-  workAddress?: string
-  spouse?: string
-  children?: string[]
-  parent?: string
-  emergencyContact?: EmergencyContact
-  notes?: string
-  createdAt: string
-  updatedAt: string
-}
+// Re-export Member for backward compatibility
+export type { Member }
 
 export interface CreateMemberData {
   firstName: string
@@ -191,5 +146,69 @@ export const membersService = {
   getCSVTemplate: async (operationType: 'create' | 'update'): Promise<any> => {
     const response = await apiService.get<ApiResponse<any>>(`/members/csv-templates/${operationType}`)
     return response.data || response
+  },
+
+  // Duplicate management
+  checkForDuplicates: async (data: { email?: string; phone?: string }): Promise<{
+    hasDuplicates: boolean;
+    duplicates: Array<{
+      id: string;
+      name: string;
+      email: string;
+      phone: string;
+      membershipStatus: string;
+      dateJoined: string;
+      duplicateFields: string[];
+    }>;
+  }> => {
+    const response = await apiService.post<ApiResponse<any>>('/members/duplicates/check', data)
+    return response.data?.data || response.data
+  },
+
+  findPotentialDuplicates: async (): Promise<{
+    emailDuplicates: any[];
+    phoneDuplicates: any[];
+    nameDuplicates: any[];
+  }> => {
+    const response = await apiService.get<ApiResponse<any>>('/members/duplicates/find')
+    return response.data?.data || response.data
+  },
+
+  mergeDuplicates: async (mergeData: {
+    primaryMemberId: string;
+    duplicateMemberIds: string[];
+  }): Promise<Member> => {
+    const response = await apiService.post<ApiResponse<Member>>('/members/duplicates/merge', mergeData)
+    return transformSingleResponse<Member>(response)
+  },
+
+  validateNoDuplicates: async (email: string, phone: string): Promise<{
+    isValid: boolean;
+    message: string;
+    duplicates?: any[];
+  }> => {
+    const response = await apiService.get<ApiResponse<any>>(`/members/validation/duplicate-check/${email}/${phone}`)
+    return response.data?.data || response.data
+  },
+
+  // Timeline/Activity endpoints
+  getMemberTimeline: async (memberId: string, params?: { limit?: number; offset?: number }): Promise<{
+    activities: any[];
+    total: number;
+  }> => {
+    const response = await apiService.get<ApiResponse<any>>(`/activity-tracker/members/${memberId}/timeline`, { params })
+    return response.data?.data || response.data
+  },
+
+  getMemberTimelineStatistics: async (memberId: string): Promise<{
+    totalActivities: number;
+    recentActivities: number;
+    milestones: number;
+    roleChanges: number;
+    trainings: number;
+    lastActivity: Date;
+  }> => {
+    const response = await apiService.get<ApiResponse<any>>(`/activity-tracker/members/${memberId}/statistics`)
+    return response.data?.data || response.data
   },
 }

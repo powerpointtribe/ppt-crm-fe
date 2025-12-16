@@ -33,7 +33,31 @@ export const LeadershipGuard: React.FC<LeadershipGuardProps> = ({
     return <Navigate to="/login" replace />
   }
 
-  // Leadership restrictions removed - always allow access to authenticated users
-  console.log('LeadershipGuard: Allowing access without leadership check')
+  // Check if member has any allowed leadership role
+  const leadership = member.leadershipRoles
+  const roles = member.systemRoles || []
+
+  const isDistrictPastor = leadership?.isDistrictPastor || false
+  const isUnitHead = leadership?.isUnitHead || false
+  const isChamp = leadership?.isChamp || false
+  const isPastor = roles.includes('pastor') || roles.includes('super_admin')
+  const isAdmin = roles.includes('admin') || roles.includes('super_admin')
+
+  const hasAccess =
+    (allowDistrictPastors && isDistrictPastor) ||
+    (allowUnitHeads && isUnitHead) ||
+    (allowChamps && isChamp) ||
+    (allowPastors && isPastor) ||
+    (allowAdmins && isAdmin)
+
+  console.log(`LeadershipGuard: Checking leadership. District Pastor: ${isDistrictPastor}, Unit Head: ${isUnitHead}, Champ: ${isChamp}, Pastor: ${isPastor}, Admin: ${isAdmin}, Access: ${hasAccess}`)
+
+  if (!hasAccess) {
+    if (fallback) {
+      return <>{fallback}</>
+    }
+    return <Navigate to={redirectTo} replace />
+  }
+
   return <>{children}</>
 }

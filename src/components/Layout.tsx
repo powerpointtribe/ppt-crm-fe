@@ -10,10 +10,11 @@ import { cn } from '@/utils/cn'
 interface LayoutProps {
   children: ReactNode
   title?: string
-  headerActions?: ReactNode
+  subtitle?: string
+  searchSection?: ReactNode
 }
 
-export default function Layout({ children, title = 'Dashboard', headerActions }: LayoutProps) {
+export default function Layout({ children, title = 'Dashboard', subtitle, searchSection }: LayoutProps) {
   const { sidebarCollapsed } = useAppStore()
   const [isMobile, setIsMobile] = useState(false)
 
@@ -38,7 +39,7 @@ export default function Layout({ children, title = 'Dashboard', headerActions }:
           isMobile ? 'ml-0' : sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
         )}
       >
-        <Header title={title} actions={headerActions} />
+        <Header title={title} subtitle={subtitle} searchSection={searchSection} />
 
         <motion.div
           className="flex-1 p-4 md:p-6"

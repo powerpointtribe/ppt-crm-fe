@@ -13,13 +13,26 @@ export const FirstTimersGuard: React.FC<FirstTimersGuardProps> = ({
   fallback,
   redirectTo = '/dashboard'
 }) => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, member, canAccessModule } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 
-  // Permission restrictions removed - always allow access to authenticated users
-  console.log('FirstTimersGuard: Allowing access without permission check')
+  if (!member) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Check if member can access first-timers module
+  const hasAccess = canAccessModule('first-timers')
+  console.log(`FirstTimersGuard: Checking first-timers access, Access: ${hasAccess}`)
+
+  if (!hasAccess) {
+    if (fallback) {
+      return <>{fallback}</>
+    }
+    return <Navigate to={redirectTo} replace />
+  }
+
   return <>{children}</>
 }

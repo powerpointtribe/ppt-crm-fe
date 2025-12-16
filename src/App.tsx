@@ -2,6 +2,7 @@ import { Routes, Route, BrowserRouter } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import Layout from '@/components/Layout'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { ModuleAccessGuard } from '@/guards'
 
 // Auth Pages
 import Login from '@/pages/auth/Login'
@@ -44,6 +45,23 @@ import BulkUpdate from '@/pages/BulkOperations/BulkUpdate'
 import QueueManagement from '@/pages/Queue/QueueManagement'
 import Analytics from '@/pages/Reports/Analytics'
 
+// Workers Training Pages
+import WorkersTraining from '@/pages/WorkersTraining/WorkersTraining'
+import CohortManagement from '@/pages/WorkersTraining/CohortManagement'
+import TraineeAssignment from '@/pages/WorkersTraining/TraineeAssignment'
+import WorkersTrainingRegistration from '@/pages/WorkersTrainingRegistration'
+
+// Inventory Management Pages
+import InventoryDashboard from '@/pages/Inventory/InventoryDashboard'
+import InventoryItems from '@/pages/Inventory/InventoryItems'
+
+// Audit Management Pages
+import AuditDashboard from '@/pages/Audit/AuditDashboard'
+import AuditLogs from '@/pages/Audit/AuditLogs'
+
+// Roles Management Pages
+import { RolesListPage, CreateRolePage, EditRolePage, RoleDetailsPage } from '@/pages/roles'
+
 function App() {
   return (
     <AnimatePresence mode="wait">
@@ -54,6 +72,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/visitor-registration" element={<PublicVisitorRegistration />} />
+        <Route path="/workers-training-registration" element={<WorkersTrainingRegistration />} />
 
         {/* Dashboard - Requires Login Only */}
         <Route path="/dashboard" element={
@@ -205,6 +224,92 @@ function App() {
         <Route path="/reports" element={
           <ProtectedRoute>
             <Analytics />
+          </ProtectedRoute>
+        } />
+
+        {/* Workers Training */}
+        <Route path="/workers-training" element={
+          <ProtectedRoute>
+            <WorkersTraining />
+          </ProtectedRoute>
+        } />
+        <Route path="/workers-training/cohorts" element={
+          <ProtectedRoute>
+            <CohortManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/workers-training/trainees/assignment" element={
+          <ProtectedRoute>
+            <TraineeAssignment />
+          </ProtectedRoute>
+        } />
+        <Route path="/workers-training/cohorts/:cohortId/assignment" element={
+          <ProtectedRoute>
+            <TraineeAssignment />
+          </ProtectedRoute>
+        } />
+
+        {/* Inventory Management */}
+        <Route path="/inventory" element={
+          <ProtectedRoute>
+            <InventoryDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventory/dashboard" element={
+          <ProtectedRoute>
+            <InventoryDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventory/items" element={
+          <ProtectedRoute>
+            <InventoryItems />
+          </ProtectedRoute>
+        } />
+
+        {/* Audit Management */}
+        <Route path="/audit" element={
+          <ProtectedRoute>
+            <AuditDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/audit/dashboard" element={
+          <ProtectedRoute>
+            <AuditDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/audit/logs" element={
+          <ProtectedRoute>
+            <AuditLogs />
+          </ProtectedRoute>
+        } />
+
+        {/* Roles Management - Protected by module access guard */}
+        <Route path="/roles" element={
+          <ProtectedRoute>
+            <ModuleAccessGuard module="roles">
+              <RolesListPage />
+            </ModuleAccessGuard>
+          </ProtectedRoute>
+        } />
+        <Route path="/roles/create" element={
+          <ProtectedRoute>
+            <ModuleAccessGuard module="roles">
+              <CreateRolePage />
+            </ModuleAccessGuard>
+          </ProtectedRoute>
+        } />
+        <Route path="/roles/:id" element={
+          <ProtectedRoute>
+            <ModuleAccessGuard module="roles">
+              <RoleDetailsPage />
+            </ModuleAccessGuard>
+          </ProtectedRoute>
+        } />
+        <Route path="/roles/:id/edit" element={
+          <ProtectedRoute>
+            <ModuleAccessGuard module="roles">
+              <EditRolePage />
+            </ModuleAccessGuard>
           </ProtectedRoute>
         } />
       </Routes>

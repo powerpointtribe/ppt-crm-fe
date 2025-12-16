@@ -1,14 +1,15 @@
 import { motion } from 'framer-motion'
-import { Bell, Search, User, LogOut } from 'lucide-react'
+import { Bell, User, LogOut } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import { useNavigate } from 'react-router-dom'
 
 interface HeaderProps {
   title: string
-  actions?: React.ReactNode
+  subtitle?: string
+  searchSection?: React.ReactNode
 }
 
-export default function Header({ title, actions }: HeaderProps) {
+export default function Header({ title, subtitle, searchSection }: HeaderProps) {
   const { member, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -36,42 +37,28 @@ export default function Header({ title, actions }: HeaderProps) {
 
   return (
     <motion.header
-      className="bg-background/95 backdrop-blur-sm border-b border-border p-4 md:p-6 flex items-center justify-between sticky top-0 z-30"
+      className="bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-30"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="flex items-center space-x-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">{title}</h1>
-          {member && (
-            <p className="text-sm text-muted-foreground hidden sm:block">
-              Welcome back, {member.firstName}!
-            </p>
-          )}
+      {/* Top Row: Search/Filters on Left, Welcome/User Info on Right */}
+      <div className="p-4 md:p-6 flex items-center justify-between gap-4">
+        {/* Left: Search and Filters Section */}
+        <div className="flex-1 max-w-4xl">
+          {searchSection || <div className="h-10" />}
         </div>
-      </div>
 
-      <div className="flex items-center space-x-2 md:space-x-4">
-        {actions && (
-          <div className="hidden sm:block">
-            {actions}
-          </div>
-        )}
-
-        <div className="flex items-center space-x-1 md:space-x-2">
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
-            <Search className="h-4 w-4 md:h-5 md:w-5" />
-          </button>
-
-          <button className="p-2 hover:bg-muted rounded-lg transition-colors relative text-muted-foreground hover:text-foreground">
-            <Bell className="h-4 w-4 md:h-5 md:w-5" />
+        {/* Right: User Info and Actions */}
+        <div className="flex items-center space-x-2 md:space-x-4">
+          <button className="p-2 hover:bg-muted rounded-lg transition-colors relative text-muted-foreground hover:text-foreground hidden md:block">
+            <Bell className="h-5 w-5" />
             <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
           </button>
 
-          <div className="flex items-center space-x-1 md:space-x-2 ml-2 pl-2 border-l border-border">
+          <div className="flex items-center space-x-2 ml-2 pl-2 border-l border-border">
             {member && (
-              <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-muted/50 rounded-lg">
+              <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 bg-muted/50 rounded-lg">
                 <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
                     {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}
@@ -85,10 +72,10 @@ export default function Header({ title, actions }: HeaderProps) {
             )}
 
             <button
-              className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+              className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
               title={member ? `${member.firstName} ${member.lastName}` : 'Member Profile'}
             >
-              <User className="h-4 w-4" />
+              <User className="h-5 w-5" />
             </button>
 
             <button
@@ -96,10 +83,20 @@ export default function Header({ title, actions }: HeaderProps) {
               className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors"
               title="Logout"
             >
-              <LogOut className="h-4 w-4 md:h-5 md:w-5" />
+              <LogOut className="h-5 w-5" />
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Bottom Row: Module Title and Welcome Text */}
+      <div className="px-4 md:px-6 pb-4 pt-2">
+        <h1 className="text-xl md:text-2xl font-bold text-foreground">{title}</h1>
+        {member && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Welcome back, {member.firstName}! {subtitle && `• ${subtitle}`}
+          </p>
+        )}
       </div>
     </motion.header>
   )

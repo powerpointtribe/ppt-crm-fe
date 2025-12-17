@@ -86,6 +86,11 @@ export default function AuditLogs() {
     updateUrlParams({ search: searchTerm || undefined })
   }
 
+  const handleExport = () => {
+    // Implement export functionality
+    console.log('Export functionality to be implemented')
+  }
+
   const updateUrlParams = (updates: Record<string, string | undefined>) => {
     const newParams = new URLSearchParams(searchParams)
     Object.entries(updates).forEach(([key, value]) => {
@@ -126,9 +131,87 @@ export default function AuditLogs() {
 
   const hasActiveFilters = searchTerm || selectedAction || selectedEntity || selectedSeverity || selectedSuccess || startDate || endDate
 
+  // Search Section to be displayed in header
+  const searchSection = (
+    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
+      <div className="flex-1 min-w-[200px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search logs..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+
+      {!showFilters && selectedAction && (
+        <select
+          value={selectedAction}
+          onChange={(e) => {
+            setSelectedAction(e.target.value)
+            updateUrlParams({ action: e.target.value || undefined })
+          }}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+        >
+          <option value="">All Actions</option>
+          <option value="LOGIN">Login</option>
+          <option value="LOGOUT">Logout</option>
+          <option value="CREATE">Create</option>
+          <option value="UPDATE">Update</option>
+          <option value="DELETE">Delete</option>
+        </select>
+      )}
+
+      {!showFilters && selectedEntity && (
+        <select
+          value={selectedEntity}
+          onChange={(e) => {
+            setSelectedEntity(e.target.value)
+            updateUrlParams({ entity: e.target.value || undefined })
+          }}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+        >
+          <option value="">All Entities</option>
+          <option value="MEMBER">Member</option>
+          <option value="USER">User</option>
+          <option value="INVENTORY_ITEM">Inventory Item</option>
+        </select>
+      )}
+
+      <button
+        type="submit"
+        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+      >
+        Search
+      </button>
+
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => setShowFilters(!showFilters)}
+      >
+        <Filter className="h-4 w-4 mr-2" />
+        Filters
+        <ChevronDown className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+      </Button>
+
+      <Button variant="secondary" onClick={handleExport}>
+        <Download className="h-4 w-4 mr-2" />
+        Export
+      </Button>
+    </form>
+  )
+
   if (loading) {
     return (
-      <Layout title="Audit Logs">
+      <Layout
+        title="Audit Logs"
+        subtitle="View and analyze system activity logs"
+        searchSection={searchSection}
+      >
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner size="lg" />
         </div>
@@ -137,53 +220,19 @@ export default function AuditLogs() {
   }
 
   return (
-    <Layout title="Audit Logs">
+    <Layout
+      title="Audit Logs"
+      subtitle="View and analyze system activity logs"
+      searchSection={searchSection}
+    >
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
-            <p className="text-gray-600">View and analyze system activity logs</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-
-        {/* Search and Filters */}
-        <Card className="p-6">
-          <form onSubmit={handleSearch} className="flex items-center gap-4 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search logs..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <Button type="submit">Search</Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-              <ChevronDown className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-            </Button>
-          </form>
-
-          {showFilters && (
+        {/* Advanced Filters */}
+        {showFilters && (
+          <Card className="p-6">
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="border-t border-gray-200 pt-4"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                 <div>
@@ -284,10 +333,13 @@ export default function AuditLogs() {
                 </div>
               </div>
             </motion.div>
-          )}
+          </Card>
+        )}
 
-          {hasActiveFilters && (
-            <div className="mt-4 flex flex-wrap gap-2">
+        {/* Active Filters Badge */}
+        {hasActiveFilters && !showFilters && (
+          <Card className="p-4">
+            <div className="flex flex-wrap gap-2">
               {searchTerm && (
                 <Badge variant="outline">
                   Search: {searchTerm}
@@ -320,8 +372,8 @@ export default function AuditLogs() {
                 Clear All Filters
               </Button>
             </div>
-          )}
-        </Card>
+          </Card>
+        )}
 
         {/* Logs List */}
         {error ? (

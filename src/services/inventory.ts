@@ -294,8 +294,27 @@ export const inventoryService = {
 
   // Statistics and Reports
   getStatistics: async (): Promise<InventoryStatistics> => {
-    const response = await apiService.get<ApiResponse<InventoryStatistics>>('/inventory/items/statistics')
-    return transformSingleResponse<InventoryStatistics>(response) as InventoryStatistics
+    const response = await apiService.get<ApiResponse<any>>('/inventory/items/statistics')
+    const data = transformSingleResponse<any>(response)
+
+    // Transform backend response to match frontend interface
+    const summary = data.summary || {}
+    const categoryBreakdown = data.categoryBreakdown || []
+
+    return {
+      totalItems: summary.totalItems || 0,
+      totalValue: summary.totalValue || 0,
+      lowStockItems: summary.lowStockItems || 0,
+      outOfStockItems: summary.outOfStockItems || 0,
+      expiringItems: 0, // Not provided by backend
+      categoriesCount: categoryBreakdown.length,
+      recentMovements: 0, // Not provided by backend
+      topCategories: categoryBreakdown.slice(0, 5).map((cat: any) => ({
+        category: cat.categoryInfo?.name || 'Unknown',
+        count: cat.itemCount || 0,
+        value: cat.totalValue || 0
+      }))
+    }
   },
 
   getLowStockItems: async (): Promise<InventoryItem[]> => {

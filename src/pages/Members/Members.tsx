@@ -1,32 +1,27 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus,
-  Filter,
-  Users,
   Phone,
   Mail,
   Edit,
   Eye,
   Search,
   Download,
-  Upload,
-  TrendingUp,
-  UserCheck,
-  UserX,
   MapPin,
   Calendar,
-  ArrowRight
+  UserPlus,
+  X
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
-import SearchInput from '@/components/ui/SearchInput'
 import { SkeletonTable } from '@/components/ui/Skeleton'
 import { Member, MemberSearchParams, membersService } from '@/services/members-unified'
+import { groupsService } from '@/services/groups'
 import { formatDate } from '@/utils/formatters'
 
 export default function Members() {
@@ -34,24 +29,62 @@ export default function Members() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [activeTab, setActiveTab] = useState<'assigned' | 'unassigned'>('assigned')
   const [searchParams, setSearchParams] = useState<MemberSearchParams>({
     page: 1,
     limit: 20,
     search: ''
   })
   const [pagination, setPagination] = useState<any>(null)
-  const [stats, setStats] = useState<any>(null)
+  const [assignedCount, setAssignedCount] = useState(0)
+  const [unassignedCount, setUnassignedCount] = useState(0)
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+  const [districts, setDistricts] = useState<any[]>([])
+  const [selectedDistrict, setSelectedDistrict] = useState('')
+  const [assigning, setAssigning] = useState(false)
 
   useEffect(() => {
     loadMembers()
-    loadStats()
-  }, [searchParams])
+  }, [searchParams, activeTab])
+
+  useEffect(() => {
+    loadCounts()
+    loadDistricts()
+  }, [])
+
+  const loadDistricts = async () => {
+    try {
+      const response = await groupsService.getGroups({ type: 'district', limit: 100 })
+      setDistricts(response.items)
+    } catch (error) {
+      console.error('Error loading districts:', error)
+    }
+  }
+
+  const hasDistrict = (member: Member) => {
+    if (!member.district) return false
+    // Handle both populated (object) and unpopulated (string ID) districts
+    if (typeof member.district === 'string') return member.district.length > 0
+    return member.district._id && member.district._id.length > 0
+  }
 
   const loadMembers = async () => {
     try {
       setError(null)
-      const response = await membersService.getMembers(searchParams)
-      setMembers(response.items)
+      setLoading(true)
+
+      // Use server-side filtering based on active tab
+      const params = { ...searchParams }
+      const response = await membersService.getMembers(params)
+
+      // Filter members based on active tab
+      const filteredMembers = activeTab === 'assigned'
+        ? response.items.filter(member => hasDistrict(member))
+        : response.items.filter(member => !hasDistrict(member))
+
+      setMembers(filteredMembers)
       setPagination(response.pagination)
     } catch (error: any) {
       console.error('Error loading members:', error)
@@ -61,22 +94,136 @@ export default function Members() {
     }
   }
 
-  const loadStats = async () => {
+  const loadCounts = async () => {
     try {
-      const memberStats = await membersService.getMemberStats()
-      setStats(memberStats)
+      // Load members in batches to get accurate counts
+      let allMembers: Member[] = []
+      let currentPage = 1
+      let hasMore = true
+
+      while (hasMore && currentPage <= 10) { // Limit to 10 pages to avoid infinite loops
+        const response = await membersService.getMembers({ page: currentPage, limit: 100 })
+        allMembers = [...allMembers, ...response.items]
+        hasMore = response.pagination.hasNext
+        currentPage++
+      }
+
+      const assigned = allMembers.filter(member => hasDistrict(member)).length
+      const unassigned = allMembers.filter(member => !hasDistrict(member)).length
+      setAssignedCount(assigned)
+      setUnassignedCount(unassigned)
     } catch (error) {
-      console.error('Error loading member stats:', error)
+      console.error('Error loading counts:', error)
     }
   }
 
-  const handleSearch = (query: string) => {
-    setSearchParams(prev => ({ ...prev, search: query, page: 1 }))
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setSearchParams(prev => ({ ...prev, search: searchTerm, page: 1 }))
   }
 
   const handlePageChange = (page: number) => {
     setSearchParams(prev => ({ ...prev, page }))
   }
+
+  const handleTabChange = (tab: 'assigned' | 'unassigned') => {
+    setActiveTab(tab)
+    setSearchParams(prev => ({ ...prev, page: 1 }))
+  }
+
+  const handleOpenAssignModal = (member: Member) => {
+    setSelectedMember(member)
+    setSelectedDistrict('')
+    setShowAssignModal(true)
+  }
+
+  const handleCloseAssignModal = () => {
+    setShowAssignModal(false)
+    setSelectedMember(null)
+    setSelectedDistrict('')
+  }
+
+  const handleAssignDistrict = async () => {
+    if (!selectedMember || !selectedDistrict) return
+
+    try {
+      setAssigning(true)
+      console.log('Assigning district:', {
+        memberId: selectedMember._id,
+        memberName: `${selectedMember.firstName} ${selectedMember.lastName}`,
+        districtId: selectedDistrict
+      })
+
+      const updatedMember = await membersService.updateMember(selectedMember._id, {
+        district: selectedDistrict
+      })
+
+      console.log('District assigned successfully:', updatedMember)
+
+      // Reload members and counts
+      await Promise.all([loadMembers(), loadCounts()])
+      handleCloseAssignModal()
+
+      // Show success message
+      alert(`Successfully assigned ${selectedMember.firstName} ${selectedMember.lastName} to the district!`)
+    } catch (error: any) {
+      console.error('Error assigning district:', error)
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      })
+      alert('Failed to assign district: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  // Search Section to be displayed in header
+  const searchSection = (
+    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
+      <div className="flex-1 min-w-[200px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search members by name, email, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+      >
+        Search
+      </button>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="flex items-center gap-2"
+        onClick={() => navigate('/members/new')}
+      >
+        <Plus className="h-4 w-4" />
+        Add Member
+      </Button>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="flex items-center gap-2"
+      >
+        <Download className="h-4 w-4" />
+        Export
+      </Button>
+    </form>
+  )
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -94,44 +241,9 @@ export default function Members() {
     }
   }
 
-  const membershipStats = [
-    {
-      title: 'Total Members',
-      value: stats?.totalMembers || 0,
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      trend: '+12%'
-    },
-    {
-      title: 'Active Members',
-      value: stats?.activeMembers || 0,
-      icon: UserCheck,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      trend: '+8%'
-    },
-    {
-      title: 'New This Month',
-      value: stats?.newThisMonth || 0,
-      icon: Plus,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      trend: '+15%'
-    },
-    {
-      title: 'Inactive',
-      value: stats?.inactiveMembers || 0,
-      icon: UserX,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      trend: '-3%'
-    }
-  ]
-
   if (loading) {
     return (
-      <Layout title="Members">
+      <Layout title="Members" subtitle="Manage church members and their information" searchSection={searchSection}>
         <SkeletonTable />
       </Layout>
     )
@@ -139,183 +251,104 @@ export default function Members() {
 
   if (error) {
     return (
-      <Layout title="Members">
+      <Layout title="Members" subtitle="Manage church members and their information" searchSection={searchSection}>
         <ErrorBoundary error={error} onRetry={loadMembers} />
       </Layout>
     )
   }
 
   return (
-    <Layout title="Members">
+    <Layout title="Members" subtitle="Manage church members and their information" searchSection={searchSection}>
       <div className="space-y-6">
-        {/* Header */}
+
+        {/* Tabs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          className="border-b border-gray-200"
         >
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Members</h1>
-            <p className="text-muted-foreground">Manage church members and their information</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button onClick={() => navigate('/members/new')} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add Member
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {membershipStats.map((stat, index) => (
-            <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+          <nav className="flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => handleTabChange('assigned')}
+              className={`
+                py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                ${activeTab === 'assigned'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
             >
-              <Card className="p-4 hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                  </div>
-                  <Badge variant="success" className="text-xs flex items-center">
-                    <TrendingUp className="h-2 w-2 mr-1" />
-                    {stat.trend}
-                  </Badge>
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-foreground">{stat.title}</h3>
-                  <p className="text-2xl font-bold text-foreground">{stat.value.toLocaleString()}</p>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              {
-                title: 'Add Member',
-                description: 'Register new member',
-                icon: Plus,
-                color: 'bg-blue-500',
-                path: '/members/new'
-              },
-              {
-                title: 'Member Analytics',
-                description: 'View detailed reports',
-                icon: TrendingUp,
-                color: 'bg-orange-500',
-                path: '/analytics/members'
-              },
-              {
-                title: 'Member Reports',
-                description: 'Generate member reports',
-                icon: Download,
-                color: 'bg-purple-500',
-                path: '/reports/members'
-              },
-              {
-                title: 'Search Members',
-                description: 'Advanced member search',
-                icon: Search,
-                color: 'bg-green-500',
-                path: '#'
-              }
-            ].map((action, index) => (
-              <motion.div
-                key={action.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 + index * 0.1 }}
-                onClick={() => navigate(action.path)}
-                className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:border-gray-300"
-              >
-                <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                  <action.icon className="h-5 w-5 text-white" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-1">{action.title}</h3>
-                <p className="text-sm text-muted-foreground">{action.description}</p>
-                <div className="mt-3 flex items-center text-primary-600 text-sm font-medium group-hover:text-primary-700">
-                  Start
-                  <ArrowRight className="h-4 w-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Filters and Search */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
-        >
-          <Card className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <SearchInput
-                  placeholder="Search members by name, email, or phone..."
-                  onSearch={handleSearch}
-                  className="w-full"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Filter className="h-4 w-4" />
-                  Filter
-                </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Download className="h-4 w-4" />
-                  Export
-                </Button>
-              </div>
-            </div>
-          </Card>
+              Assigned Districts
+              <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
+                {assignedCount}
+              </span>
+            </button>
+            <button
+              onClick={() => handleTabChange('unassigned')}
+              className={`
+                py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                ${activeTab === 'unassigned'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              Unassigned Districts
+              <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
+                {unassignedCount}
+              </span>
+            </button>
+          </nav>
         </motion.div>
 
         {/* Members Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 1.0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
         >
           <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Member
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      District
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Joined
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {members.map((member, index) => (
+            {members.length === 0 ? (
+              <div className="text-center py-12">
+                <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  {activeTab === 'assigned' ? 'No members with assigned districts' : 'No members without districts'}
+                </h3>
+                <p className="text-muted-foreground">
+                  {activeTab === 'assigned'
+                    ? 'All members have been assigned to districts or no members exist yet.'
+                    : 'All members have districts assigned or no members exist yet.'
+                  }
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Member
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Contact
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        District
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Joined
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {members.map((member, index) => (
                     <motion.tr
                       key={member._id}
                       initial={{ opacity: 0, y: 10 }}
@@ -362,6 +395,17 @@ export default function Members() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
+                          {activeTab === 'unassigned' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenAssignModal(member)}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              title="Assign to District"
+                            >
+                              <UserPlus className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -379,13 +423,14 @@ export default function Members() {
                         </div>
                       </td>
                     </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Pagination */}
-            {pagination && pagination.totalPages > 1 && (
+            {members.length > 0 && pagination && pagination.totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
@@ -417,6 +462,88 @@ export default function Members() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Assign District Modal */}
+      <AnimatePresence>
+        {showAssignModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Assign District</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Assign {selectedMember?.firstName} {selectedMember?.lastName} to a district
+                  </p>
+                </div>
+                <button
+                  onClick={handleCloseAssignModal}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Select District
+                  </label>
+                  <select
+                    value={selectedDistrict}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                    disabled={assigning}
+                  >
+                    <option value="">Choose a district...</option>
+                    {districts.map((district) => (
+                      <option key={district._id} value={district._id}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={handleCloseAssignModal}
+                  disabled={assigning}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAssignDistrict}
+                  disabled={!selectedDistrict || assigning}
+                  className="flex items-center gap-2"
+                >
+                  {assigning ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4" />
+                      Assign District
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </Layout>
   )
 }

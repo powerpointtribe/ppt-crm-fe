@@ -21,7 +21,7 @@ export default function FirstTimers() {
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [assignedFilter, setAssignedFilter] = useState('')
   const [visitorTypeFilter, setVisitorTypeFilter] = useState('')
@@ -50,7 +50,7 @@ export default function FirstTimers() {
       const params: FirstTimerSearchParams = {
         page,
         limit: 10,
-        search: searchQuery,
+        search: searchTerm,
         status: statusFilter || undefined,
         assignedTo: assignedFilter || undefined,
         visitorType: visitorTypeFilter || undefined,
@@ -72,7 +72,7 @@ export default function FirstTimers() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, currentPage])
+  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, currentPage])
 
   const loadStats = useCallback(async () => {
     try {
@@ -92,7 +92,7 @@ export default function FirstTimers() {
     // Reset to page 1 when filters change
     setCurrentPage(1)
     loadFirstTimers(1)
-  }, [searchQuery, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter])
+  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter])
 
   useEffect(() => {
     loadStats()
@@ -116,8 +116,9 @@ export default function FirstTimers() {
     }
   }, [showBulkAssignModal, loadMembers])
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value)
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    loadFirstTimers(1)
   }
 
   const handleStatusFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -145,7 +146,7 @@ export default function FirstTimers() {
   }
 
   const clearAllFilters = () => {
-    setSearchQuery('')
+    setSearchTerm('')
     setStatusFilter('')
     setAssignedFilter('')
     setVisitorTypeFilter('')
@@ -176,7 +177,7 @@ export default function FirstTimers() {
   }
 
   const hasActiveFilters = !!(
-    searchQuery || statusFilter || assignedFilter ||
+    searchTerm || statusFilter || assignedFilter ||
     visitorTypeFilter || howDidYouHearFilter ||
     dateFromFilter || dateToFilter
   )
@@ -284,24 +285,59 @@ export default function FirstTimers() {
     )
   }
 
+  // Search Section to be displayed in header
+  const searchSection = (
+    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
+      <div className="flex-1 min-w-[200px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search visitors..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+
+      <select
+        value={statusFilter}
+        onChange={handleStatusFilter}
+        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+      >
+        <option value="">All Status</option>
+        <option value="new">New</option>
+        <option value="engaged">Engaged</option>
+        <option value="closed">Closed</option>
+      </select>
+
+      <button
+        type="submit"
+        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+      >
+        Search
+      </button>
+
+      <Button
+        variant="secondary"
+        onClick={() => navigate('/my-assigned-first-timers')}
+      >
+        <UserCheck className="h-4 w-4 mr-2" />
+        My Assignments
+      </Button>
+
+      <Button onClick={() => navigate('/first-timers/new')}>
+        <Plus className="h-4 w-4 mr-2" />
+        Add Visitor
+      </Button>
+    </form>
+  )
+
   return (
     <Layout
       title="First Timers"
-      headerActions={
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="secondary"
-            onClick={() => navigate('/my-assigned-first-timers')}
-          >
-            <UserCheck className="h-4 w-4 mr-2" />
-            My Assignments
-          </Button>
-          <Button onClick={() => navigate('/first-timers/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Visitor
-          </Button>
-        </div>
-      }
+      searchSection={searchSection}
     >
       <div className="space-y-6">
         {/* Overview Stats */}
@@ -384,30 +420,6 @@ export default function FirstTimers() {
           </div>
         )}
 
-        {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input
-              type="text"
-              placeholder="Search visitors..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-            />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={handleStatusFilter}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">All Status</option>
-            <option value="new">New</option>
-            <option value="engaged">Engaged</option>
-            <option value="closed">Closed</option>
-          </select>
-        </div>
-
         {/* Visitors Table */}
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -418,7 +430,7 @@ export default function FirstTimers() {
             <UserPlus className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-gray-900 mb-2">No visitors found</h3>
             <p className="text-gray-500 mb-6">
-              {searchQuery || statusFilter ? 'Try adjusting your search or filters' : 'Add your first visitor to get started'}
+              {searchTerm || statusFilter ? 'Try adjusting your search or filters' : 'Add your first visitor to get started'}
             </p>
             <Button onClick={() => navigate('/first-timers/new')}>
               <Plus className="h-4 w-4 mr-2" />

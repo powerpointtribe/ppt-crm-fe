@@ -50,10 +50,50 @@ const baseMenuItems = [
     hasDropdown: true,
     subItems: [
       {
+        icon: BarChart3,
+        label: 'Analytics',
+        path: '/members/analytics',
+        color: 'text-purple-600'
+      },
+      {
+        icon: FileText,
+        label: 'Reports',
+        path: '/members/reports',
+        color: 'text-blue-600'
+      },
+      {
         icon: FileText,
         label: 'Service Reports',
         path: '/members/service-reports',
+        color: 'text-orange-600'
+      }
+    ]
+  },
+  {
+    icon: UserPlus,
+    label: 'First Timers',
+    path: '/first-timers',
+    color: 'text-orange-600',
+    requiredModule: 'first-timers',
+    hasDropdown: true,
+    subItems: [
+      {
+        icon: UserCheck,
+        label: 'My Assignments',
+        path: '/my-assigned-first-timers',
         color: 'text-blue-600'
+      },
+      {
+        icon: Phone,
+        label: 'Call Reports',
+        path: '/first-timers/call-reports',
+        color: 'text-green-600'
+      },
+      {
+        icon: MessageCircle,
+        label: 'Message Drafts',
+        path: '/first-timers/message-drafts',
+        color: 'text-purple-600'
       }
     ]
   },
@@ -81,34 +121,6 @@ const baseMenuItems = [
         icon: Building2,
         label: 'Units',
         path: '/groups?page=1&limit=20&search=&type=unit',
-        color: 'text-green-600'
-      }
-    ]
-  },
-  {
-    icon: UserPlus,
-    label: 'First Timers',
-    path: '/first-timers',
-    color: 'text-orange-600',
-    requiredModule: 'first-timers',
-    hasDropdown: true,
-    subItems: [
-      {
-        icon: UserCheck,
-        label: 'My Assignments',
-        path: '/my-assigned-first-timers',
-        color: 'text-blue-600'
-      },
-      {
-        icon: MessageCircle,
-        label: 'Messaging',
-        path: '/first-timers/service-messaging',
-        color: 'text-purple-600'
-      },
-      {
-        icon: Phone,
-        label: 'Call Reports',
-        path: '/first-timers/call-reports',
         color: 'text-green-600'
       }
     ]

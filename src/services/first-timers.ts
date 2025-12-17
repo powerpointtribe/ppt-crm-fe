@@ -90,7 +90,9 @@ export interface FirstTimer {
     relationship: string
     phone: string
   }
-  status: 'not_contacted' | 'contacted' | 'scheduled_visit' | 'visited' | 'joined_group' | 'converted' | 'lost_contact'
+  // Engagement status for first-timers (NEW, ENGAGED, CLOSED)
+  // This is different from membershipStatus used in Members module
+  status: 'NEW' | 'ENGAGED' | 'CLOSED'
   assignedTo?: string
   followUpPerson?: string
   giaLeader?: string
@@ -107,12 +109,6 @@ export interface FirstTimer {
   integrationStageDate?: string
   assignedDistrict?: string
   districtAssignmentDate?: string
-
-  // Pre-filled message system
-  preFilledMessage?: string
-  messageScheduledTime?: string
-  messageSent: boolean
-  messageSentAt?: string
 
   // Call reports tracking
   callReportsCount: number
@@ -337,92 +333,6 @@ export const firstTimersService = {
   getCallReportsSummary: async (firstTimerId: string): Promise<any> => {
     const response = await apiService.get<ApiResponse<any>>(`/first-timers/${firstTimerId}/call-reports/summary`)
     return transformSingleResponse(response)
-  },
-
-  // Pre-filled Messages
-  setPreFilledMessage: async (firstTimerId: string, message: string, scheduledTime?: string): Promise<void> => {
-    await apiService.post(`/first-timers/${firstTimerId}/set-message`, {
-      message,
-      scheduledTime
-    })
-  },
-
-  setBulkPreFilledMessage: async (firstTimerIds: string[], message: string, scheduledTime?: string): Promise<void> => {
-    await apiService.post('/first-timers/bulk-set-message', {
-      firstTimerIds,
-      message,
-      scheduledTime
-    })
-  },
-
-  // Message History and Management
-  getMessageHistory: async (firstTimerId: string): Promise<any[]> => {
-    const response = await apiService.get<ApiResponse<any[]>>(`/first-timers/${firstTimerId}/message-history`)
-    return transformSingleResponse(response) as any[]
-  },
-
-  getScheduledMessage: async (firstTimerId: string): Promise<any | null> => {
-    const response = await apiService.get<ApiResponse<any>>(`/first-timers/${firstTimerId}/scheduled-message`)
-    return transformSingleResponse(response)
-  },
-
-  editScheduledMessage: async (firstTimerId: string, message: string, scheduledTime?: string): Promise<void> => {
-    await apiService.patch(`/first-timers/${firstTimerId}/edit-message`, {
-      message,
-      scheduledTime
-    })
-  },
-
-  cancelScheduledMessage: async (firstTimerId: string): Promise<void> => {
-    await apiService.delete(`/first-timers/${firstTimerId}/cancel-message`)
-  },
-
-  getAllMessageHistory: async (page: number = 1, limit: number = 20, status?: string): Promise<{messages: any[], total: number}> => {
-    const response = await apiService.get<ApiResponse<any>>('/first-timers/messages/history', {
-      params: { page, limit, status }
-    })
-    return transformSingleResponse(response) as {messages: any[], total: number}
-  },
-
-  // Daily Messaging
-  getDailyMessage: async (date: string): Promise<any> => {
-    const response = await apiService.get<ApiResponse<any>>(`/first-timers/daily-message/${date}`)
-    return transformSingleResponse(response)
-  },
-
-  getDailyMessages: async (page: number = 1, limit: number = 20, status?: string): Promise<{messages: any[], total: number}> => {
-    const response = await apiService.get<ApiResponse<any>>('/first-timers/daily-messages', {
-      params: { page, limit, status }
-    })
-    return transformSingleResponse(response) as {messages: any[], total: number}
-  },
-
-  createDailyMessage: async (data: {
-    date: string
-    message: string
-    scheduledTime?: string
-    autoSend: boolean
-    firstTimerIds: string[]
-  }): Promise<any> => {
-    const response = await apiService.post<ApiResponse<any>>('/first-timers/daily-message', data)
-    return transformSingleResponse(response)
-  },
-
-  sendDailyMessageNow: async (dailyMessageId: string): Promise<void> => {
-    await apiService.post(`/first-timers/daily-message/${dailyMessageId}/send-now`)
-  },
-
-  updateDailyMessage: async (dailyMessageId: string, data: {
-    message: string
-    scheduledTime?: string
-    autoSend: boolean
-  }): Promise<any> => {
-    const response = await apiService.patch<ApiResponse<any>>(`/first-timers/daily-message/${dailyMessageId}`, data)
-    return transformSingleResponse(response)
-  },
-
-  deleteDailyMessage: async (dailyMessageId: string): Promise<void> => {
-    await apiService.delete(`/first-timers/daily-message/${dailyMessageId}`)
   },
 
   // Assignment with notifications

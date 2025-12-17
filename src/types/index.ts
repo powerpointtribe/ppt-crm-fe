@@ -33,8 +33,9 @@ export interface Member {
   unitType?: 'gia' | 'district' | 'ministry_unit' | 'leadership_unit'
   accessibleModules: string[]
 
-  // Church membership
-  membershipStatus: 'new_convert' | 'worker' | 'volunteer' | 'leader' | 'district_pastor' | 'champ' | 'unit_head' | 'inactive' | 'transferred'
+  // Church membership - Hierarchical status (MEMBER, DC, LXL, DIRECTOR, PASTOR, SENIOR_PASTOR, LEFT)
+  // This is different from engagement status used in First Timers module
+  membershipStatus: 'MEMBER' | 'DC' | 'LXL' | 'DIRECTOR' | 'PASTOR' | 'SENIOR_PASTOR' | 'LEFT'
   dateJoined: string
   baptismDate?: string
   confirmationDate?: string

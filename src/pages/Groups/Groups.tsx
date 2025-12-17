@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, Filter, Download, Users, MapPin, Calendar, Crown, Shield, Star, Settings as SettingsIcon, Eye, Edit, Trash2, Archive, Upload } from 'lucide-react'
+import { Plus, Filter, Download, Users, MapPin, Calendar, Crown, Shield, Star, Settings as SettingsIcon, Eye, Edit, Trash2, Archive, Upload, Search } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
-import SearchInput from '@/components/ui/SearchInput'
 import { SkeletonTable } from '@/components/ui/Skeleton'
 import { BulkSelectableTable, BulkSelectHeader, BulkSelectRow, TableBody, TableHead, TableCell } from '@/components/ui/BulkSelectableTable'
 import BulkActions, { commonBulkActions, BulkAction } from '@/components/ui/BulkActions'
@@ -26,6 +25,7 @@ export default function Groups() {
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState(urlSearchParams.get('search') || '')
   const [searchParams, setSearchParams] = useState<GroupSearchParams>({
     page: parseInt(urlSearchParams.get('page') || '1'),
     limit: parseInt(urlSearchParams.get('limit') || '20'),
@@ -156,9 +156,10 @@ export default function Groups() {
     return 'Manage all groups, districts, units, ministries, and committees'
   }
 
-  const handleSearch = (search: string) => {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
     const newParams = new URLSearchParams(urlSearchParams)
-    newParams.set('search', search)
+    newParams.set('search', searchTerm)
     newParams.set('page', '1')
     setUrlSearchParams(newParams)
   }
@@ -423,16 +424,71 @@ export default function Groups() {
   const isAllSelected = groups.length > 0 && groups.every(group => bulkSelection.selectedItems.has(group._id))
   const isIndeterminate = groups.some(group => bulkSelection.selectedItems.has(group._id)) && !isAllSelected
 
+  // Search Section to be displayed in header
+  const searchSection = (
+    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
+      <div className="flex-1 min-w-[200px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search groups by name or description..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+
+      {!filteredType && (
+        <select
+          value={searchParams.type || ''}
+          onChange={(e) => handleFilter({ type: e.target.value as any || undefined })}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+        >
+          <option value="">All Types</option>
+          <option value="district">Districts</option>
+          <option value="unit">Units</option>
+          <option value="fellowship">Fellowships</option>
+          <option value="ministry">Ministries</option>
+          <option value="committee">Committees</option>
+        </select>
+      )}
+
+      <select
+        value={searchParams.isActive?.toString() || ''}
+        onChange={(e) => handleFilter({ isActive: e.target.value ? e.target.value === 'true' : undefined })}
+        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+      >
+        <option value="">All Status</option>
+        <option value="true">Active</option>
+        <option value="false">Inactive</option>
+      </select>
+
+      <button
+        type="submit"
+        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+      >
+        Search
+      </button>
+
+      <Button onClick={() => navigate('/groups/new')}>
+        <Plus className="h-4 w-4 mr-2" />
+        Create Group
+      </Button>
+
+      <Button variant="secondary" onClick={handleBulkUpload}>
+        <Upload className="h-4 w-4 mr-2" />
+        Upload
+      </Button>
+    </form>
+  )
+
   return (
     <Layout
       title={getPageTitle()}
       subtitle={getPageSubtitle()}
-      headerActions={
-        <Button onClick={() => navigate('/groups/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Group
-        </Button>
-      }
+      searchSection={searchSection}
     >
       <div className="space-y-6">
         {/* Bulk Actions Bar */}
@@ -611,46 +667,6 @@ export default function Groups() {
             </motion.div>
           </div>
         )}
-
-
-        {/* Search and Filters */}
-        <Card className="p-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <SearchInput
-                placeholder="Search groups by name or description..."
-                onSearch={handleSearch}
-                className="w-full"
-              />
-            </div>
-            <div className="flex gap-2">
-              {!filteredType && (
-                <select
-                  value={searchParams.type || ''}
-                  onChange={(e) => handleFilter({ type: e.target.value as any || undefined })}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All Types</option>
-                  <option value="district">Districts</option>
-                  <option value="unit">Units</option>
-                  <option value="fellowship">Fellowships</option>
-                  <option value="ministry">Ministries</option>
-                  <option value="committee">Committees</option>
-                </select>
-              )}
-
-              <select
-                value={searchParams.isActive?.toString() || ''}
-                onChange={(e) => handleFilter({ isActive: e.target.value ? e.target.value === 'true' : undefined })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Status</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
-              </select>
-            </div>
-          </div>
-        </Card>
 
         {/* Groups Table */}
         <Card className="overflow-hidden">

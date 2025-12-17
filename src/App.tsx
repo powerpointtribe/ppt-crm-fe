@@ -18,6 +18,8 @@ import Members from '@/pages/Members/Members'
 import MemberNew from '@/pages/Members/MemberNew'
 import MemberEdit from '@/pages/Members/MemberEdit'
 import MemberDetail from '@/pages/Members/MemberDetail'
+import MemberAnalytics from '@/pages/Members/MemberAnalytics'
+import MemberReports from '@/pages/Members/MemberReports'
 import Groups from '@/pages/Groups/Groups'
 import GroupNew from '@/pages/Groups/GroupNew'
 import GroupDetail from '@/pages/Groups/GroupDetail'
@@ -27,8 +29,10 @@ import FirstTimerNew from '@/pages/FirstTimers/FirstTimerNew'
 import FirstTimerDetail from '@/pages/FirstTimers/FirstTimerDetail'
 import FirstTimerEdit from '@/pages/FirstTimers/FirstTimerEdit'
 import AssignedFirstTimers from '@/pages/FirstTimers/AssignedFirstTimers'
-import ServiceMessaging from '@/pages/FirstTimers/ServiceMessaging'
 import CallReports from '@/pages/FirstTimers/CallReports'
+import MessageDrafts from '@/pages/FirstTimers/MessageDrafts'
+import MessageDraftForm from '@/pages/FirstTimers/MessageDraftForm'
+import MessageDraftDetail from '@/pages/FirstTimers/MessageDraftDetail'
 import ServiceReports from '@/pages/ServiceReports/ServiceReports'
 import ServiceReportNew from '@/pages/ServiceReports/ServiceReportNew'
 import ServiceReportDetail from '@/pages/ServiceReports/ServiceReportDetail'
@@ -85,6 +89,16 @@ function App() {
         <Route path="/members" element={
           <ProtectedRoute>
             <Members />
+          </ProtectedRoute>
+        } />
+        <Route path="/members/analytics" element={
+          <ProtectedRoute>
+            <MemberAnalytics />
+          </ProtectedRoute>
+        } />
+        <Route path="/members/reports" element={
+          <ProtectedRoute>
+            <MemberReports />
           </ProtectedRoute>
         } />
         <Route path="/members/new" element={
@@ -151,14 +165,29 @@ function App() {
             <AssignedFirstTimers />
           </ProtectedRoute>
         } />
-        <Route path="/first-timers/service-messaging" element={
-          <ProtectedRoute>
-            <ServiceMessaging />
-          </ProtectedRoute>
-        } />
         <Route path="/first-timers/call-reports" element={
           <ProtectedRoute>
             <CallReports />
+          </ProtectedRoute>
+        } />
+        <Route path="/first-timers/message-drafts" element={
+          <ProtectedRoute>
+            <MessageDrafts />
+          </ProtectedRoute>
+        } />
+        <Route path="/first-timers/message-drafts/new" element={
+          <ProtectedRoute>
+            <MessageDraftForm />
+          </ProtectedRoute>
+        } />
+        <Route path="/first-timers/message-drafts/:id" element={
+          <ProtectedRoute>
+            <MessageDraftDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/first-timers/message-drafts/:id/edit" element={
+          <ProtectedRoute>
+            <MessageDraftForm />
           </ProtectedRoute>
         } />
 

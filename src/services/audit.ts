@@ -184,6 +184,26 @@ export const auditService = {
   // Get audit logs with filtering and pagination
   getAuditLogs: async (params?: AuditQueryParams): Promise<PaginatedResponse<AuditLog>> => {
     const response = await apiService.get<ApiResponse<any>>('/audit-logs', { params })
+    const data = transformSingleResponse<any>(response)
+
+    // Backend returns { auditLogs: [], pagination: {} }
+    // Transform to match frontend PaginatedResponse interface
+    if (data && data.auditLogs) {
+      const pagination = data.pagination || {}
+      return {
+        items: data.auditLogs,
+        pagination: {
+          page: pagination.current || 1,
+          limit: pagination.count || 10,
+          total: pagination.total || 0,
+          totalPages: pagination.pages || 0,
+          hasNext: pagination.current < pagination.pages,
+          hasPrev: pagination.current > 1
+        }
+      }
+    }
+
+    // Fallback to standard transformation
     return transformPaginatedResponse<AuditLog>(response)
   },
 
@@ -199,8 +219,70 @@ export const auditService = {
     endDate?: string
     entityType?: string
   }): Promise<AuditStatistics> => {
-    const response = await apiService.get<ApiResponse<AuditStatistics>>('/audit-logs/statistics', { params })
-    return transformSingleResponse<AuditStatistics>(response) as AuditStatistics
+    const response = await apiService.get<ApiResponse<any>>('/audit-logs/statistics', { params })
+    const data = transformSingleResponse<any>(response)
+
+    // Transform backend response to match frontend interface
+    const totalCount = data.totalCount || 0
+    const actionCounts = data.actionCounts || []
+    const entityCounts = data.entityCounts || []
+    const severityCounts = data.severityCounts || []
+    const topUsers = data.topUsers || []
+    const dailyActivity = data.dailyActivity || []
+
+    // Calculate percentages for actions
+    const topActions = actionCounts.slice(0, 10).map((action: any) => ({
+      action: action._id,
+      count: action.count,
+      percentage: totalCount > 0 ? (action.count / totalCount) * 100 : 0
+    }))
+
+    // Calculate entity breakdown with percentages
+    const entityBreakdown = entityCounts.map((entity: any) => ({
+      entity: entity._id,
+      count: entity.count,
+      percentage: totalCount > 0 ? (entity.count / totalCount) * 100 : 0
+    }))
+
+    // Calculate severity breakdown with percentages
+    const severityBreakdown = severityCounts.map((severity: any) => ({
+      severity: severity._id,
+      count: severity.count,
+      percentage: totalCount > 0 ? (severity.count / totalCount) * 100 : 0
+    }))
+
+    // Transform top users
+    const transformedTopUsers = topUsers.map((user: any) => ({
+      user: {
+        _id: user._id.id,
+        firstName: user._id.name?.split(' ')[0] || 'Unknown',
+        lastName: user._id.name?.split(' ')[1] || 'User',
+        email: user._id.email
+      },
+      count: user.count,
+      percentage: totalCount > 0 ? (user.count / totalCount) * 100 : 0
+    }))
+
+    // Transform daily activity
+    const activityByDay = dailyActivity.map((day: any) => ({
+      date: day._id,
+      count: day.count
+    }))
+
+    return {
+      totalLogs: totalCount,
+      recentLogs: totalCount, // Use total as approximation
+      failedActions: 0, // Not provided by backend
+      successfulActions: totalCount, // Approximation
+      uniqueUsers: topUsers.length,
+      topActions,
+      activityByHour: [], // Not provided by backend
+      activityByDay,
+      entityBreakdown,
+      severityBreakdown,
+      topUsers: transformedTopUsers,
+      errorSummary: [] // Not provided by backend
+    }
   },
 
   // Export audit logs

@@ -13,12 +13,17 @@ interface ErrorBoundaryProps {
   showLogout?: boolean
 }
 
-export default function ErrorBoundary({ error, onRetry, showLogout = false }: ErrorBoundaryProps) {
+export default function ErrorBoundary({ error, onRetry, showLogout = false, children }: ErrorBoundaryProps & { children?: React.ReactNode }) {
   const { logout } = useAuth()
 
   const handleLogout = () => {
     logout()
     window.location.href = '/login'
+  }
+
+  // If no error, render children
+  if (!error) {
+    return <>{children}</>
   }
 
   const getErrorInfo = () => {

@@ -31,7 +31,6 @@ import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
-import SearchInput from '@/components/ui/SearchInput'
 import { SkeletonTable } from '@/components/ui/Skeleton'
 import {
   serviceReportsService,
@@ -47,6 +46,7 @@ export default function ServiceReports() {
   const [reports, setReports] = useState<ServiceReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [searchParams, setSearchParams] = useState<ServiceReportSearchParams>({
     page: 1,
     limit: 20,
@@ -114,10 +114,11 @@ export default function ServiceReports() {
     loadChartData()
   }, [loadStats, loadChartData])
 
-  const handleSearch = (query: string) => {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
     setSearchParams(prev => ({
       ...prev,
-      search: query,
+      search: searchTerm,
       page: 1
     }))
   }
@@ -159,37 +160,48 @@ export default function ServiceReports() {
     ))
   }
 
+  // Search Section to be displayed in header
+  const searchSection = (
+    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
+      <div className="flex-1 min-w-[200px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search by service name, date, or reporter..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+      >
+        Search
+      </button>
+
+      <Button variant="secondary">
+        <Filter className="w-4 h-4 mr-2" />
+        Advanced Filters
+      </Button>
+
+      <Button onClick={() => navigate('/members/service-reports/new')}>
+        <Plus className="w-5 h-5 mr-2" />
+        Create Report
+      </Button>
+    </form>
+  )
+
   return (
-    <Layout>
+    <Layout
+      title="Service Reports"
+      subtitle="Track attendance trends and service insights"
+      searchSection={searchSection}
+    >
       <div className="p-6 max-w-7xl mx-auto">
-        {/* Modern Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-8 text-white shadow-lg">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                  <FileText className="w-8 h-8" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold mb-2">Service Reports</h1>
-                  <p className="text-blue-100 text-lg">Track attendance trends and service insights</p>
-                </div>
-              </div>
-              <Button
-                onClick={() => navigate('/members/service-reports/new')}
-                className="bg-white text-blue-600 hover:bg-blue-50 border-0 shadow-lg px-6 py-3 text-base font-semibold"
-                size="lg"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Create New Report
-              </Button>
-            </div>
-          </div>
-        </motion.div>
 
         {/* Modern Stats Cards */}
         {stats && (
@@ -332,35 +344,6 @@ export default function ServiceReports() {
             </div>
           </motion.div>
         )}
-
-        {/* Modern Search and Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <SearchInput
-                    placeholder="Search by service name, date, or reporter..."
-                    onSearch={handleSearch}
-                    className="w-full pl-10 py-3 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200 hover:from-gray-100 hover:to-gray-200 rounded-xl transition-all duration-200"
-              >
-                <Filter className="w-4 h-4" />
-                Advanced Filters
-              </Button>
-            </div>
-          </div>
-        </motion.div>
 
         {/* Modern Reports Table */}
         <motion.div

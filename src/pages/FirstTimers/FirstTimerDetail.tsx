@@ -13,7 +13,6 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import FollowUpForm from '@/components/forms/FollowUpForm'
 import FollowUpHistory from '@/components/ui/FollowUpHistory'
-import FirstTimerMessaging from '@/components/messaging/FirstTimerMessaging'
 import { FirstTimer, firstTimersService, FollowUpRecord } from '@/services/first-timers'
 import { formatDate } from '@/utils/formatters'
 import { cn } from '@/utils/cn'
@@ -403,12 +402,6 @@ export default function FirstTimerDetail() {
                 <p className="text-gray-700 whitespace-pre-wrap">{firstTimer.notes}</p>
               </Card>
             )}
-
-            {/* Messaging Section */}
-            <FirstTimerMessaging
-              firstTimerId={firstTimer._id}
-              firstTimerName={`${firstTimer.firstName} ${firstTimer.lastName}`}
-            />
           </div>
 
           {/* Right Column - Follow-up Management */}

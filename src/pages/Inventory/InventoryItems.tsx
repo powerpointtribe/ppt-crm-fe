@@ -104,6 +104,11 @@ export default function InventoryItems() {
     setSearchParams(newParams)
   }
 
+  const handleExport = () => {
+    // Implement export functionality
+    console.log('Export functionality to be implemented')
+  }
+
   const handleFilterChange = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams)
     if (value) {
@@ -130,9 +135,90 @@ export default function InventoryItems() {
 
   const hasActiveFilters = searchTerm || selectedCategory || selectedStatus || searchParams.get('lowStock') || searchParams.get('expiring')
 
+  // Search Section to be displayed in header
+  const searchSection = (
+    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
+      <div className="flex-1 min-w-[200px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+
+      {!showFilters && selectedCategory && (
+        <select
+          value={selectedCategory}
+          onChange={(e) => {
+            setSelectedCategory(e.target.value)
+            handleFilterChange('category', e.target.value)
+          }}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+        >
+          <option value="">All Categories</option>
+        </select>
+      )}
+
+      {!showFilters && selectedStatus && (
+        <select
+          value={selectedStatus}
+          onChange={(e) => {
+            setSelectedStatus(e.target.value)
+            handleFilterChange('status', e.target.value)
+          }}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+        >
+          <option value="">All Status</option>
+          <option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive</option>
+          <option value="DISCONTINUED">Discontinued</option>
+          <option value="DAMAGED">Damaged</option>
+        </select>
+      )}
+
+      <button
+        type="submit"
+        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+      >
+        Search
+      </button>
+
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => setShowFilters(!showFilters)}
+      >
+        <Filter className="h-4 w-4 mr-2" />
+        Filters
+        <ChevronDown className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+      </Button>
+
+      <Button variant="secondary" onClick={handleExport}>
+        <Download className="h-4 w-4 mr-2" />
+        Export
+      </Button>
+
+      <Link to="/inventory/items/new">
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Item
+        </Button>
+      </Link>
+    </form>
+  )
+
   if (loading) {
     return (
-      <Layout title="Inventory Items">
+      <Layout
+        title="Inventory Items"
+        subtitle="Manage your church's inventory items"
+        searchSection={searchSection}
+      >
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner size="lg" />
         </div>
@@ -141,59 +227,19 @@ export default function InventoryItems() {
   }
 
   return (
-    <Layout title="Inventory Items">
+    <Layout
+      title="Inventory Items"
+      subtitle="Manage your church's inventory items"
+      searchSection={searchSection}
+    >
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Inventory Items</h1>
-            <p className="text-gray-600">Manage your church's inventory items</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Link to="/inventory/items/new">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Item
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Search and Filters */}
-        <Card className="p-6">
-          <form onSubmit={handleSearch} className="flex items-center gap-4 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search items..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <Button type="submit">Search</Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-              <ChevronDown className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-            </Button>
-          </form>
-
-          {showFilters && (
+        {/* Advanced Filters */}
+        {showFilters && (
+          <Card className="p-6">
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="border-t border-gray-200 pt-4"
             >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -235,10 +281,13 @@ export default function InventoryItems() {
                 </div>
               </div>
             </motion.div>
-          )}
+          </Card>
+        )}
 
-          {hasActiveFilters && (
-            <div className="mt-4 flex flex-wrap gap-2">
+        {/* Active Filters Badge */}
+        {hasActiveFilters && !showFilters && (
+          <Card className="p-4">
+            <div className="flex flex-wrap gap-2">
               {searchTerm && (
                 <Badge variant="outline">
                   Search: {searchTerm}
@@ -268,8 +317,8 @@ export default function InventoryItems() {
                 </Badge>
               )}
             </div>
-          )}
-        </Card>
+          </Card>
+        )}
 
         {/* Items Grid */}
         {error ? (

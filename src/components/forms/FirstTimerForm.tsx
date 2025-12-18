@@ -32,11 +32,29 @@ export default function FirstTimerForm({
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 6
 
+  // Parse existing dateOfBirth to extract month and day
+  const parseDateOfBirth = (dob: string | undefined) => {
+    if (!dob) return { month: '', day: '' }
+    // If it's in format MM-DD or YYYY-MM-DD
+    const parts = dob.split('-')
+    if (parts.length === 2) {
+      return { month: parts[0], day: parts[1] }
+    } else if (parts.length === 3) {
+      return { month: parts[1], day: parts[2] }
+    }
+    return { month: '', day: '' }
+  }
+
+  const initialDOB = parseDateOfBirth(firstTimer?.dateOfBirth)
+  const [birthMonth, setBirthMonth] = useState(initialDOB.month)
+  const [birthDay, setBirthDay] = useState(initialDOB.day)
+
   const {
     register,
     handleSubmit,
     watch,
     control,
+    setValue,
     formState: { errors },
     getValues
   } = useForm<FirstTimerFormData>({
@@ -160,6 +178,15 @@ export default function FirstTimerForm({
   })
 
   const watchedMaritalStatus = watch('maritalStatus')
+
+  // Update dateOfBirth when month or day changes
+  React.useEffect(() => {
+    if (birthMonth && birthDay) {
+      setValue('dateOfBirth', `${birthMonth}-${birthDay}`)
+    } else if (!birthMonth && !birthDay) {
+      setValue('dateOfBirth', '')
+    }
+  }, [birthMonth, birthDay, setValue])
 
   const handleFormSubmit = async (data: FirstTimerFormData) => {
     try {
@@ -413,14 +440,42 @@ export default function FirstTimerForm({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
-                Date of Birth
+                Date of Birth (Month & Day)
               </label>
-              <Input
-                type="date"
-                {...register('dateOfBirth')}
-                error={errors.dateOfBirth?.message}
-                className="transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={birthMonth}
+                  onChange={(e) => setBirthMonth(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                >
+                  <option value="">Select Month</option>
+                  <option value="01">January</option>
+                  <option value="02">February</option>
+                  <option value="03">March</option>
+                  <option value="04">April</option>
+                  <option value="05">May</option>
+                  <option value="06">June</option>
+                  <option value="07">July</option>
+                  <option value="08">August</option>
+                  <option value="09">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+                <input
+                  type="number"
+                  value={birthDay}
+                  onChange={(e) => setBirthDay(e.target.value)}
+                  placeholder="Day (1-31)"
+                  min="1"
+                  max="31"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+                />
+              </div>
+              {errors.dateOfBirth && <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.dateOfBirth.message}
+              </p>}
             </div>
 
             <div>

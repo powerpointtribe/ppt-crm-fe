@@ -44,7 +44,7 @@ export const firstTimerSchema = z.object({
   lastName: z.string().min(1, 'Last name is required').max(50, 'Last name too long'),
   phone: z.string().min(10, 'Valid phone number is required'),
   email: z.string().email('Valid email is required').optional().or(z.literal('')),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: z.string().regex(/^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/, 'Date of birth must be in MM-DD format').optional().or(z.literal('')),
   gender: z.enum(['male', 'female']).optional(),
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
   address: firstTimerAddressSchema.optional(),
@@ -148,17 +148,6 @@ export const firstTimerSchema = z.object({
 }, {
   message: 'Visit date cannot be in the future',
   path: ['dateOfVisit']
-}).refine((data) => {
-  // Validate birth date is before visit date
-  if (data.dateOfBirth && data.dateOfVisit) {
-    const birthDate = new Date(data.dateOfBirth)
-    const visitDate = new Date(data.dateOfVisit)
-    return birthDate < visitDate
-  }
-  return true
-}, {
-  message: 'Birth date must be before visit date',
-  path: ['dateOfBirth']
 })
 
 export type FirstTimerFormData = z.infer<typeof firstTimerSchema>

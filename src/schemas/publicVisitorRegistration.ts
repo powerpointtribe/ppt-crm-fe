@@ -14,8 +14,8 @@ export const publicVisitorRegistrationSchema = z.object({
   // Optional Personal Details
   dateOfBirth: z.string().optional().refine((val) => {
     if (!val || val === '') return true; // Allow empty values
-    return /^\d{4}-\d{2}-\d{2}$/.test(val);
-  }, { message: 'dateOfBirth must be in YYYY-MM-DD format' }),
+    return /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(val);
+  }, { message: 'dateOfBirth must be in MM-DD format (month and day only)' }),
   gender: z.enum(['male', 'female']).optional(),
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
   occupation: z.string().optional(),
@@ -77,17 +77,6 @@ export const publicVisitorRegistrationSchema = z.object({
 }, {
   message: 'Visit date cannot be in the future',
   path: ['dateOfVisit']
-}).refine((data) => {
-  // Validate birth date is before visit date
-  if (data.dateOfBirth && data.dateOfVisit) {
-    const birthDate = new Date(data.dateOfBirth)
-    const visitDate = new Date(data.dateOfVisit)
-    return birthDate < visitDate
-  }
-  return true
-}, {
-  message: 'Birth date must be before visit date',
-  path: ['dateOfBirth']
 })
 
 export type PublicVisitorRegistrationData = z.infer<typeof publicVisitorRegistrationSchema>

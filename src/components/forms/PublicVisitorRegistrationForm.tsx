@@ -26,6 +26,8 @@ export default function PublicVisitorRegistrationForm({
 }: PublicVisitorRegistrationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [birthMonth, setBirthMonth] = useState('')
+  const [birthDay, setBirthDay] = useState('')
 
   const {
     register,
@@ -116,6 +118,15 @@ export default function PublicVisitorRegistrationForm({
     const maxPossibleScore = requiredFields.length * 2 + optionalFields.length
     return Math.min(100, Math.round((filledCount / maxPossibleScore) * 100))
   }
+
+  // Update dateOfBirth when month or day changes
+  useEffect(() => {
+    if (birthMonth && birthDay) {
+      setValue('dateOfBirth', `${birthMonth}-${birthDay}`)
+    } else if (!birthMonth && !birthDay) {
+      setValue('dateOfBirth', '')
+    }
+  }, [birthMonth, birthDay, setValue])
 
   // Update progress when form values change
   useEffect(() => {
@@ -301,15 +312,40 @@ export default function PublicVisitorRegistrationForm({
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">🎂</div>
             <h4 className="font-semibold text-gray-800">When did you arrive on the Planet?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
           </div>
-          <Input
-            type="date"
-            {...register('dateOfBirth')}
-            placeholder="Your date of birth"
-            className="transition-all duration-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            error={errors.dateOfBirth?.message}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <select
+              value={birthMonth}
+              onChange={(e) => setBirthMonth(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300"
+            >
+              <option value="">Select Month</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+            <input
+              type="number"
+              value={birthDay}
+              onChange={(e) => setBirthDay(e.target.value)}
+              placeholder="Day (1-31)"
+              min="1"
+              max="31"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300"
+            />
+          </div>
+          {errors.dateOfBirth && (
+            <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth.message}</p>
+          )}
         </motion.div>
 
         <motion.div

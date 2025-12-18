@@ -16,7 +16,8 @@ import {
   Trash2,
   BarChart3,
   Download,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
@@ -201,46 +202,74 @@ export default function CallReports() {
   const renderAnalyticsView = () => (
     <div className="space-y-6">
       {/* Analytics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-lg border border-gray-200 p-4"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Reports</p>
               <p className="text-2xl font-bold text-gray-900">{analytics?.totalReports || 0}</p>
             </div>
-            <BarChart3 className="w-8 h-8 text-blue-600" />
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+            </div>
           </div>
-        </Card>
+        </motion.div>
 
-        <Card className="p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="bg-white rounded-lg border border-gray-200 p-4"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Contacted Today</p>
-              <p className="text-2xl font-bold text-gray-900">{analytics?.contactedToday || 0}</p>
+              <p className="text-2xl font-bold text-green-600">{analytics?.contactedToday || 0}</p>
             </div>
-            <Phone className="w-8 h-8 text-green-600" />
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <Phone className="h-5 w-5 text-green-600" />
+            </div>
           </div>
-        </Card>
+        </motion.div>
 
-        <Card className="p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-white rounded-lg border border-gray-200 p-4"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Pending Follow-ups</p>
-              <p className="text-2xl font-bold text-gray-900">{analytics?.pendingFollowUps || 0}</p>
+              <p className="text-2xl font-bold text-orange-600">{analytics?.pendingFollowUps || 0}</p>
             </div>
-            <Clock className="w-8 h-8 text-orange-600" />
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Clock className="h-5 w-5 text-orange-600" />
+            </div>
           </div>
-        </Card>
+        </motion.div>
 
-        <Card className="p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="bg-white rounded-lg border border-gray-200 p-4"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-              <p className="text-2xl font-bold text-gray-900">{analytics?.conversionRate || 0}%</p>
+              <p className="text-2xl font-bold text-purple-600">{analytics?.conversionRate || 0}%</p>
             </div>
-            <TrendingUp className="w-8 h-8 text-purple-600" />
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+            </div>
           </div>
-        </Card>
+        </motion.div>
       </div>
 
       {/* Status Distribution */}
@@ -334,55 +363,30 @@ export default function CallReports() {
 
   const renderListView = () => (
     <div className="space-y-6">
-      {/* Search and Filters */}
-      <Card className="p-6">
-        <div className="flex flex-col space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Input
-                type="text"
-                placeholder="Search by first timer name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                leftIcon={<Search className="w-4 h-4" />}
-              />
-            </div>
-            <Button onClick={handleSearch} disabled={loading}>
-              <Search className="w-4 h-4" />
-              Search
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
+      {/* Advanced Filters */}
+      {showFilters && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="bg-white rounded-lg border border-gray-200 p-4"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-900">Advanced Filters</h3>
+            <button
+              onClick={() => setShowFilters(false)}
+              className="text-gray-400 hover:text-gray-600"
             >
-              <Filter className="w-4 h-4" />
-              Filters
-            </Button>
+              <X className="w-4 h-4" />
+            </button>
           </div>
-
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 pt-4 border-t"
-            >
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Statuses</option>
-                <option value="willing_to_join">Willing to Join</option>
-                <option value="committed_to_another_church">Committed to Another Church</option>
-                <option value="unreachable">Unreachable</option>
-                <option value="others">Others</option>
-              </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Method</label>
               <select
                 value={methodFilter}
                 onChange={(e) => setMethodFilter(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
               >
                 <option value="">All Methods</option>
                 <option value="phone">Phone</option>
@@ -391,25 +395,44 @@ export default function CallReports() {
                 <option value="email">Email</option>
                 <option value="in_person">In Person</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
               <Input
                 type="date"
-                placeholder="From Date"
                 value={dateFromFilter}
                 onChange={(e) => setDateFromFilter(e.target.value)}
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
               <Input
                 type="date"
-                placeholder="To Date"
                 value={dateToFilter}
                 onChange={(e) => setDateToFilter(e.target.value)}
               />
-              <Button variant="outline" onClick={handleReset}>
-                Reset
+            </div>
+            <div className="flex items-end">
+              <Button variant="outline" onClick={handleReset} className="w-full">
+                Reset Filters
               </Button>
-            </motion.div>
-          )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {!showFilters && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(true)}
+          >
+            <Filter className="w-4 h-4 mr-2" />
+            Show Advanced Filters
+          </Button>
         </div>
-      </Card>
+      )}
 
       {/* Reports List */}
       <Card>
@@ -545,47 +568,74 @@ export default function CallReports() {
 
   if (error) {
     return (
-      <Layout>
+      <Layout title="Call Reports">
         <ErrorBoundary error={error} />
       </Layout>
     )
   }
 
-  return (
-    <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Call Reports</h1>
-            <p className="text-gray-600">Track and analyze first timer contact reports</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <Button
-                size="sm"
-                variant={viewMode === 'list' ? 'primary' : 'ghost'}
-                onClick={() => setViewMode('list')}
-              >
-                Reports
-              </Button>
-              <Button
-                size="sm"
-                variant={viewMode === 'analytics' ? 'primary' : 'ghost'}
-                onClick={() => setViewMode('analytics')}
-              >
-                Analytics
-              </Button>
-            </div>
-            <Button
-              onClick={() => viewMode === 'list' ? loadReports() : loadAnalytics()}
-              disabled={loading || analyticsLoading}
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </Button>
-          </div>
+  // Search Section to be displayed in header
+  const searchSection = (
+    <div className="flex gap-3 flex-wrap items-center w-full">
+      <div className="flex-1 min-w-[200px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search by first timer name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          />
         </div>
+      </div>
+
+      <select
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+      >
+        <option value="">All Statuses</option>
+        <option value="willing_to_join">Willing to Join</option>
+        <option value="committed_to_another_church">Committed to Another Church</option>
+        <option value="unreachable">Unreachable</option>
+        <option value="others">Others</option>
+      </select>
+
+      <button
+        type="button"
+        onClick={handleSearch}
+        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+      >
+        Search
+      </button>
+
+      <div className="flex items-center bg-gray-100 rounded-lg p-1">
+        <Button
+          size="sm"
+          variant={viewMode === 'list' ? 'primary' : 'ghost'}
+          onClick={() => setViewMode('list')}
+        >
+          Reports
+        </Button>
+        <Button
+          size="sm"
+          variant={viewMode === 'analytics' ? 'primary' : 'ghost'}
+          onClick={() => setViewMode('analytics')}
+        >
+          Analytics
+        </Button>
+      </div>
+    </div>
+  )
+
+  return (
+    <Layout
+      title="Call Reports"
+      searchSection={searchSection}
+    >
+      <div className="space-y-6">
 
         {/* Content */}
         {analyticsLoading ? (

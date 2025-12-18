@@ -31,6 +31,7 @@ export default function AuditLogs() {
   const [activeTab, setActiveTab] = useState<TabType>('successful')
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -93,10 +94,11 @@ export default function AuditLogs() {
   const loadLogs = async () => {
     try {
       setLoading(true)
+      setError(null)
       const params: AuditQueryParams = {
         page: pagination.page,
         limit: pagination.limit,
-        success: activeTab === 'successful' ? true : false,
+        success: activeTab === 'successful' ? true : undefined, // Don't filter on "other" tab
         search: searchTerm || undefined,
         action: selectedAction as AuditAction || undefined,
         entity: selectedEntity as AuditEntity || undefined,
@@ -108,16 +110,24 @@ export default function AuditLogs() {
       }
 
       const response = await auditService.getAuditLogs(params)
-      setLogs(response.items)
+
+      // Validate response
+      if (!response || !response.items) {
+        throw new Error('Invalid response from server')
+      }
+
+      setLogs(response.items || [])
       setPagination(prev => ({
         ...prev,
-        total: response.pagination.total,
-        totalPages: response.pagination.totalPages,
-        hasNext: response.pagination.hasNext,
-        hasPrev: response.pagination.hasPrev
+        total: response.pagination?.total || 0,
+        totalPages: response.pagination?.totalPages || 0,
+        hasNext: response.pagination?.hasNext || false,
+        hasPrev: response.pagination?.hasPrev || false
       }))
-    } catch (error) {
-      console.error('Error loading audit logs:', error)
+    } catch (err: any) {
+      console.error('Error loading audit logs:', err)
+      setError(err?.message || 'Failed to load audit logs')
+      setLogs([])
     } finally {
       setLoading(false)
     }
@@ -143,6 +153,7 @@ export default function AuditLogs() {
   }
 
   const getActionIcon = (action: string) => {
+    if (!action) return <FileText className="h-4 w-4" />
     if (action.includes('LOGIN') || action.includes('LOGOUT')) return <User className="h-4 w-4" />
     if (action.includes('CREATE')) return <CheckCircle className="h-4 w-4" />
     if (action.includes('DELETE')) return <AlertTriangle className="h-4 w-4" />
@@ -417,15 +428,15 @@ export default function AuditLogs() {
                         <div className="flex items-center">
                           {getActionIcon(log.action)}
                           <span className="ml-2 text-sm font-medium text-gray-900">
-                            {log.action.replace(/_/g, ' ')}
+                            {log.action ? log.action.replace(/_/g, ' ') : 'N/A'}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {log.entity.replace(/_/g, ' ')}
+                        {log.entity ? log.entity.replace(/_/g, ' ') : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {log.performedBy.firstName} {log.performedBy.lastName}
+                        {log.performedBy?.firstName || ''} {log.performedBy?.lastName || ''}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge variant={log.success ? 'success' : 'danger'}>
@@ -433,9 +444,11 @@ export default function AuditLogs() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={auditService.getSeverityColor(log.severity)}>
-                          {log.severity}
-                        </Badge>
+                        {log.severity && (
+                          <Badge className={auditService.getSeverityColor(log.severity)}>
+                            {log.severity}
+                          </Badge>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Button
@@ -513,26 +526,28 @@ export default function AuditLogs() {
                       <Badge variant={selectedLog.success ? 'success' : 'danger'}>
                         {selectedLog.success ? 'Success' : 'Failed'}
                       </Badge>
-                      <Badge className={auditService.getSeverityColor(selectedLog.severity)}>
-                        {selectedLog.severity} Severity
-                      </Badge>
+                      {selectedLog.severity && (
+                        <Badge className={auditService.getSeverityColor(selectedLog.severity)}>
+                          {selectedLog.severity} Severity
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Main Info Grid */}
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Action</label>
-                        <p className="text-sm text-gray-900 mt-1 font-medium">{selectedLog.action.replace(/_/g, ' ')}</p>
+                        <p className="text-sm text-gray-900 mt-1 font-medium">{selectedLog.action ? selectedLog.action.replace(/_/g, ' ') : 'N/A'}</p>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Entity</label>
-                        <p className="text-sm text-gray-900 mt-1">{selectedLog.entity.replace(/_/g, ' ')}</p>
+                        <p className="text-sm text-gray-900 mt-1">{selectedLog.entity ? selectedLog.entity.replace(/_/g, ' ') : 'N/A'}</p>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Performed By</label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {selectedLog.performedBy.firstName} {selectedLog.performedBy.lastName}
-                          <span className="text-gray-500 text-xs block">{selectedLog.performedBy.email}</span>
+                          {selectedLog.performedBy?.firstName || ''} {selectedLog.performedBy?.lastName || ''}
+                          <span className="text-gray-500 text-xs block">{selectedLog.performedBy?.email || ''}</span>
                         </p>
                       </div>
                       <div>
@@ -542,10 +557,12 @@ export default function AuditLogs() {
                     </div>
 
                     {/* Description */}
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</label>
-                      <p className="text-sm text-gray-900 mt-2">{selectedLog.description}</p>
-                    </div>
+                    {selectedLog.description && (
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</label>
+                        <p className="text-sm text-gray-900 mt-2">{selectedLog.description}</p>
+                      </div>
+                    )}
 
                     {/* IP Address & User Agent */}
                     {(selectedLog.ipAddress || selectedLog.userAgent) && (

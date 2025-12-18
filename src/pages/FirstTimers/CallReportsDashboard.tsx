@@ -193,54 +193,74 @@ export default function CallReportsDashboard() {
             className="space-y-6"
           >
             {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-1">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {formatNumber(globalAnalytics.totalReports)}
-                    </div>
-                    <div className="text-sm text-gray-600">Total Reports</div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="bg-white rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Reports</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatNumber(globalAnalytics.totalReports)}</p>
                   </div>
-                  <PhoneCall className="h-8 w-8 text-blue-600" />
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <PhoneCall className="h-5 w-5 text-blue-600" />
+                  </div>
                 </div>
-              </Card>
+              </motion.div>
 
-              <Card className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-1">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {formatNumber(globalAnalytics.totalFirstTimers)}
-                    </div>
-                    <div className="text-sm text-gray-600">First Timers</div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="bg-white rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">First Timers</p>
+                    <p className="text-2xl font-bold text-green-600">{formatNumber(globalAnalytics.totalFirstTimers)}</p>
                   </div>
-                  <Users className="h-8 w-8 text-green-600" />
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Users className="h-5 w-5 text-green-600" />
+                  </div>
                 </div>
-              </Card>
+              </motion.div>
 
-              <Card className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-1">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {globalAnalytics.completionRate.toFixed(1)}%
-                    </div>
-                    <div className="text-sm text-gray-600">Completion Rate</div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="bg-white rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Completion Rate</p>
+                    <p className="text-2xl font-bold text-purple-600">{globalAnalytics.completionRate.toFixed(1)}%</p>
                   </div>
-                  <Target className="h-8 w-8 text-purple-600" />
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Target className="h-5 w-5 text-purple-600" />
+                  </div>
                 </div>
-              </Card>
+              </motion.div>
 
-              <Card className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-1">
-                    <div className="text-2xl font-bold text-red-600">
-                      {formatNumber(globalAnalytics.overdueFirstTimers)}
-                    </div>
-                    <div className="text-sm text-gray-600">Overdue</div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="bg-white rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Overdue</p>
+                    <p className="text-2xl font-bold text-red-600">{formatNumber(globalAnalytics.overdueFirstTimers)}</p>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
+                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                  </div>
                 </div>
-              </Card>
+              </motion.div>
             </div>
 
             {/* Status Distribution */}

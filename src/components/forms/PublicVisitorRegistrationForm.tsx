@@ -284,7 +284,6 @@ export default function PublicVisitorRegistrationForm({
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">📍</div>
             <h4 className="font-semibold text-gray-800">Where is your base?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
           </div>
           <Input
             {...register('address')}
@@ -350,6 +349,7 @@ export default function PublicVisitorRegistrationForm({
               { value: 'family', label: '👪 Family', emoji: '👪' },
               { value: 'online', label: '💻 Online', emoji: '💻' },
               { value: 'walkby', label: '🚶 Walking by', emoji: '🚶' },
+              { value: 'outreach', label: '🚶🚶Outreach', emoji: '📺' },
               { value: 'advertisement', label: '📺 Ad', emoji: '📺' },
               { value: 'event', label: '🎉 Event', emoji: '🎉' },
               { value: 'other', label: '🤷 Other', emoji: '🤷' }

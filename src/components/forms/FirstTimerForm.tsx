@@ -557,6 +557,7 @@ export default function FirstTimerForm({
                 <option value="advertisement">Advertisement</option>
                 <option value="online">Online/Social Media</option>
                 <option value="event">Event/Program</option>
+                <option value="outreach">Outreach</option>
                 <option value="walkby">Walking By</option>
                 <option value="other">Other</option>
               </select>

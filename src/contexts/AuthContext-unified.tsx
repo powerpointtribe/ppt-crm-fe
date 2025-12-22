@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { membersService } from '@/services/members-unified';
-import { permissionsService, UserPermissionsResponse } from '@/services/permissions';
-import { Member, Role } from '@/types';
+import { membersService } from '../services/members-unified';
+import { permissionsService } from '../services/permissions';
+import type { UserPermissionsResponse } from '../services/permissions';
+import type { Member, Role } from '../types';
 
 interface AuthContextType {
   member: Member | null;

@@ -1,6 +1,6 @@
 import { apiService } from './api'
-import { transformPaginatedResponse, transformSingleResponse } from '@/utils/apiResponseTransform'
-import { Member } from '@/types'
+import { transformPaginatedResponse, transformSingleResponse } from '../utils/apiResponseTransform'
+import type { Member } from '../types'
 
 // Re-export Member for backward compatibility
 export type { Member }

@@ -196,6 +196,13 @@ const baseMenuItems = [
     requiredModule: 'roles' // Requires roles module access
   },
   {
+    icon: UserPlus,
+    label: 'User Management',
+    path: '/user-management',
+    color: 'text-blue-600',
+    requiredModule: null // Requires permission check in component
+  },
+  {
     icon: Settings,
     label: 'Settings',
     path: '/settings',

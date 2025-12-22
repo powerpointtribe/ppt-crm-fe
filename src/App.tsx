@@ -66,6 +66,9 @@ import AuditLogs from '@/pages/Audit/AuditLogs'
 // Roles Management Pages
 import { RolesListPage, CreateRolePage, EditRolePage, RoleDetailsPage } from '@/pages/roles'
 
+// User Management Pages
+import UserManagement from '@/pages/UserManagement'
+
 function App() {
   return (
     <AnimatePresence mode="wait">
@@ -339,6 +342,13 @@ function App() {
             <ModuleAccessGuard module="roles">
               <EditRolePage />
             </ModuleAccessGuard>
+          </ProtectedRoute>
+        } />
+
+        {/* User Management - Protected by permission guard */}
+        <Route path="/user-management" element={
+          <ProtectedRoute>
+            <UserManagement />
           </ProtectedRoute>
         } />
       </Routes>

@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
-import { ApiError } from '@/types'
+import type { ApiError } from '../types'
 
 class ApiService {
   private client: AxiosInstance

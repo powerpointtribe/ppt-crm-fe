@@ -112,7 +112,7 @@ const userInvitationsService = {
       '/user-invitations',
       { params }
     );
-    return response.data;
+    return response;
   },
 
   async getInvitationById(id: string): Promise<UserInvitation> {
@@ -162,7 +162,7 @@ const userInvitationsService = {
       '/user-invitations/users/active',
       { params }
     );
-    return response.data;
+    return response;
   },
 
   async updateUserRole(memberId: string, data: UpdateUserRoleData): Promise<ActiveUser> {

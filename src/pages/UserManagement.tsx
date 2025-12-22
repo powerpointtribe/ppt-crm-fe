@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Plus, Search, Users, UserPlus, RefreshCw } from 'lucide-react';
+import Layout from '@/components/Layout';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Badge from '../components/ui/Badge';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../contexts/AuthContext-unified';
 import userInvitationsService from '../services/user-invitations';
@@ -23,6 +27,7 @@ type TabType = 'active-users' | 'pending-invites';
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('active-users');
   const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Active Users State
@@ -45,7 +50,7 @@ export default function UserManagement() {
   const [showEditRoleModal, setShowEditRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<ActiveUser | null>(null);
 
-  const { showToast } = useToast();
+  const toast = useToast();
   const { hasPermission } = useAuth();
 
   // Permission checks
@@ -79,7 +84,7 @@ export default function UserManagement() {
       setActiveUsersTotalPages(response?.pagination?.totalPages || 0);
     } catch (error) {
       console.error('Failed to fetch active users:', error);
-      showToast('Failed to load active users', 'error');
+      toast.error('Failed to load active users');
     } finally {
       setLoading(false);
     }
@@ -100,7 +105,7 @@ export default function UserManagement() {
       setInvitesTotalPages(response.pagination.totalPages);
     } catch (error) {
       console.error('Failed to fetch pending invites:', error);
-      showToast('Failed to load pending invites', 'error');
+      toast.error('Failed to load pending invites');
     } finally {
       setLoading(false);
     }
@@ -115,6 +120,13 @@ export default function UserManagement() {
       fetchPendingInvites(1);
     }
   }, [activeTab]);
+
+  // Track initial load completion
+  useEffect(() => {
+    if (!loading) {
+      setInitialLoad(false);
+    }
+  }, [loading]);
 
   // Handle search
   const handleSearch = () => {
@@ -140,7 +152,7 @@ export default function UserManagement() {
     if (activeTab === 'pending-invites') {
       fetchPendingInvites(1);
     }
-    showToast('Invitation sent successfully!', 'success');
+    toast.success('Invitation sent successfully!');
   };
 
   // Handle edit role
@@ -154,7 +166,7 @@ export default function UserManagement() {
     setShowEditRoleModal(false);
     setSelectedUser(null);
     fetchActiveUsers(activeUsersPage, searchQuery);
-    showToast('User role updated successfully!', 'success');
+    toast.success('User role updated successfully!');
   };
 
   // Handle deactivate user
@@ -163,12 +175,12 @@ export default function UserManagement() {
 
     try {
       await userInvitationsService.deactivateUser(userId);
-      showToast('User deactivated successfully', 'success');
+      toast.success('User deactivated successfully');
       fetchActiveUsers(activeUsersPage, searchQuery);
       fetchStatistics();
     } catch (error) {
       console.error('Failed to deactivate user:', error);
-      showToast('Failed to deactivate user', 'error');
+      toast.error('Failed to deactivate user');
     }
   };
 
@@ -178,12 +190,12 @@ export default function UserManagement() {
 
     try {
       await userInvitationsService.deleteUserAccess(userId);
-      showToast('User access removed successfully', 'success');
+      toast.success('User access removed successfully');
       fetchActiveUsers(activeUsersPage, searchQuery);
       fetchStatistics();
     } catch (error) {
       console.error('Failed to delete user access:', error);
-      showToast('Failed to delete user access', 'error');
+      toast.error('Failed to delete user access');
     }
   };
 
@@ -191,12 +203,12 @@ export default function UserManagement() {
   const handleResendInvite = async (invitationId: string) => {
     try {
       await userInvitationsService.resendInvitation(invitationId);
-      showToast('Invitation resent successfully', 'success');
+      toast.success('Invitation resent successfully');
       fetchPendingInvites(invitesPage);
       fetchStatistics();
     } catch (error) {
       console.error('Failed to resend invitation:', error);
-      showToast('Failed to resend invitation', 'error');
+      toast.error('Failed to resend invitation');
     }
   };
 
@@ -206,60 +218,88 @@ export default function UserManagement() {
 
     try {
       await userInvitationsService.revokeInvitation(invitationId);
-      showToast('Invitation revoked successfully', 'success');
+      toast.success('Invitation revoked successfully');
       fetchPendingInvites(invitesPage);
       fetchStatistics();
     } catch (error) {
       console.error('Failed to revoke invitation:', error);
-      showToast('Failed to revoke invitation', 'error');
+      toast.error('Failed to revoke invitation');
     }
   };
+
+  // Search Section for Layout header
+  const searchSection = (
+    <div className="flex gap-3 items-center">
+      <div className="flex-1 min-w-[300px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          />
+        </div>
+      </div>
+      <Button variant="outline" size="sm" onClick={handleRefresh}>
+        <RefreshCw className="w-4 h-4" />
+      </Button>
+      {canInviteUsers && (
+        <Button size="sm" onClick={() => setShowInviteModal(true)}>
+          <UserPlus className="w-4 h-4 mr-2" />
+          Invite User
+        </Button>
+      )}
+    </div>
+  );
 
   // Check if user has permission to view users
   if (!canViewUsers) {
     return (
-      <div className="flex flex-col items-center justify-center h-96">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md text-center">
-          <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8 text-red-600" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600">
-            You don't have permission to view user management. Please contact your administrator for access.
-          </p>
-        </div>
-      </div>
+      <Layout title="User Management" subtitle="Manage user invitations and platform access">
+        <ErrorBoundary
+          error={{
+            status: 403,
+            message: 'Access Denied',
+            details: "You don't have permission to view user management. Please contact your administrator for access."
+          }}
+        />
+      </Layout>
+    );
+  }
+
+  // Initial loading state
+  if (initialLoad && loading) {
+    return (
+      <Layout
+        title="User Management"
+        subtitle="Manage user invitations and platform access"
+        searchSection={searchSection}
+      >
+        <SkeletonTable />
+      </Layout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600 mt-1">
-            Manage user invitations and platform access
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleRefresh}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-          {canInviteUsers && (
-            <Button onClick={() => setShowInviteModal(true)}>
-              <UserPlus className="w-4 h-4 mr-2" />
-              Invite User
-            </Button>
-          )}
-        </div>
-      </div>
+    <Layout
+      title="User Management"
+      subtitle="Manage user invitations and platform access"
+      searchSection={searchSection}
+    >
+      <div className="space-y-6">
 
       {/* Statistics Cards */}
       {statistics && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card className="p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="grid grid-cols-1 md:grid-cols-5 gap-4"
+        >
+          <Card className="p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Invitations</p>
@@ -268,7 +308,7 @@ export default function UserManagement() {
               <Users className="w-8 h-8 text-blue-500" />
             </div>
           </Card>
-          <Card className="p-4">
+          <Card className="p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Pending</p>
@@ -277,7 +317,7 @@ export default function UserManagement() {
               <Badge variant="warning">Pending</Badge>
             </div>
           </Card>
-          <Card className="p-4">
+          <Card className="p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Accepted</p>
@@ -286,7 +326,7 @@ export default function UserManagement() {
               <Badge variant="success">Accepted</Badge>
             </div>
           </Card>
-          <Card className="p-4">
+          <Card className="p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Revoked</p>
@@ -295,7 +335,7 @@ export default function UserManagement() {
               <Badge variant="error">Revoked</Badge>
             </div>
           </Card>
-          <Card className="p-4">
+          <Card className="p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Expired</p>
@@ -304,54 +344,59 @@ export default function UserManagement() {
               <Badge>Expired</Badge>
             </div>
           </Card>
-        </div>
+        </motion.div>
       )}
 
-      {/* Tabs and Search */}
-      <Card>
-        <div className="border-b border-gray-200">
-          <div className="flex justify-between items-center px-6 py-4">
-            <div className="flex space-x-1">
-              <button
-                onClick={() => setActiveTab('active-users')}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'active-users'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <Users className="w-4 h-4 inline mr-2" />
-                Active Users ({activeUsersTotal})
-              </button>
-              <button
-                onClick={() => setActiveTab('pending-invites')}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'pending-invites'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <UserPlus className="w-4 h-4 inline mr-2" />
-                Pending Invites ({invitesTotal})
-              </button>
-            </div>
+      {/* Tabs */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="border-b border-gray-200"
+      >
+        <nav className="flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('active-users')}
+            className={`
+              py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2
+              ${activeTab === 'active-users'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            <Users className="w-4 h-4" />
+            Active Users
+            <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
+              {activeUsersTotal}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pending-invites')}
+            className={`
+              py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2
+              ${activeTab === 'pending-invites'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            <UserPlus className="w-4 h-4" />
+            Pending Invites
+            <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
+              {invitesTotal}
+            </span>
+          </button>
+        </nav>
+      </motion.div>
 
-            {activeTab === 'active-users' && (
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Search users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-64"
-                />
-                <Button onClick={handleSearch} variant="outline">
-                  <Search className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Content Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card>
 
         {/* Content */}
         <div className="p-6">
@@ -383,7 +428,8 @@ export default function UserManagement() {
             />
           )}
         </div>
-      </Card>
+        </Card>
+      </motion.div>
 
       {/* Modals */}
       {showInviteModal && (
@@ -403,6 +449,7 @@ export default function UserManagement() {
           onSuccess={handleEditRoleSuccess}
         />
       )}
-    </div>
+      </div>
+    </Layout>
   );
 }

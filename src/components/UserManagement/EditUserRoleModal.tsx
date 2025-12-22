@@ -29,18 +29,18 @@ export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUser
   const [selectedRoleId, setSelectedRoleId] = useState(user.role?._id || '');
   const [submitting, setSubmitting] = useState(false);
 
-  const { showToast } = useToast();
+  const toast = useToast();
 
   // Fetch roles
   useEffect(() => {
     const fetchRoles = async () => {
       setLoading(true);
       try {
-        const response = await rolesService.getRoles({ isActive: true });
-        setRoles(response.data);
+        const roles = await rolesService.getRoles({ isActive: true });
+        setRoles(roles);
       } catch (error) {
         console.error('Failed to fetch roles:', error);
-        showToast('Failed to load roles', 'error');
+        toast.error('Failed to load roles');
       } finally {
         setLoading(false);
       }
@@ -54,12 +54,12 @@ export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUser
     e.preventDefault();
 
     if (!selectedRoleId) {
-      showToast('Please select a role', 'error');
+      toast.error('Please select a role');
       return;
     }
 
     if (selectedRoleId === user.role?._id) {
-      showToast('No changes made', 'info');
+      toast.info('No changes made');
       onClose();
       return;
     }
@@ -73,14 +73,14 @@ export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUser
     } catch (error: any) {
       console.error('Failed to update user role:', error);
       const message = error?.response?.data?.message || 'Failed to update user role';
-      showToast(message, 'error');
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Modal onClose={onClose} size="md">
+    <Modal isOpen={true} onClose={onClose} size="md">
       <div className="p-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">

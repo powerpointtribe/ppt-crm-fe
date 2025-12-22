@@ -43,7 +43,7 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
   const [submitting, setSubmitting] = useState(false);
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
-  const { showToast } = useToast();
+  const toast = useToast();
 
   // Fetch members without platform access
   useEffect(() => {
@@ -51,20 +51,20 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
       setLoading(true);
       try {
         // Fetch all members and filter those without roles or inactive
-        const response = await membersService.searchMembers({
+        const response = await membersService.getMembers({
           page: 1,
           limit: 100,
         });
 
         // Filter members who don't have platform access yet
-        const membersWithoutAccess = response.data.filter(
+        const membersWithoutAccess = response.items.filter(
           (member: Member) => !member.role || !member.isActive
         );
 
         setMembers(membersWithoutAccess);
       } catch (error) {
         console.error('Failed to fetch members:', error);
-        showToast('Failed to load members', 'error');
+        toast.error('Failed to load members');
       } finally {
         setLoading(false);
       }
@@ -77,11 +77,11 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
   useEffect(() => {
     const fetchRoles = async () => {
       try {
-        const response = await rolesService.getRoles({ isActive: true });
-        setRoles(response.data);
+        const roles = await rolesService.getRoles({ isActive: true });
+        setRoles(roles);
       } catch (error) {
         console.error('Failed to fetch roles:', error);
-        showToast('Failed to load roles', 'error');
+        toast.error('Failed to load roles');
       }
     };
 
@@ -108,12 +108,12 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
     e.preventDefault();
 
     if (!selectedMember) {
-      showToast('Please select a member', 'error');
+      toast.error('Please select a member');
       return;
     }
 
     if (!selectedRoleId) {
-      showToast('Please select a role', 'error');
+      toast.error('Please select a role');
       return;
     }
 
@@ -128,24 +128,24 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
     } catch (error: any) {
       console.error('Failed to create invitation:', error);
       const message = error?.response?.data?.message || 'Failed to send invitation';
-      showToast(message, 'error');
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Modal onClose={onClose} size="lg">
-      <div className="p-6">
+    <Modal isOpen={true} onClose={onClose} size="md">
+      <div className="p-4">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-4">
           <div className="flex items-center">
-            <div className="bg-blue-100 p-3 rounded-lg mr-3">
-              <UserPlus className="w-6 h-6 text-blue-600" />
+            <div className="bg-blue-100 p-2 rounded-lg mr-2">
+              <UserPlus className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Invite User</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <h2 className="text-xl font-bold text-gray-900">Invite User</h2>
+              <p className="text-xs text-gray-600 mt-0.5">
                 Send an invitation to grant platform access
               </p>
             </div>
@@ -154,16 +154,16 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center py-12">
+          <div className="flex justify-center items-center py-8">
             <LoadingSpinner />
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Member Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -276,9 +276,9 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
             </div>
 
             {/* Info Box */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-2">What happens next?</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <h4 className="font-medium text-blue-900 mb-1.5 text-sm">What happens next?</h4>
+              <ul className="text-xs text-blue-800 space-y-0.5">
                 <li>• An email will be sent with login credentials</li>
                 <li>• The user will receive a temporary password</li>
                 <li>• They must change their password on first login</li>
@@ -287,7 +287,7 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>

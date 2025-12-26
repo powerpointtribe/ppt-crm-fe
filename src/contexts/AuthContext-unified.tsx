@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { membersService } from '../services/members-unified';
-import { permissionsService } from '../services/permissions';
-import type { UserPermissionsResponse } from '../services/permissions';
 import type { Member, Role } from '../types';
 
 interface AuthContextType {
@@ -12,12 +10,15 @@ interface AuthContextType {
   register: (data: any) => Promise<void>;
   logout: () => void;
   refreshAuth: () => Promise<void>;
-  hasPermission: (permission: string) => boolean; // NEW: Check specific permission
-  hasAnyPermission: (permissions: string[]) => boolean; // NEW: Check if has any of the permissions
-  hasAllPermissions: (permissions: string[]) => boolean; // NEW: Check if has all permissions
+  // Primary permission methods (strict permissions-based access)
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAllPermissions: (permissions: string[]) => boolean;
+  // Legacy methods (kept for backward compatibility, but deprecated)
   canAccessModule: (module: string) => boolean;
   hasSystemRole: (role: string) => boolean;
   hasLeadershipRole: (role: 'district_pastor' | 'unit_head' | 'champ') => boolean;
+  // Computed flags (derived from permissions)
   isGIA: boolean;
   isPastor: boolean;
   isAdmin: boolean;
@@ -130,46 +131,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      // Fetch user permissions from backend
-      try {
-        const userPermissions = await permissionsService.getUserPermissions();
+      // Use permissions from profile response directly (backend now returns full permissions)
+      const profilePermissions = memberProfile.permissions || [];
+      const profileRole = memberProfile.role;
 
-        // Merge member profile with permissions
-        const memberWithPermissions = {
-          ...memberProfile,
-          role: userPermissions.role,
-          permissions: userPermissions.permissions,
-          permissionsGrouped: userPermissions.permissionsGrouped,
-        };
-
-        setMember(memberWithPermissions);
-        localStorage.setItem('cached_member', JSON.stringify(memberWithPermissions));
-
-        // Cache permissions for offline use
-        const permissions = {
-          accessibleModules: memberProfile.accessibleModules || [],
-          systemRoles: memberProfile.systemRoles || [],
-          permissions: userPermissions.permissions,
-          permissionsGrouped: userPermissions.permissionsGrouped,
-          role: userPermissions.role.name
-        };
-        setCachedPermissions(permissions);
-        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
-      } catch (permError) {
-        console.error('Failed to fetch permissions, using profile data only:', permError);
-        // Fallback to just profile data if permissions fetch fails
-        setMember(memberProfile);
-        localStorage.setItem('cached_member', JSON.stringify(memberProfile));
-        const permissions = {
-          accessibleModules: memberProfile.accessibleModules || [],
-          systemRoles: memberProfile.systemRoles || [],
-          permissions: [],
-          permissionsGrouped: {},
-          role: (memberProfile as any)?.role
-        };
-        setCachedPermissions(permissions);
-        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      // Build permissionsGrouped from flat permissions array
+      const permissionsGrouped: Record<string, string[]> = {};
+      for (const perm of profilePermissions) {
+        const [module] = perm.split(':');
+        if (!permissionsGrouped[module]) {
+          permissionsGrouped[module] = [];
+        }
+        permissionsGrouped[module].push(perm);
       }
+
+      // Set member with permissions from profile response
+      const memberWithPermissions = {
+        ...memberProfile,
+        role: profileRole,
+        permissions: profilePermissions,
+        permissionsGrouped,
+      };
+
+      setMember(memberWithPermissions);
+      localStorage.setItem('cached_member', JSON.stringify(memberWithPermissions));
+
+      // Cache permissions for offline use
+      const permissions = {
+        accessibleModules: memberProfile.accessibleModules || [],
+        systemRoles: memberProfile.systemRoles || [],
+        permissions: profilePermissions,
+        permissionsGrouped,
+        role: profileRole?.name || profileRole
+      };
+      setCachedPermissions(permissions);
+      localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+
+      console.log('Auth check successful, permissions loaded:', profilePermissions.length);
     } catch (error: any) {
       console.error('Auth check failed:', error);
       console.log('Error details:', {
@@ -219,46 +217,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Handle both 'member' and 'user' properties from API response
       const memberData = response.member || (response as any).user;
 
-      // Fetch user permissions after login
-      try {
-        const userPermissions = await permissionsService.getUserPermissions();
+      // Use permissions from login response directly (backend now returns full permissions)
+      const loginPermissions = memberData.permissions || [];
+      const loginRole = memberData.role;
 
-        // Merge member data with permissions
-        const memberWithPermissions = {
-          ...memberData,
-          role: userPermissions.role,
-          permissions: userPermissions.permissions,
-          permissionsGrouped: userPermissions.permissionsGrouped,
-        };
-
-        setMember(memberWithPermissions);
-        localStorage.setItem('cached_member', JSON.stringify(memberWithPermissions));
-
-        // Cache permissions for offline use
-        const permissions = {
-          accessibleModules: memberData.accessibleModules || [],
-          systemRoles: memberData.systemRoles || [],
-          permissions: userPermissions.permissions,
-          permissionsGrouped: userPermissions.permissionsGrouped,
-          role: userPermissions.role.name
-        };
-        setCachedPermissions(permissions);
-        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
-      } catch (permError) {
-        console.error('Failed to fetch permissions after login, using member data only:', permError);
-        // Fallback to just member data if permissions fetch fails
-        setMember(memberData);
-        localStorage.setItem('cached_member', JSON.stringify(memberData));
-        const permissions = {
-          accessibleModules: memberData.accessibleModules || [],
-          systemRoles: memberData.systemRoles || [],
-          permissions: [],
-          permissionsGrouped: {},
-          role: (memberData as any)?.role
-        };
-        setCachedPermissions(permissions);
-        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      // Build permissionsGrouped from flat permissions array
+      const permissionsGrouped: Record<string, string[]> = {};
+      for (const perm of loginPermissions) {
+        const [module] = perm.split(':');
+        if (!permissionsGrouped[module]) {
+          permissionsGrouped[module] = [];
+        }
+        permissionsGrouped[module].push(perm);
       }
+
+      // Set member with permissions from login response
+      const memberWithPermissions = {
+        ...memberData,
+        role: loginRole,
+        permissions: loginPermissions,
+        permissionsGrouped,
+      };
+
+      setMember(memberWithPermissions);
+      localStorage.setItem('cached_member', JSON.stringify(memberWithPermissions));
+
+      // Cache permissions for offline use
+      const permissions = {
+        accessibleModules: memberData.accessibleModules || [],
+        systemRoles: memberData.systemRoles || [],
+        permissions: loginPermissions,
+        permissionsGrouped,
+        role: loginRole?.name || loginRole
+      };
+      setCachedPermissions(permissions);
+      localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+
+      console.log('Login successful, permissions loaded:', loginPermissions.length);
     } catch (error) {
       throw error;
     }
@@ -376,37 +371,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Computed properties for easy access
+  // Computed properties derived from PERMISSIONS (strict permissions-based)
   const isGIA = member?.unitType === 'gia' || false;
-  const isPastor = hasSystemRole('pastor');
-  const isAdmin = hasSystemRole('admin') || hasSystemRole('super_admin');
-  const isLeader = member?.leadershipRoles?.isDistrictPastor ||
-                   member?.leadershipRoles?.isUnitHead ||
-                   member?.leadershipRoles?.isChamp ||
-                   (member as any)?.role === 'super_admin' ||
-                   false;
+
+  // Admin check: has roles:view permission (indicates admin-level access)
+  const isAdmin = hasPermission('roles:view') || hasPermission('roles:create');
+
+  // Pastor check: can manage members and first-timers
+  const isPastor = hasPermission('members:create') && hasPermission('first-timers:view');
+
+  // Leader check: can manage any group/unit
+  const isLeader = hasPermission('units:update') || hasPermission('units:create');
 
   // More comprehensive authentication check
   const hasToken = !!localStorage.getItem('auth_token');
   const isAuthenticated = !!member || (hasToken && !!cachedPermissions);
 
-  // Module-specific access checks
-  const canManageMembers = canAccessModule('members');
-  const canAccessFirstTimers = canAccessModule('first-timers');
-  const canManageGroups = canAccessModule('units');
-
-  // Debug logging for computed properties
-  console.log('AuthContext computed properties:', {
-    member: !!member,
-    cachedPermissions: !!cachedPermissions,
-    hasToken,
-    isAuthenticated,
-    isLoading,
-    canManageMembers,
-    canAccessFirstTimers,
-    canManageGroups,
-    isAdmin
-  });
+  // Module-specific access checks (derived from permissions)
+  const canManageMembers = hasPermission('members:view');
+  const canAccessFirstTimers = hasPermission('first-timers:view');
+  const canManageGroups = hasPermission('units:view');
 
   const value: AuthContextType = {
     member,

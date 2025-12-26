@@ -238,3 +238,6 @@ export interface Attendance {
   notes?: string;
   createdAt: string;
 }
+
+// Re-export Branch types
+export * from './branch';

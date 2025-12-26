@@ -27,44 +27,49 @@ import {
   Archive,
   Activity,
   BarChart3,
+  GitBranch,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore } from '@/store'
 import { useAuth } from '@/contexts/AuthContext-unified'
 
+// Menu items with required permissions (strict permissions-based access)
 const baseMenuItems = [
   {
     icon: LayoutDashboard,
     label: 'Dashboard',
     path: '/dashboard',
     color: 'text-primary-600',
-    requiredModule: null // Always visible
+    requiredPermission: 'dashboard:view', // Requires dashboard view permission
   },
   {
     icon: UsersIcon,
     label: 'Members',
     path: '/members',
     color: 'text-green-600',
-    requiredModule: 'members',
+    requiredPermission: 'members:view', // Requires members view permission
     hasDropdown: true,
     subItems: [
       {
         icon: BarChart3,
         label: 'Analytics',
         path: '/members/analytics',
-        color: 'text-purple-600'
+        color: 'text-purple-600',
+        requiredPermission: 'members:view-stats',
       },
       {
         icon: FileText,
         label: 'Reports',
         path: '/members/reports',
-        color: 'text-blue-600'
+        color: 'text-blue-600',
+        requiredPermission: 'members:view-stats',
       },
       {
         icon: FileText,
         label: 'Service Reports',
         path: '/members/service-reports',
-        color: 'text-orange-600'
+        color: 'text-orange-600',
+        requiredPermission: 'service-reports:view',
       }
     ]
   },
@@ -73,20 +78,22 @@ const baseMenuItems = [
     label: 'First Timers',
     path: '/first-timers',
     color: 'text-orange-600',
-    requiredModule: 'first-timers',
+    requiredPermission: 'first-timers:view',
     hasDropdown: true,
     subItems: [
       {
         icon: Phone,
         label: 'Call Reports',
         path: '/first-timers/call-reports',
-        color: 'text-green-600'
+        color: 'text-green-600',
+        requiredPermission: 'first-timers:view-call-reports',
       },
       {
         icon: MessageCircle,
         label: 'Message Drafts',
         path: '/first-timers/message-drafts',
-        color: 'text-purple-600'
+        color: 'text-purple-600',
+        requiredPermission: 'first-timers:view',
       }
     ]
   },
@@ -95,26 +102,29 @@ const baseMenuItems = [
     label: 'Groups',
     path: '/groups',
     color: 'text-purple-600',
-    requiredModule: 'units',
+    requiredPermission: 'units:view',
     hasDropdown: true,
     subItems: [
       {
         icon: MapPin,
         label: 'Districts',
         path: '/groups?page=1&limit=20&search=&type=district',
-        color: 'text-blue-600'
+        color: 'text-blue-600',
+        requiredPermission: 'units:view',
       },
       {
         icon: Heart,
         label: 'Ministries',
         path: '/groups?page=1&limit=20&search=&type=ministry',
-        color: 'text-red-600'
+        color: 'text-red-600',
+        requiredPermission: 'units:view',
       },
       {
         icon: Building2,
         label: 'Units',
         path: '/groups?page=1&limit=20&search=&type=unit',
-        color: 'text-green-600'
+        color: 'text-green-600',
+        requiredPermission: 'units:view',
       }
     ]
   },
@@ -123,32 +133,36 @@ const baseMenuItems = [
     label: 'Inventory',
     path: '/inventory',
     color: 'text-blue-600',
-    requiredModule: 'inventory',
+    requiredPermission: 'inventory:view-items',
     hasDropdown: true,
     subItems: [
       {
         icon: Package,
         label: 'Items',
         path: '/inventory/items',
-        color: 'text-blue-600'
+        color: 'text-blue-600',
+        requiredPermission: 'inventory:view-items',
       },
       {
         icon: Archive,
         label: 'Categories',
         path: '/inventory/categories',
-        color: 'text-purple-600'
+        color: 'text-purple-600',
+        requiredPermission: 'inventory:view-categories',
       },
       {
         icon: Activity,
         label: 'Movements',
         path: '/inventory/movements',
-        color: 'text-green-600'
+        color: 'text-green-600',
+        requiredPermission: 'inventory:view-movements',
       },
       {
         icon: BarChart3,
         label: 'Reports',
         path: '/inventory/reports',
-        color: 'text-orange-600'
+        color: 'text-orange-600',
+        requiredPermission: 'inventory:view-stats',
       }
     ]
   },
@@ -157,20 +171,22 @@ const baseMenuItems = [
     label: 'Audit',
     path: '/audit',
     color: 'text-red-600',
-    requiredModule: null, // Always visible
+    requiredPermission: 'audit-logs:view',
     hasDropdown: true,
     subItems: [
       {
         icon: FileText,
         label: 'Logs',
         path: '/audit/logs',
-        color: 'text-red-600'
+        color: 'text-red-600',
+        requiredPermission: 'audit-logs:view',
       },
       {
         icon: BarChart3,
         label: 'Reports',
         path: '/audit/reports',
-        color: 'text-orange-600'
+        color: 'text-orange-600',
+        requiredPermission: 'audit-logs:view-statistics',
       }
     ]
   },
@@ -179,28 +195,35 @@ const baseMenuItems = [
     label: 'Bulk Operations',
     path: '/bulk-operations',
     color: 'text-purple-600',
-    requiredModule: null // Available to all authenticated users
+    requiredPermission: 'bulk-operations:view-history',
+  },
+  {
+    icon: GitBranch,
+    label: 'Branches',
+    path: '/branches',
+    color: 'text-teal-600',
+    requiredPermission: 'branches:view',
   },
   {
     icon: Shield,
     label: 'Roles',
     path: '/roles',
     color: 'text-indigo-600',
-    requiredModule: 'roles' // Requires roles module access
+    requiredPermission: 'roles:view-roles',
   },
   {
     icon: UserPlus,
     label: 'User Management',
     path: '/user-management',
     color: 'text-blue-600',
-    requiredModule: null // Requires permission check in component
+    requiredPermission: 'users:view',
   },
   {
     icon: Settings,
     label: 'Settings',
     path: '/settings',
     color: 'text-gray-600',
-    requiredModule: null // Always visible
+    requiredPermission: null, // Settings always visible to authenticated users
   },
 ]
 
@@ -210,29 +233,36 @@ export default function Sidebar() {
   const [isMobile, setIsMobile] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([])
-  const { member, isLoading, canAccessModule } = useAuth()
+  const { member, hasPermission } = useAuth()
 
-  // Filter menu items based on user permissions
+  // Filter menu items based on user permissions (strict permissions-based access)
   const menuItems = useMemo(() => {
     if (!member) {
-      console.log('Sidebar: No member data, showing only public items');
-      return baseMenuItems.filter(item => item.requiredModule === null);
+      return [];
     }
 
     const filtered = baseMenuItems.filter(item => {
-      // Always show items with no required module
-      if (item.requiredModule === null) {
+      // Show items with no required permission (e.g., Settings)
+      if (item.requiredPermission === null) {
         return true;
       }
-      // Check if user has access to the required module
-      const hasAccess = canAccessModule(item.requiredModule);
-      console.log(`Sidebar: Item '${item.label}' requires module '${item.requiredModule}', access: ${hasAccess}`);
-      return hasAccess;
+      // Check if user has the required permission
+      return hasPermission(item.requiredPermission);
+    }).map(item => {
+      // Also filter sub-items based on permissions
+      if (item.hasDropdown && item.subItems) {
+        return {
+          ...item,
+          subItems: item.subItems.filter(subItem =>
+            !subItem.requiredPermission || hasPermission(subItem.requiredPermission)
+          )
+        };
+      }
+      return item;
     });
 
-    console.log(`Sidebar: Showing ${filtered.length} of ${baseMenuItems.length} menu items`);
     return filtered;
-  }, [member, canAccessModule])
+  }, [member, hasPermission])
 
   const toggleDropdown = (itemPath: string) => {
     setOpenDropdowns(prev =>

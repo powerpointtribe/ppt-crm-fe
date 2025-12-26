@@ -70,6 +70,9 @@ import { RolesListPage, CreateRolePage, EditRolePage, RoleDetailsPage } from '@/
 // User Management Pages
 import UserManagement from '@/pages/UserManagement'
 
+// Branches Management Pages
+import { Branches, BranchForm, BranchDetail } from '@/pages/Branches'
+
 function App() {
   return (
     <>
@@ -82,6 +85,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/visitor-registration" element={<PublicVisitorRegistration />} />
+        <Route path="/visitor-registration/:branchSlug" element={<PublicVisitorRegistration />} />
         <Route path="/workers-training-registration" element={<WorkersTrainingRegistration />} />
 
         {/* Dashboard - Requires Login Only */}
@@ -352,6 +356,36 @@ function App() {
         <Route path="/user-management" element={
           <ProtectedRoute>
             <UserManagement />
+          </ProtectedRoute>
+        } />
+
+        {/* Branches Management - Protected by module access guard */}
+        <Route path="/branches" element={
+          <ProtectedRoute>
+            <ModuleAccessGuard module="branches">
+              <Branches />
+            </ModuleAccessGuard>
+          </ProtectedRoute>
+        } />
+        <Route path="/branches/new" element={
+          <ProtectedRoute>
+            <ModuleAccessGuard module="branches">
+              <BranchForm mode="create" />
+            </ModuleAccessGuard>
+          </ProtectedRoute>
+        } />
+        <Route path="/branches/:id" element={
+          <ProtectedRoute>
+            <ModuleAccessGuard module="branches">
+              <BranchDetail />
+            </ModuleAccessGuard>
+          </ProtectedRoute>
+        } />
+        <Route path="/branches/:id/edit" element={
+          <ProtectedRoute>
+            <ModuleAccessGuard module="branches">
+              <BranchForm mode="edit" />
+            </ModuleAccessGuard>
           </ProtectedRoute>
         } />
         </Routes>

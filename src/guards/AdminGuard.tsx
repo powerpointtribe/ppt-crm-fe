@@ -1,5 +1,5 @@
 import React from 'react'
-import { RoleGuard } from './RoleGuard'
+import { PermissionGuard } from './PermissionGuard'
 
 interface AdminGuardProps {
   children: React.ReactNode
@@ -8,21 +8,32 @@ interface AdminGuardProps {
   allowPastors?: boolean
 }
 
+/**
+ * AdminGuard - Guards routes/components that require admin-level access
+ * Uses permissions-based access control (strict permissions)
+ *
+ * Admin access is determined by having 'roles:view' permission
+ * Pastor access (if allowed) is determined by having 'members:create' permission
+ */
 export const AdminGuard: React.FC<AdminGuardProps> = ({
   children,
   fallback,
   redirectTo = '/dashboard',
   allowPastors = false
 }) => {
-  const allowedRoles = allowPastors ? ['admin', 'pastor'] : ['admin']
+  // Admin permissions: can manage roles
+  // Pastor permissions: can create members (if allowPastors is true)
+  const requiredPermissions = allowPastors
+    ? ['roles:view', 'members:create']
+    : ['roles:view']
 
   return (
-    <RoleGuard
-      allowedRoles={allowedRoles}
+    <PermissionGuard
+      anyPermission={requiredPermissions}
       fallback={fallback}
       redirectTo={redirectTo}
     >
       {children}
-    </RoleGuard>
+    </PermissionGuard>
   )
 }

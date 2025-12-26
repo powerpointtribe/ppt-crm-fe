@@ -1,6 +1,5 @@
 import React from 'react'
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext-unified'
+import { PermissionGuard } from './PermissionGuard'
 
 interface MembersGuardProps {
   children: React.ReactNode
@@ -8,31 +7,22 @@ interface MembersGuardProps {
   redirectTo?: string
 }
 
+/**
+ * MembersGuard - Guards routes/components that require members module access
+ * Uses permissions-based access control (strict permissions)
+ */
 export const MembersGuard: React.FC<MembersGuardProps> = ({
   children,
   fallback,
   redirectTo = '/dashboard'
 }) => {
-  const { isAuthenticated, member, canAccessModule } = useAuth()
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (!member) {
-    return <Navigate to="/login" replace />
-  }
-
-  // Check if member can access members module
-  const hasAccess = canAccessModule('members')
-  console.log(`MembersGuard: Checking members access, Access: ${hasAccess}`)
-
-  if (!hasAccess) {
-    if (fallback) {
-      return <>{fallback}</>
-    }
-    return <Navigate to={redirectTo} replace />
-  }
-
-  return <>{children}</>
+  return (
+    <PermissionGuard
+      permission="members:view"
+      fallback={fallback}
+      redirectTo={redirectTo}
+    >
+      {children}
+    </PermissionGuard>
+  )
 }

@@ -1,6 +1,5 @@
 import React from 'react'
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext-unified'
+import { PermissionGuard } from './PermissionGuard'
 
 interface FirstTimersGuardProps {
   children: React.ReactNode
@@ -8,31 +7,22 @@ interface FirstTimersGuardProps {
   redirectTo?: string
 }
 
+/**
+ * FirstTimersGuard - Guards routes/components that require first-timers module access
+ * Uses permissions-based access control (strict permissions)
+ */
 export const FirstTimersGuard: React.FC<FirstTimersGuardProps> = ({
   children,
   fallback,
   redirectTo = '/dashboard'
 }) => {
-  const { isAuthenticated, member, canAccessModule } = useAuth()
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (!member) {
-    return <Navigate to="/login" replace />
-  }
-
-  // Check if member can access first-timers module
-  const hasAccess = canAccessModule('first-timers')
-  console.log(`FirstTimersGuard: Checking first-timers access, Access: ${hasAccess}`)
-
-  if (!hasAccess) {
-    if (fallback) {
-      return <>{fallback}</>
-    }
-    return <Navigate to={redirectTo} replace />
-  }
-
-  return <>{children}</>
+  return (
+    <PermissionGuard
+      permission="first-timers:view"
+      fallback={fallback}
+      redirectTo={redirectTo}
+    >
+      {children}
+    </PermissionGuard>
+  )
 }

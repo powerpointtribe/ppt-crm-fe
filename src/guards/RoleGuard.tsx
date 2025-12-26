@@ -7,9 +7,26 @@ interface RoleGuardProps {
   children: React.ReactNode
   fallback?: React.ReactNode
   redirectTo?: string
-  requireAll?: boolean // If true, member must have ALL roles. If false, just one role is enough
+  requireAll?: boolean
 }
 
+// Map roles to their equivalent permissions (strict permissions-based)
+const roleToPermissionMap: Record<string, string[]> = {
+  'super_admin': ['roles:view', 'roles:create'],
+  'admin': ['roles:view'],
+  'pastor': ['members:create', 'first-timers:view'],
+  'branch_pastor': ['members:view', 'units:view'],
+  'district_pastor': ['members:view', 'units:view'],
+  'unit_head': ['members:view'],
+  'member': ['dashboard:view'],
+}
+
+/**
+ * RoleGuard - Guards routes/components based on role access
+ * DEPRECATED: Use PermissionGuard instead for strict permissions-based access
+ *
+ * This guard now internally maps roles to permissions for backward compatibility
+ */
 export const RoleGuard: React.FC<RoleGuardProps> = ({
   allowedRoles,
   children,
@@ -17,7 +34,7 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   redirectTo = '/dashboard',
   requireAll = false
 }) => {
-  const { isAuthenticated, member } = useAuth()
+  const { isAuthenticated, member, hasAnyPermission, hasAllPermissions } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -27,15 +44,17 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     return <Navigate to="/login" replace />
   }
 
-  // Check if member has the required role(s)
-  const memberRoles = member.systemRoles || []
-  const hasRequiredRole = requireAll
-    ? allowedRoles.every(role => memberRoles.includes(role))
-    : allowedRoles.some(role => memberRoles.includes(role))
+  // Convert roles to permissions
+  const requiredPermissions = allowedRoles.flatMap(role =>
+    roleToPermissionMap[role] || [`${role}:view`]
+  )
 
-  console.log(`RoleGuard: Checking roles. Required: ${allowedRoles.join(', ')}, Member has: ${memberRoles.join(', ')}, Access: ${hasRequiredRole}`)
+  // Check if member has the required permission(s)
+  const hasAccess = requireAll
+    ? hasAllPermissions(requiredPermissions)
+    : hasAnyPermission(requiredPermissions)
 
-  if (!hasRequiredRole) {
+  if (!hasAccess) {
     if (fallback) {
       return <>{fallback}</>
     }

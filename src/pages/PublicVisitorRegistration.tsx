@@ -1,27 +1,84 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Heart, Users, Star, ArrowLeft } from 'lucide-react'
+import { Check, Heart, Users, Star, ArrowLeft, Building2 } from 'lucide-react'
 import PublicVisitorRegistrationForm from '@/components/forms/PublicVisitorRegistrationForm'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { PublicVisitorRegistrationData, transformToFirstTimerData } from '@/schemas/publicVisitorRegistration'
 import { firstTimersService } from '@/services/first-timers'
+import { branchesService } from '@/services/branches'
+import type { PublicBranch } from '@/types/branch'
 
 export default function PublicVisitorRegistration() {
+  const { branchSlug } = useParams<{ branchSlug?: string }>()
+  const [searchParams] = useSearchParams()
+  const branchFromQuery = searchParams.get('branch')
+
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [branch, setBranch] = useState<PublicBranch | null>(null)
+  const [loadingBranch, setLoadingBranch] = useState(false)
+  const [branches, setBranches] = useState<PublicBranch[]>([])
+  const [selectedBranchSlug, setSelectedBranchSlug] = useState<string>('')
+
+  // Fetch branch info if slug is provided
+  useEffect(() => {
+    const fetchBranchInfo = async () => {
+      const slug = branchSlug || branchFromQuery
+
+      if (slug) {
+        setLoadingBranch(true)
+        try {
+          const branchData = await branchesService.getBranchBySlug(slug)
+          if (branchData) {
+            setBranch(branchData)
+            setSelectedBranchSlug(branchData.slug)
+          }
+        } catch (err) {
+          console.error('Error fetching branch:', err)
+        } finally {
+          setLoadingBranch(false)
+        }
+      } else {
+        // No branch specified, fetch all branches for selection
+        try {
+          const allBranches = await branchesService.getPublicBranches()
+          setBranches(allBranches)
+        } catch (err) {
+          console.error('Error fetching branches:', err)
+        }
+      }
+    }
+
+    fetchBranchInfo()
+  }, [branchSlug, branchFromQuery])
 
   const handleSubmit = async (data: PublicVisitorRegistrationData) => {
     try {
       setLoading(true)
       setError(null)
 
+      // Validate branch selection
+      const finalBranchSlug = branch?.slug || selectedBranchSlug
+      if (!finalBranchSlug && branches.length > 0) {
+        setError('Please select a branch')
+        return
+      }
+
       // Transform the public registration data to first timer format
       const firstTimerData = transformToFirstTimerData(data)
 
+      // Add branch context to the submission
+      const submissionData = {
+        ...firstTimerData,
+        branchSlug: finalBranchSlug || undefined, // Include branch context
+      }
+
       // Submit to the public endpoint (no auth required)
-      await firstTimersService.createPublicFirstTimer(firstTimerData)
+      await firstTimersService.createPublicFirstTimer(submissionData)
 
       setSubmitted(true)
     } catch (error: any) {
@@ -114,6 +171,15 @@ export default function PublicVisitorRegistration() {
     )
   }
 
+  // Show loading state while fetching branch
+  if (loadingBranch) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-6">
@@ -142,10 +208,59 @@ export default function PublicVisitorRegistration() {
               <p className="text-gray-600 mb-4">
                 We're excited you visited us! Please share some information so we can connect with you.
               </p>
+
+              {/* Branch Info Display */}
+              {branch && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-blue-100"
+                >
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-gray-700">{branch.name}</span>
+                </motion.div>
+              )}
             </motion.div>
 
           </div>
         </motion.div>
+
+        {/* Branch Selection (when no branch is specified) */}
+        {!branch && branches.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="max-w-4xl mx-auto mb-6"
+          >
+            <Card className="p-4 bg-white shadow-sm">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                  Select Your Branch <span className="text-red-500">*</span>
+                </div>
+              </label>
+              <select
+                value={selectedBranchSlug}
+                onChange={(e) => setSelectedBranchSlug(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              >
+                <option value="">Choose the branch you visited...</option>
+                {branches.map((b) => (
+                  <option key={b.slug} value={b.slug}>
+                    {b.name}
+                    {b.address?.city && ` - ${b.address.city}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Please select the church branch you visited today
+              </p>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Error Message */}
         <AnimatePresence>

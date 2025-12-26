@@ -14,6 +14,15 @@ export interface UserInvitation {
     name: string;
     displayName: string;
   };
+  branch: {
+    _id: string;
+    name: string;
+    slug: string;
+  };
+  assignedDistricts?: Array<{
+    _id: string;
+    name: string;
+  }>;
   status: 'pending' | 'accepted' | 'revoked' | 'expired';
   invitedBy: {
     _id: string;
@@ -37,6 +46,8 @@ export interface UserInvitation {
 export interface CreateInvitationData {
   memberId: string;
   roleId: string;
+  branchId: string; // Required for RBAC - user will be scoped to this branch
+  assignedDistricts?: string[]; // For Assistant Pastors - districts they can manage
   notes?: string;
 }
 

@@ -1,6 +1,5 @@
 import React from 'react'
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext-unified'
+import { PermissionGuard } from './PermissionGuard'
 
 interface LeadershipGuardProps {
   children: React.ReactNode
@@ -13,6 +12,17 @@ interface LeadershipGuardProps {
   allowAdmins?: boolean
 }
 
+/**
+ * LeadershipGuard - Guards routes/components that require leadership-level access
+ * DEPRECATED: Use PermissionGuard instead for strict permissions-based access
+ *
+ * This guard now maps leadership roles to permissions for backward compatibility
+ * - District Pastors: units:update permission
+ * - Unit Heads: members:view permission
+ * - Champs: members:view permission
+ * - Pastors: members:create permission
+ * - Admins: roles:view permission
+ */
 export const LeadershipGuard: React.FC<LeadershipGuardProps> = ({
   children,
   fallback,
@@ -23,41 +33,25 @@ export const LeadershipGuard: React.FC<LeadershipGuardProps> = ({
   allowPastors = true,
   allowAdmins = true
 }) => {
-  const { isAuthenticated, member } = useAuth()
+  // Build list of required permissions based on allowed roles
+  const requiredPermissions: string[] = []
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
+  if (allowDistrictPastors) requiredPermissions.push('units:update')
+  if (allowUnitHeads) requiredPermissions.push('members:view')
+  if (allowChamps) requiredPermissions.push('members:view')
+  if (allowPastors) requiredPermissions.push('members:create')
+  if (allowAdmins) requiredPermissions.push('roles:view')
 
-  if (!member) {
-    return <Navigate to="/login" replace />
-  }
+  // Remove duplicates
+  const uniquePermissions = [...new Set(requiredPermissions)]
 
-  // Check if member has any allowed leadership role
-  const leadership = member.leadershipRoles
-  const roles = member.systemRoles || []
-
-  const isDistrictPastor = leadership?.isDistrictPastor || false
-  const isUnitHead = leadership?.isUnitHead || false
-  const isChamp = leadership?.isChamp || false
-  const isPastor = roles.includes('pastor') || roles.includes('super_admin')
-  const isAdmin = roles.includes('admin') || roles.includes('super_admin')
-
-  const hasAccess =
-    (allowDistrictPastors && isDistrictPastor) ||
-    (allowUnitHeads && isUnitHead) ||
-    (allowChamps && isChamp) ||
-    (allowPastors && isPastor) ||
-    (allowAdmins && isAdmin)
-
-  console.log(`LeadershipGuard: Checking leadership. District Pastor: ${isDistrictPastor}, Unit Head: ${isUnitHead}, Champ: ${isChamp}, Pastor: ${isPastor}, Admin: ${isAdmin}, Access: ${hasAccess}`)
-
-  if (!hasAccess) {
-    if (fallback) {
-      return <>{fallback}</>
-    }
-    return <Navigate to={redirectTo} replace />
-  }
-
-  return <>{children}</>
+  return (
+    <PermissionGuard
+      anyPermission={uniquePermissions}
+      fallback={fallback}
+      redirectTo={redirectTo}
+    >
+      {children}
+    </PermissionGuard>
+  )
 }

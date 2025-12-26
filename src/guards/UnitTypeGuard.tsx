@@ -1,6 +1,5 @@
 import React from 'react'
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext-unified'
+import { PermissionGuard } from './PermissionGuard'
 
 interface UnitTypeGuardProps {
   allowedUnitTypes: ('gia' | 'district' | 'ministry_unit' | 'leadership_unit')[]
@@ -9,34 +8,28 @@ interface UnitTypeGuardProps {
   redirectTo?: string
 }
 
+/**
+ * UnitTypeGuard - Guards routes/components based on unit type access
+ * DEPRECATED: Use PermissionGuard instead for strict permissions-based access
+ *
+ * This guard now uses units:view permission for all unit type access
+ * Unit type filtering should be done at the data level, not access control level
+ */
 export const UnitTypeGuard: React.FC<UnitTypeGuardProps> = ({
   allowedUnitTypes,
   children,
   fallback,
   redirectTo = '/dashboard'
 }) => {
-  const { isAuthenticated, member } = useAuth()
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (!member) {
-    return <Navigate to="/login" replace />
-  }
-
-  // Check if member's unit type matches allowed types
-  const memberUnitType = member.unitType
-  const hasAccess = memberUnitType && allowedUnitTypes.includes(memberUnitType as any)
-
-  console.log(`UnitTypeGuard: Member unit type: ${memberUnitType}, Allowed: ${allowedUnitTypes.join(', ')}, Access: ${hasAccess}`)
-
-  if (!hasAccess) {
-    if (fallback) {
-      return <>{fallback}</>
-    }
-    return <Navigate to={redirectTo} replace />
-  }
-
-  return <>{children}</>
+  // For strict permissions-based access, check units:view permission
+  // Unit type filtering should be done in the backend/data layer
+  return (
+    <PermissionGuard
+      permission="units:view"
+      fallback={fallback}
+      redirectTo={redirectTo}
+    >
+      {children}
+    </PermissionGuard>
+  )
 }

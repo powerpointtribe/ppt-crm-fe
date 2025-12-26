@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, UserPlus, Search } from 'lucide-react';
+import { X, UserPlus, Search, Building2, MapPin } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -8,6 +8,9 @@ import { useToast } from '../../hooks/useToast';
 import userInvitationsService from '../../services/user-invitations';
 import { membersService } from '../../services/members-unified';
 import { rolesService } from '../../services/roles';
+import { branchesService } from '../../services/branches';
+import { groupsService } from '../../services/groups';
+import type { Branch } from '../../types/branch';
 
 interface Member {
   _id: string;
@@ -22,9 +25,16 @@ interface Member {
 interface Role {
   _id: string;
   name: string;
+  slug?: string;
   displayName: string;
   description?: string;
   isActive: boolean;
+}
+
+interface District {
+  _id: string;
+  name: string;
+  type: string;
 }
 
 interface InviteUserModalProps {
@@ -36,14 +46,23 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [selectedDistrictIds, setSelectedDistrictIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
 
   const toast = useToast();
+
+  // Check if selected role requires district assignment (Assistant Pastor)
+  const selectedRole = roles.find(r => r._id === selectedRoleId);
+  const isAssistantPastor = selectedRole?.slug === 'assistant-pastor' || selectedRole?.name?.toLowerCase().includes('assistant');
 
   // Fetch members without platform access
   useEffect(() => {
@@ -73,20 +92,54 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
     fetchMembers();
   }, []);
 
-  // Fetch roles
+  // Fetch roles and branches
   useEffect(() => {
-    const fetchRoles = async () => {
+    const fetchRolesAndBranches = async () => {
       try {
-        const roles = await rolesService.getRoles({ isActive: true });
-        setRoles(roles);
+        const [rolesData, branchesData] = await Promise.all([
+          rolesService.getRoles({ isActive: true }),
+          branchesService.getBranches()
+        ]);
+        setRoles(rolesData);
+        setBranches(branchesData.filter(b => b.isActive));
       } catch (error) {
-        console.error('Failed to fetch roles:', error);
-        toast.error('Failed to load roles');
+        console.error('Failed to fetch roles/branches:', error);
+        toast.error('Failed to load roles or branches');
       }
     };
 
-    fetchRoles();
+    fetchRolesAndBranches();
   }, []);
+
+  // Fetch districts when branch is selected
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (!selectedBranchId) {
+        setDistricts([]);
+        setSelectedDistrictIds([]);
+        return;
+      }
+
+      setLoadingDistricts(true);
+      try {
+        // Fetch groups of type 'district' for the selected branch
+        const response = await groupsService.getGroups({
+          type: 'district',
+          page: 1,
+          limit: 100,
+        });
+        // Filter districts that belong to the selected branch (if they have branch field)
+        // For now, show all districts as the backend may not filter by branch
+        setDistricts(response.items || []);
+      } catch (error) {
+        console.error('Failed to fetch districts:', error);
+      } finally {
+        setLoadingDistricts(false);
+      }
+    };
+
+    fetchDistricts();
+  }, [selectedBranchId]);
 
   // Filter members based on search
   const filteredMembers = members.filter((member) => {
@@ -103,6 +156,15 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
     setSearchQuery('');
   };
 
+  // Handle district toggle
+  const handleDistrictToggle = (districtId: string) => {
+    setSelectedDistrictIds(prev =>
+      prev.includes(districtId)
+        ? prev.filter(id => id !== districtId)
+        : [...prev, districtId]
+    );
+  };
+
   // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,11 +179,24 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
       return;
     }
 
+    if (!selectedBranchId) {
+      toast.error('Please select a branch');
+      return;
+    }
+
+    // Validate district selection for Assistant Pastors
+    if (isAssistantPastor && selectedDistrictIds.length === 0) {
+      toast.error('Please select at least one district for Assistant Pastor');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await userInvitationsService.createInvitation({
         memberId: selectedMember._id,
         roleId: selectedRoleId,
+        branchId: selectedBranchId,
+        assignedDistricts: isAssistantPastor ? selectedDistrictIds : undefined,
         notes: notes || undefined,
       });
       onSuccess();
@@ -261,6 +336,74 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
               </p>
             </div>
 
+            {/* Branch Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-teal-600" />
+                  Assign to Branch <span className="text-red-500">*</span>
+                </div>
+              </label>
+              <select
+                value={selectedBranchId}
+                onChange={(e) => setSelectedBranchId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              >
+                <option value="">Select a branch...</option>
+                {branches.map((branch) => (
+                  <option key={branch._id} value={branch._id}>
+                    {branch.name}
+                    {branch.isMainBranch && ' (Main Branch)'}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                The user will only have access to data within this branch
+              </p>
+            </div>
+
+            {/* District Selection (for Assistant Pastors) */}
+            {isAssistantPastor && selectedBranchId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-blue-600" />
+                    Assign Districts <span className="text-red-500">*</span>
+                  </div>
+                </label>
+                {loadingDistricts ? (
+                  <div className="flex items-center justify-center py-4">
+                    <LoadingSpinner />
+                  </div>
+                ) : districts.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-2">
+                    No districts available for this branch
+                  </p>
+                ) : (
+                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-1">
+                    {districts.map((district) => (
+                      <label
+                        key={district._id}
+                        className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedDistrictIds.includes(district._id)}
+                          onChange={() => handleDistrictToggle(district._id)}
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-900">{district.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Assistant Pastors can only manage members within their assigned districts
+                </p>
+              </div>
+            )}
+
             {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -283,6 +426,10 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
                 <li>• The user will receive a temporary password</li>
                 <li>• They must change their password on first login</li>
                 <li>• The invitation expires in 7 days</li>
+                <li>• User will only see data from their assigned branch</li>
+                {isAssistantPastor && (
+                  <li>• Assistant Pastors will manage only their assigned districts</li>
+                )}
               </ul>
             </div>
 
@@ -291,7 +438,16 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting || !selectedMember || !selectedRoleId}>
+              <Button
+                type="submit"
+                disabled={
+                  submitting ||
+                  !selectedMember ||
+                  !selectedRoleId ||
+                  !selectedBranchId ||
+                  (isAssistantPastor && selectedDistrictIds.length === 0)
+                }
+              >
                 {submitting ? (
                   <>
                     <LoadingSpinner />

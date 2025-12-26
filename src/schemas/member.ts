@@ -109,6 +109,46 @@ export const memberSchema = z.object({
 
 export type MemberFormData = z.infer<typeof memberSchema>
 
+// Edit schema - all fields optional for partial updates
+export const memberEditSchema = z.object({
+  firstName: z.string().max(50, 'First name too long').optional(),
+  lastName: z.string().max(50, 'Last name too long').optional(),
+  email: z.string().email('Valid email is required').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  gender: z.enum(['male', 'female']).optional(),
+  maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipCode: z.string().optional(),
+    country: z.string().optional()
+  }).optional(),
+  district: z.string().optional(),
+  unit: z.string().optional(),
+  additionalGroups: z.array(z.string()).optional(),
+  leadershipRoles: leadershipRolesSchema.optional(),
+  membershipStatus: z.enum([
+    'new_convert', 'worker', 'volunteer', 'leader', 'district_pastor',
+    'champ', 'unit_head', 'inactive', 'transferred'
+  ]).optional(),
+  dateJoined: z.string().optional(),
+  baptismDate: z.string().optional(),
+  confirmationDate: z.string().optional(),
+  ministries: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(),
+  occupation: z.string().optional(),
+  workAddress: z.string().optional(),
+  spouse: z.string().optional(),
+  children: z.array(z.string()).optional(),
+  parent: z.string().optional(),
+  emergencyContact: emergencyContactSchema.optional(),
+  notes: z.string().optional()
+})
+
+export type MemberEditFormData = z.infer<typeof memberEditSchema>
+
 // Bulk edit schema (partial updates)
 export const bulkMemberEditSchema = z.object({
   membershipStatus: z.enum([

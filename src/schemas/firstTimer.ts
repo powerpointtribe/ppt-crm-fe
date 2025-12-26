@@ -152,6 +152,56 @@ export const firstTimerSchema = z.object({
 
 export type FirstTimerFormData = z.infer<typeof firstTimerSchema>
 
+// Edit schema - all fields optional for partial updates
+export const firstTimerEditSchema = z.object({
+  firstName: z.string().max(50, 'First name too long').optional(),
+  lastName: z.string().max(50, 'Last name too long').optional(),
+  phone: z.string().optional(),
+  email: z.string().email('Valid email is required').optional().or(z.literal('')),
+  dateOfBirth: z.string().optional().or(z.literal('')),
+  gender: z.enum(['male', 'female']).optional(),
+  maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
+  address: firstTimerAddressSchema.optional(),
+  dateOfVisit: z.string().optional(),
+  serviceType: z.string().optional(),
+  howDidYouHear: z.enum([
+    'friend', 'family', 'advertisement', 'online', 'event', 'walkby', 'website',
+    'social_media', 'church_outreach', 'community_outreach', 'campus_outreach',
+    'evangelism_program', 'crusade', 'conference', 'radio', 'television', 'podcast',
+    'youtube', 'facebook', 'instagram', 'twitter', 'whatsapp', 'invitation_card',
+    'flyer', 'banner', 'billboard', 'newspaper', 'magazine', 'google_search',
+    'church_website', 'online_service', 'live_stream', 'church_app', 'community_service',
+    'charity_work', 'hospital_ministry', 'prison_ministry', 'school_ministry',
+    'workplace_ministry', 'neighborhood_evangelism', 'street_evangelism', 'door_to_door',
+    'market_evangelism', 'wedding_invitation', 'funeral_service', 'baby_dedication',
+    'thanksgiving_service', 'christmas_service', 'easter_service', 'new_year_service',
+    'special_program', 'guest_speaker', 'musical_concert', 'drama_presentation',
+    'youth_program', 'children_program', 'women_program', 'men_program', 'singles_program',
+    'couples_program', 'business_network', 'professional_network', 'alumni_network', 'other'
+  ]).optional(),
+  visitorType: z.enum(['first_time', 'returning', 'new_to_area', 'church_shopping']).optional(),
+  familyMembers: z.array(familyMemberSchema).optional(),
+  interests: z.array(z.string()).optional(),
+  prayerRequests: z.array(z.string()).optional(),
+  servingInterests: z.array(z.string()).optional(),
+  occupation: z.string().optional(),
+  emergencyContact: firstTimerEmergencyContactSchema.optional(),
+  followUps: z.array(followUpRecordSchema).optional(),
+  status: z.enum(['not_contacted', 'contacted', 'scheduled_visit', 'visited', 'joined_group', 'converted', 'lost_contact']).optional(),
+  converted: z.boolean().optional(),
+  assignedTo: z.string().optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  outreachProgramDetails: z.string().optional(),
+  outreachVolunteerName: z.string().optional(),
+  outreachLocation: z.string().optional(),
+  outreachDate: z.string().optional(),
+  outreachEffectiveness: z.enum(['very_effective', 'effective', 'somewhat_effective', 'not_effective', 'unknown']).optional(),
+  outreachFeedback: z.string().optional()
+})
+
+export type FirstTimerEditFormData = z.infer<typeof firstTimerEditSchema>
+
 // Quick add schema for simpler entry
 export const quickFirstTimerSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),

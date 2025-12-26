@@ -10,7 +10,7 @@ import {
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { firstTimerSchema, FirstTimerFormData } from '@/schemas/firstTimer'
+import { firstTimerSchema, firstTimerEditSchema, FirstTimerFormData } from '@/schemas/firstTimer'
 import { FirstTimer } from '@/services/first-timers'
 import { cn } from '@/utils/cn'
 
@@ -55,10 +55,11 @@ export default function FirstTimerForm({
     watch,
     control,
     setValue,
+    trigger,
     formState: { errors },
     getValues
   } = useForm<FirstTimerFormData>({
-    resolver: zodResolver(firstTimerSchema),
+    resolver: zodResolver(mode === 'edit' ? firstTimerEditSchema : firstTimerSchema),
     defaultValues: firstTimer ? {
       firstName: firstTimer.firstName,
       lastName: firstTimer.lastName,
@@ -194,6 +195,12 @@ export default function FirstTimerForm({
     } catch (error) {
       console.error('Form submission error:', error)
     }
+  }
+
+  const handleSaveChanges = async () => {
+    // In edit mode, skip validation and submit directly
+    const data = getValues()
+    await handleFormSubmit(data)
   }
 
   const nextStep = () => {
@@ -1282,26 +1289,20 @@ export default function FirstTimerForm({
           </AnimatePresence>
         </Card>
 
-        {/* Enhanced Navigation */}
-        <Card className="p-6 bg-gray-50 border-0">
+        {/* Navigation */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex justify-between items-center">
             <div>
               {currentStep > 1 && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2 }}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={prevStep}
+                  disabled={loading}
                 >
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={prevStep}
-                    className="flex items-center gap-2 hover:shadow-md transition-all duration-200"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
-                  </Button>
-                </motion.div>
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
               )}
             </div>
 
@@ -1310,62 +1311,52 @@ export default function FirstTimerForm({
                 type="button"
                 variant="secondary"
                 onClick={onCancel}
-                className="hover:shadow-md transition-all duration-200"
+                disabled={loading}
               >
                 Cancel
               </Button>
 
-              {currentStep < totalSteps ? (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              {/* Save button - always visible in edit mode */}
+              {mode === 'edit' && (
+                <Button
+                  type="button"
+                  onClick={handleSaveChanges}
+                  loading={loading}
+                  disabled={loading}
                 >
-                  <Button
-                    type="button"
-                    onClick={nextStep}
-                    className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    Continue
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    type="submit"
-                    loading={loading}
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    {loading ? (
-                      'Saving...'
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        {mode === 'create' ? 'Add Visitor' : 'Update Visitor'}
-                      </>
-                    )}
-                  </Button>
-                </motion.div>
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </Button>
               )}
+
+              {/* Continue/Submit button */}
+              {currentStep < totalSteps ? (
+                <Button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={loading}
+                  variant={mode === 'edit' ? 'secondary' : 'primary'}
+                >
+                  Continue
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              ) : mode === 'create' ? (
+                <Button
+                  type="submit"
+                  loading={loading}
+                  disabled={loading}
+                >
+                  {loading ? 'Saving...' : 'Add Visitor'}
+                </Button>
+              ) : null}
             </div>
           </div>
 
-          {/* Progress Summary */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div>
-                Step {currentStep} of {totalSteps} • {stepConfig[currentStep - 1].title}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                <span>Auto-saved</span>
-              </div>
-            </div>
+          {/* Step indicator */}
+          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+            <span>Step {currentStep} of {totalSteps}</span>
+            <span>{stepConfig[currentStep - 1].title}</span>
           </div>
-        </Card>
+        </div>
       </form>
     </div>
   )

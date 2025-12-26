@@ -10,7 +10,7 @@ import {
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { memberSchema, MemberFormData } from '@/schemas/member'
+import { memberSchema, memberEditSchema, MemberFormData } from '@/schemas/member'
 import { Member, CreateMemberData, UpdateMemberData } from '@/services/members'
 import { groupsService, Group } from '@/services/groups'
 import { cn } from '@/utils/cn'
@@ -46,7 +46,7 @@ export default function MemberForm({
     formState: { errors },
     getValues
   } = useForm<MemberFormData>({
-    resolver: zodResolver(memberSchema),
+    resolver: zodResolver(mode === 'edit' ? memberEditSchema : memberSchema),
     defaultValues: member ? {
       firstName: member.firstName,
       lastName: member.lastName,
@@ -232,40 +232,144 @@ export default function MemberForm({
   }
 
   const handleFormSubmit = async (data: MemberFormData) => {
+    console.log('handleFormSubmit called with data:', data)
     try {
-      // Transform the data to match API requirements
-      const transformedData = {
-        ...data,
-        // Convert dates to ISO strings - only include if they have values
-        ...(data.dateOfBirth && { dateOfBirth: new Date(data.dateOfBirth).toISOString() }),
-        dateJoined: data.dateJoined ? new Date(data.dateJoined).toISOString() : new Date().toISOString(),
-        ...(data.baptismDate && { baptismDate: new Date(data.baptismDate).toISOString() }),
-        ...(data.confirmationDate && { confirmationDate: new Date(data.confirmationDate).toISOString() }),
-
-        // Handle relationship fields - convert empty strings to undefined to exclude from API call
-        ...(data.district && data.district.trim() !== '' && { district: data.district }),
-        ...(data.unit && data.unit.trim() !== '' && { unit: data.unit }),
-        ...(data.spouse && data.spouse.trim() && { spouse: data.spouse }),
-        ...(data.parent && data.parent.trim() && { parent: data.parent }),
-
-        // Handle leadership roles - only include if they have values
-        leadershipRoles: {
-          isDistrictPastor: data.leadershipRoles?.isDistrictPastor || false,
-          isChamp: data.leadershipRoles?.isChamp || false,
-          isUnitHead: data.leadershipRoles?.isUnitHead || false,
-          ...(data.leadershipRoles?.leadsUnit && data.leadershipRoles.leadsUnit.trim() !== '' && { leadsUnit: data.leadershipRoles.leadsUnit }),
-          ...(data.leadershipRoles?.pastorsDistrict && data.leadershipRoles.pastorsDistrict.trim() !== '' && { pastorsDistrict: data.leadershipRoles.pastorsDistrict }),
-          ...(data.leadershipRoles?.champForDistrict && data.leadershipRoles.champForDistrict.trim() !== '' && { champForDistrict: data.leadershipRoles.champForDistrict })
-        },
-
-        // Filter out empty strings from arrays
-        ministries: data.ministries?.filter(Boolean) || [],
-        skills: data.skills?.filter(Boolean) || [],
-        children: data.children?.filter(Boolean) || [],
+      // Helper to extract ID from object or string
+      const extractId = (value: any): string | undefined => {
+        if (!value) return undefined
+        if (typeof value === 'string') return value.trim() || undefined
+        if (typeof value === 'object' && value._id) return value._id
+        return undefined
       }
 
+      // Helper to format date as YYYY-MM-DD (for dateOfBirth)
+      const formatDateYMD = (dateStr: string | undefined): string | undefined => {
+        if (!dateStr) return undefined
+        // If already in YYYY-MM-DD format, return as is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr
+        // If it's an ISO string, extract the date part
+        if (dateStr.includes('T')) return dateStr.split('T')[0]
+        return dateStr
+      }
+
+      // Helper to convert date to ISO format
+      const toISODate = (dateStr: string | undefined): string | undefined => {
+        if (!dateStr) return undefined
+        // If already an ISO string, return as is
+        if (dateStr.includes('T') && dateStr.includes('Z')) return dateStr
+        // If it's YYYY-MM-DD, convert to ISO
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          return new Date(dateStr + 'T00:00:00.000Z').toISOString()
+        }
+        // Try to parse and convert
+        try {
+          const date = new Date(dateStr)
+          if (!isNaN(date.getTime())) {
+            return date.toISOString()
+          }
+        } catch (e) {
+          console.error('Failed to parse date:', dateStr)
+        }
+        return undefined
+      }
+
+      // Build transformed data - only include fields with valid values
+      const transformedData: any = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        gender: data.gender,
+        maritalStatus: data.maritalStatus,
+        membershipStatus: data.membershipStatus,
+      }
+
+      // Handle dates
+      // dateOfBirth: backend expects YYYY-MM-DD format
+      if (data.dateOfBirth) {
+        transformedData.dateOfBirth = formatDateYMD(data.dateOfBirth)
+      }
+      // dateJoined, baptismDate, confirmationDate: backend expects ISO 8601 format
+      if (data.dateJoined) {
+        const isoDate = toISODate(data.dateJoined)
+        console.log('dateJoined input:', data.dateJoined, '-> output:', isoDate)
+        if (isoDate) transformedData.dateJoined = isoDate
+      }
+      if (data.baptismDate) {
+        const isoDate = toISODate(data.baptismDate)
+        if (isoDate) transformedData.baptismDate = isoDate
+      }
+      if (data.confirmationDate) {
+        const isoDate = toISODate(data.confirmationDate)
+        if (isoDate) transformedData.confirmationDate = isoDate
+      }
+
+      // Handle address - only include if it has values
+      if (data.address) {
+        const address: any = {}
+        if (data.address.street?.trim()) address.street = data.address.street.trim()
+        if (data.address.city?.trim()) address.city = data.address.city.trim()
+        if (data.address.state?.trim()) address.state = data.address.state.trim()
+        if (data.address.zipCode?.trim()) address.zipCode = data.address.zipCode.trim()
+        if (data.address.country?.trim()) address.country = data.address.country.trim()
+        if (Object.keys(address).length > 0) {
+          transformedData.address = address
+        }
+      }
+
+      // Handle relationship fields - extract IDs
+      const districtId = extractId(data.district)
+      if (districtId) transformedData.district = districtId
+
+      const unitId = extractId(data.unit)
+      if (unitId) transformedData.unit = unitId
+
+      if (data.spouse?.trim()) transformedData.spouse = data.spouse.trim()
+      if (data.parent?.trim()) transformedData.parent = data.parent.trim()
+
+      // Handle leadership roles
+      const leadershipRoles: any = {
+        isDistrictPastor: data.leadershipRoles?.isDistrictPastor || false,
+        isChamp: data.leadershipRoles?.isChamp || false,
+        isUnitHead: data.leadershipRoles?.isUnitHead || false,
+      }
+      const leadsUnitId = extractId(data.leadershipRoles?.leadsUnit)
+      if (leadsUnitId) leadershipRoles.leadsUnit = leadsUnitId
+      const pastorsDistrictId = extractId(data.leadershipRoles?.pastorsDistrict)
+      if (pastorsDistrictId) leadershipRoles.pastorsDistrict = pastorsDistrictId
+      const champForDistrictId = extractId(data.leadershipRoles?.champForDistrict)
+      if (champForDistrictId) leadershipRoles.champForDistrict = champForDistrictId
+      transformedData.leadershipRoles = leadershipRoles
+
+      // Handle arrays - filter out empty strings
+      transformedData.ministries = data.ministries?.filter(Boolean) || []
+      transformedData.skills = data.skills?.filter(Boolean) || []
+      transformedData.children = data.children?.filter(Boolean) || []
+      transformedData.additionalGroups = data.additionalGroups?.filter(Boolean) || []
+
+      // Handle emergency contact - only include if it has valid values
+      if (data.emergencyContact) {
+        const ec = data.emergencyContact
+        const hasValidData = ec.name?.trim() || ec.phone?.trim() || ec.relationship?.trim()
+        if (hasValidData) {
+          const emergencyContact: any = {}
+          if (ec.name?.trim()) emergencyContact.name = ec.name.trim()
+          if (ec.relationship?.trim()) emergencyContact.relationship = ec.relationship.trim()
+          if (ec.phone?.trim()) emergencyContact.phone = ec.phone.trim()
+          if (ec.email?.trim()) emergencyContact.email = ec.email.trim()
+          transformedData.emergencyContact = emergencyContact
+        }
+      }
+
+      // Handle optional fields
+      if (data.occupation?.trim()) transformedData.occupation = data.occupation.trim()
+      if (data.workAddress?.trim()) transformedData.workAddress = data.workAddress.trim()
+      if (data.notes?.trim()) transformedData.notes = data.notes.trim()
+
       console.log('Transformed data being sent to API:', transformedData)
+      console.log('Calling onSubmit prop...')
       await onSubmit(transformedData)
+      console.log('onSubmit completed')
     } catch (error) {
       console.error('Form submission error:', error)
     }
@@ -1239,7 +1343,21 @@ export default function MemberForm({
   )
 
   const handleFinalSubmit = async () => {
-    // Trigger validation on all fields
+    console.log('handleFinalSubmit called, mode:', mode)
+    // In edit mode, skip validation and submit directly with current values
+    if (mode === 'edit') {
+      const data = getValues()
+      console.log('Edit mode - submitting data:', data)
+      try {
+        await handleFormSubmit(data)
+        console.log('Form submitted successfully')
+      } catch (error) {
+        console.error('Error in handleFinalSubmit:', error)
+      }
+      return
+    }
+
+    // For create mode, trigger validation on all fields
     const isValid = await trigger()
 
     if (!isValid) {
@@ -1292,26 +1410,20 @@ export default function MemberForm({
           </AnimatePresence>
         </Card>
 
-        {/* Enhanced Navigation */}
-        <Card className="p-6 bg-gray-50 border-0">
+        {/* Navigation */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex justify-between items-center">
             <div>
               {currentStep > 1 && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2 }}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={prevStep}
+                  disabled={loading}
                 >
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={prevStep}
-                    className="flex items-center gap-2 hover:shadow-md transition-all duration-200"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
-                  </Button>
-                </motion.div>
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
               )}
             </div>
 
@@ -1320,42 +1432,47 @@ export default function MemberForm({
                 type="button"
                 variant="secondary"
                 onClick={onCancel}
-                className="hover:shadow-md transition-all duration-200"
+                disabled={loading}
               >
                 Cancel
               </Button>
 
-              {currentStep < totalSteps ? (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              {/* Save button - always visible in edit mode (except on summary step) */}
+              {mode === 'edit' && currentStep < totalSteps && (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    console.log('Save Changes button clicked!')
+                    handleFinalSubmit()
+                  }}
+                  loading={loading}
+                  disabled={loading}
                 >
-                  <Button
-                    type="button"
-                    onClick={nextStep}
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    {currentStep === totalSteps - 1 ? 'Review' : 'Continue'}
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </motion.div>
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              )}
+
+              {/* Continue/Review button */}
+              {currentStep < totalSteps ? (
+                <Button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={loading}
+                  variant={mode === 'edit' ? 'secondary' : 'primary'}
+                >
+                  {currentStep === totalSteps - 1 ? 'Review' : 'Continue'}
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
               ) : null}
             </div>
           </div>
 
-          {/* Progress Summary */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div>
-                Step {currentStep} of {totalSteps} • {stepConfig[currentStep - 1].title}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                <span>Auto-saved</span>
-              </div>
-            </div>
+          {/* Step indicator */}
+          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+            <span>Step {currentStep} of {totalSteps}</span>
+            <span>{stepConfig[currentStep - 1].title}</span>
           </div>
-        </Card>
+        </div>
       </form>
     </div>
   )

@@ -23,6 +23,15 @@ export const branchesService = {
   },
 
   /**
+   * Get branches for selector dropdown (requires branches:view-all permission)
+   * Returns minimal branch data for the branch switcher
+   */
+  getBranchesForSelector: async (): Promise<Branch[]> => {
+    const response = await apiService.get<ApiResponse<Branch[]>>('/branches/selector');
+    return transformArrayResponse<Branch>(response);
+  },
+
+  /**
    * Get all active branches (public endpoint)
    * Used for public forms like visitor registration
    */

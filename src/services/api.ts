@@ -23,7 +23,8 @@ class ApiService {
     this.client.interceptors.request.use(
       (config) => {
         // Start loading indicator
-        useAppStore.getState().startApiLoading()
+        const store = useAppStore.getState()
+        store.startApiLoading()
 
         const token = localStorage.getItem('auth_token') || localStorage.getItem('token')
         if (token) {
@@ -32,6 +33,20 @@ class ApiService {
         } else {
           console.log(`API Request: ${config.method?.toUpperCase()} ${config.url} without token`)
         }
+
+        // Add branch filter to GET requests if a branch is selected
+        // This applies automatic branch filtering for users with branches:view-all permission
+        if (config.method?.toLowerCase() === 'get' && store.selectedBranch) {
+          const url = new URL(config.url || '', config.baseURL || window.location.origin)
+          // Only add branchId if not already present in the URL
+          if (!url.searchParams.has('branchId')) {
+            config.params = {
+              ...config.params,
+              branchId: store.selectedBranch._id,
+            }
+          }
+        }
+
         return config
       },
       (error) => {

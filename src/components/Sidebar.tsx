@@ -11,7 +11,6 @@ import {
   Menu,
   X,
   LayoutDashboard,
-  GroupIcon,
   Database,
   ChevronDown,
   MapPin,
@@ -30,10 +29,14 @@ import {
   UserCog,
   ClipboardList,
   FolderKanban,
+  Building,
+  Check,
+  Globe,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { useAppStore } from '@/store'
+import { useAppStore, Branch } from '@/store'
 import { useAuth } from '@/contexts/AuthContext-unified'
+import { branchesService } from '@/services/branches'
 
 interface MenuItem {
   icon: any
@@ -257,11 +260,34 @@ const menuGroups: MenuGroup[] = [
 
 export default function Sidebar() {
   const location = useLocation()
-  const { sidebarCollapsed, setSidebarCollapsed } = useAppStore()
+  const {
+    sidebarCollapsed,
+    setSidebarCollapsed,
+    selectedBranch,
+    setSelectedBranch,
+    branches,
+    setBranches,
+  } = useAppStore()
   const [isMobile, setIsMobile] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([])
+  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false)
   const { member, hasPermission } = useAuth()
+
+  const canViewAllBranches = hasPermission('branches:view-all')
+
+  // Fetch branches if user has permission
+  useEffect(() => {
+    if (canViewAllBranches && branches.length === 0) {
+      branchesService.getBranchesForSelector()
+        .then((data) => {
+          setBranches(data.filter(b => b.isActive))
+        })
+        .catch((err) => {
+          console.error('Failed to fetch branches:', err)
+        })
+    }
+  }, [canViewAllBranches, branches.length, setBranches])
 
   // Filter menu groups based on user permissions
   const filteredGroups = useMemo(() => {
@@ -333,6 +359,131 @@ export default function Sidebar() {
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // Branch Selector Component
+  const BranchSelector = ({ collapsed = false }: { collapsed?: boolean }) => {
+    if (!canViewAllBranches) return null
+
+    const handleSelectBranch = (branch: Branch | null) => {
+      setSelectedBranch(branch)
+      setBranchDropdownOpen(false)
+    }
+
+    if (collapsed) {
+      return (
+        <div className="relative group px-2 py-1">
+          <button
+            onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
+            className="w-full p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors flex items-center justify-center"
+          >
+            <Building className="w-4 h-4 text-slate-400" />
+          </button>
+          {/* Tooltip */}
+          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-lg border border-slate-700">
+            {selectedBranch?.name || 'All Branches'}
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="px-3 py-2">
+        <div className="relative">
+          <button
+            onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
+            className={cn(
+              'w-full px-3 py-2 rounded-lg transition-all duration-200',
+              'bg-slate-800/50 hover:bg-slate-700/50',
+              'border border-slate-700/50 hover:border-slate-600',
+              'flex items-center justify-between gap-2'
+            )}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              {selectedBranch ? (
+                <Building className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+              ) : (
+                <Globe className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+              )}
+              <span className="text-[12px] font-medium text-white truncate">
+                {selectedBranch?.name || 'All Branches'}
+              </span>
+            </div>
+            <ChevronDown
+              className={cn(
+                'w-3.5 h-3.5 text-slate-400 transition-transform duration-200 flex-shrink-0',
+                branchDropdownOpen && 'rotate-180'
+              )}
+            />
+          </button>
+
+          {/* Dropdown */}
+          <AnimatePresence>
+            {branchDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
+                className="absolute top-full left-0 right-0 mt-1 z-50"
+              >
+                <div className="bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
+                  {/* All Branches Option */}
+                  <button
+                    onClick={() => handleSelectBranch(null)}
+                    className={cn(
+                      'w-full px-3 py-2 flex items-center gap-2 text-left transition-colors',
+                      'hover:bg-slate-700/50',
+                      !selectedBranch && 'bg-indigo-600/20'
+                    )}
+                  >
+                    <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[12px] text-white flex-1">All Branches</span>
+                    {!selectedBranch && (
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    )}
+                  </button>
+
+                  {/* Divider */}
+                  {branches.length > 0 && (
+                    <div className="h-px bg-slate-700 mx-2" />
+                  )}
+
+                  {/* Branch List */}
+                  <div className="max-h-48 overflow-y-auto">
+                    {branches.map((branch) => (
+                      <button
+                        key={branch._id}
+                        onClick={() => handleSelectBranch(branch)}
+                        className={cn(
+                          'w-full px-3 py-2 flex items-center gap-2 text-left transition-colors',
+                          'hover:bg-slate-700/50',
+                          selectedBranch?._id === branch._id && 'bg-indigo-600/20'
+                        )}
+                      >
+                        <Building className="w-3.5 h-3.5 text-indigo-400" />
+                        <span className="text-[12px] text-white flex-1 truncate">
+                          {branch.name}
+                        </span>
+                        {selectedBranch?._id === branch._id && (
+                          <Check className="w-3.5 h-3.5 text-indigo-400" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {branches.length === 0 && (
+                    <div className="px-3 py-2 text-[11px] text-slate-500 text-center">
+                      No branches available
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    )
+  }
 
   const NavItem = ({
     item,
@@ -464,21 +615,26 @@ export default function Sidebar() {
                 className="fixed left-0 top-0 h-full w-72 bg-slate-900 z-50 flex flex-col shadow-2xl"
               >
                 {/* Mobile Header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">P</span>
+                <div className="border-b border-slate-800">
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">P</span>
+                      </div>
+                      <span className="font-semibold text-white text-sm">
+                        PowerPoint Tribe
+                      </span>
                     </div>
-                    <span className="font-semibold text-white text-sm">
-                      PowerPoint Tribe
-                    </span>
+                    <button
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
+
+                  {/* Branch Selector (Mobile) */}
+                  <BranchSelector />
                 </div>
 
                 {/* Mobile Navigation */}
@@ -527,40 +683,45 @@ export default function Sidebar() {
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       {/* Header */}
-      <div className="p-3 border-b border-slate-800">
-        <div className="flex items-center justify-between">
-          <AnimatePresence mode="wait">
-            {!sidebarCollapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2.5"
-              >
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                  <span className="text-white font-bold text-sm">P</span>
-                </div>
-                <span className="font-semibold text-white text-sm">
-                  PowerPoint
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={cn(
-              'p-1.5 rounded-lg transition-colors',
-              'text-slate-500 hover:text-white hover:bg-slate-800',
-              sidebarCollapsed && 'mx-auto'
-            )}
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button>
+      <div className="border-b border-slate-800">
+        <div className="p-3">
+          <div className="flex items-center justify-between">
+            <AnimatePresence mode="wait">
+              {!sidebarCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2.5"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <span className="text-white font-bold text-sm">P</span>
+                  </div>
+                  <span className="font-semibold text-white text-sm">
+                    PowerPoint
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className={cn(
+                'p-1.5 rounded-lg transition-colors',
+                'text-slate-500 hover:text-white hover:bg-slate-800',
+                sidebarCollapsed && 'mx-auto'
+              )}
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Branch Selector */}
+        <BranchSelector collapsed={sidebarCollapsed} />
       </div>
 
       {/* Navigation */}

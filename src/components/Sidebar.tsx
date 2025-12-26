@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users,
-  Home,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -15,7 +14,6 @@ import {
   GroupIcon,
   Database,
   ChevronDown,
-  ChevronUp,
   MapPin,
   Heart,
   Building2,
@@ -28,202 +26,232 @@ import {
   Activity,
   BarChart3,
   GitBranch,
+  Boxes,
+  UserCog,
+  ClipboardList,
+  FolderKanban,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore } from '@/store'
 import { useAuth } from '@/contexts/AuthContext-unified'
 
-// Menu items with required permissions (strict permissions-based access)
-const baseMenuItems = [
+interface MenuItem {
+  icon: any
+  label: string
+  path: string
+  requiredPermission: string | null
+  hasDropdown?: boolean
+  subItems?: SubMenuItem[]
+}
+
+interface SubMenuItem {
+  icon: any
+  label: string
+  path: string
+  requiredPermission: string
+}
+
+interface MenuGroup {
+  label: string
+  items: MenuItem[]
+}
+
+// Grouped menu items with required permissions
+const menuGroups: MenuGroup[] = [
   {
-    icon: LayoutDashboard,
-    label: 'Dashboard',
-    path: '/dashboard',
-    color: 'text-primary-600',
-    requiredPermission: 'dashboard:view', // Requires dashboard view permission
+    label: 'Main',
+    items: [
+      {
+        icon: LayoutDashboard,
+        label: 'Dashboard',
+        path: '/dashboard',
+        requiredPermission: 'dashboard:view',
+      },
+    ],
   },
   {
-    icon: UsersIcon,
-    label: 'Members',
-    path: '/members',
-    color: 'text-green-600',
-    requiredPermission: 'members:view', // Requires members view permission
-    hasDropdown: true,
-    subItems: [
+    label: 'People',
+    items: [
       {
-        icon: BarChart3,
-        label: 'Analytics',
-        path: '/members/analytics',
-        color: 'text-purple-600',
-        requiredPermission: 'members:view-stats',
+        icon: UsersIcon,
+        label: 'Members',
+        path: '/members',
+        requiredPermission: 'members:view',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: BarChart3,
+            label: 'Analytics',
+            path: '/members/analytics',
+            requiredPermission: 'members:view-stats',
+          },
+          {
+            icon: FileText,
+            label: 'Reports',
+            path: '/members/reports',
+            requiredPermission: 'members:view-stats',
+          },
+          {
+            icon: ClipboardList,
+            label: 'Service Reports',
+            path: '/members/service-reports',
+            requiredPermission: 'service-reports:view',
+          },
+        ],
       },
       {
-        icon: FileText,
-        label: 'Reports',
-        path: '/members/reports',
-        color: 'text-blue-600',
-        requiredPermission: 'members:view-stats',
-      },
-      {
-        icon: FileText,
-        label: 'Service Reports',
-        path: '/members/service-reports',
-        color: 'text-orange-600',
-        requiredPermission: 'service-reports:view',
-      }
-    ]
-  },
-  {
-    icon: UserPlus,
-    label: 'First Timers',
-    path: '/first-timers',
-    color: 'text-orange-600',
-    requiredPermission: 'first-timers:view',
-    hasDropdown: true,
-    subItems: [
-      {
-        icon: Phone,
-        label: 'Call Reports',
-        path: '/first-timers/call-reports',
-        color: 'text-green-600',
-        requiredPermission: 'first-timers:view-call-reports',
-      },
-      {
-        icon: MessageCircle,
-        label: 'Message Drafts',
-        path: '/first-timers/message-drafts',
-        color: 'text-purple-600',
+        icon: UserPlus,
+        label: 'First Timers',
+        path: '/first-timers',
         requiredPermission: 'first-timers:view',
-      }
-    ]
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: Phone,
+            label: 'Call Reports',
+            path: '/first-timers/call-reports',
+            requiredPermission: 'first-timers:view-call-reports',
+          },
+          {
+            icon: MessageCircle,
+            label: 'Messages',
+            path: '/first-timers/message-drafts',
+            requiredPermission: 'first-timers:view',
+          },
+        ],
+      },
+    ],
   },
   {
-    icon: GroupIcon,
-    label: 'Groups',
-    path: '/groups',
-    color: 'text-purple-600',
-    requiredPermission: 'units:view',
-    hasDropdown: true,
-    subItems: [
+    label: 'Organization',
+    items: [
       {
-        icon: MapPin,
-        label: 'Districts',
-        path: '/groups?page=1&limit=20&search=&type=district',
-        color: 'text-blue-600',
+        icon: FolderKanban,
+        label: 'Groups',
+        path: '/groups',
         requiredPermission: 'units:view',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: MapPin,
+            label: 'Districts',
+            path: '/groups?page=1&limit=20&search=&type=district',
+            requiredPermission: 'units:view',
+          },
+          {
+            icon: Heart,
+            label: 'Ministries',
+            path: '/groups?page=1&limit=20&search=&type=ministry',
+            requiredPermission: 'units:view',
+          },
+          {
+            icon: Building2,
+            label: 'Units',
+            path: '/groups?page=1&limit=20&search=&type=unit',
+            requiredPermission: 'units:view',
+          },
+        ],
       },
       {
-        icon: Heart,
-        label: 'Ministries',
-        path: '/groups?page=1&limit=20&search=&type=ministry',
-        color: 'text-red-600',
-        requiredPermission: 'units:view',
+        icon: GitBranch,
+        label: 'Branches',
+        path: '/branches',
+        requiredPermission: 'branches:view',
       },
-      {
-        icon: Building2,
-        label: 'Units',
-        path: '/groups?page=1&limit=20&search=&type=unit',
-        color: 'text-green-600',
-        requiredPermission: 'units:view',
-      }
-    ]
+    ],
   },
   {
-    icon: Package,
-    label: 'Inventory',
-    path: '/inventory',
-    color: 'text-blue-600',
-    requiredPermission: 'inventory:view-items',
-    hasDropdown: true,
-    subItems: [
+    label: 'Resources',
+    items: [
       {
-        icon: Package,
-        label: 'Items',
-        path: '/inventory/items',
-        color: 'text-blue-600',
+        icon: Boxes,
+        label: 'Inventory',
+        path: '/inventory',
         requiredPermission: 'inventory:view-items',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: Package,
+            label: 'Items',
+            path: '/inventory/items',
+            requiredPermission: 'inventory:view-items',
+          },
+          {
+            icon: Archive,
+            label: 'Categories',
+            path: '/inventory/categories',
+            requiredPermission: 'inventory:view-categories',
+          },
+          {
+            icon: Activity,
+            label: 'Movements',
+            path: '/inventory/movements',
+            requiredPermission: 'inventory:view-movements',
+          },
+          {
+            icon: BarChart3,
+            label: 'Reports',
+            path: '/inventory/reports',
+            requiredPermission: 'inventory:view-stats',
+          },
+        ],
       },
-      {
-        icon: Archive,
-        label: 'Categories',
-        path: '/inventory/categories',
-        color: 'text-purple-600',
-        requiredPermission: 'inventory:view-categories',
-      },
-      {
-        icon: Activity,
-        label: 'Movements',
-        path: '/inventory/movements',
-        color: 'text-green-600',
-        requiredPermission: 'inventory:view-movements',
-      },
-      {
-        icon: BarChart3,
-        label: 'Reports',
-        path: '/inventory/reports',
-        color: 'text-orange-600',
-        requiredPermission: 'inventory:view-stats',
-      }
-    ]
+    ],
   },
   {
-    icon: Shield,
-    label: 'Audit',
-    path: '/audit',
-    color: 'text-red-600',
-    requiredPermission: 'audit-logs:view',
-    hasDropdown: true,
-    subItems: [
+    label: 'Administration',
+    items: [
       {
-        icon: FileText,
-        label: 'Logs',
-        path: '/audit/logs',
-        color: 'text-red-600',
+        icon: Shield,
+        label: 'Audit Logs',
+        path: '/audit',
         requiredPermission: 'audit-logs:view',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: FileText,
+            label: 'Logs',
+            path: '/audit/logs',
+            requiredPermission: 'audit-logs:view',
+          },
+          {
+            icon: BarChart3,
+            label: 'Statistics',
+            path: '/audit/reports',
+            requiredPermission: 'audit-logs:view-statistics',
+          },
+        ],
       },
       {
-        icon: BarChart3,
-        label: 'Reports',
-        path: '/audit/reports',
-        color: 'text-orange-600',
-        requiredPermission: 'audit-logs:view-statistics',
-      }
-    ]
+        icon: Database,
+        label: 'Bulk Upload',
+        path: '/bulk-operations',
+        requiredPermission: 'bulk-operations:view-history',
+      },
+      {
+        icon: UserCog,
+        label: 'Roles',
+        path: '/roles',
+        requiredPermission: 'roles:view-roles',
+      },
+      {
+        icon: Users,
+        label: 'Users',
+        path: '/user-management',
+        requiredPermission: 'users:view',
+      },
+    ],
   },
   {
-    icon: Database,
-    label: 'Bulk Operations',
-    path: '/bulk-operations',
-    color: 'text-purple-600',
-    requiredPermission: 'bulk-operations:view-history',
-  },
-  {
-    icon: GitBranch,
-    label: 'Branches',
-    path: '/branches',
-    color: 'text-teal-600',
-    requiredPermission: 'branches:view',
-  },
-  {
-    icon: Shield,
-    label: 'Roles',
-    path: '/roles',
-    color: 'text-indigo-600',
-    requiredPermission: 'roles:view-roles',
-  },
-  {
-    icon: UserPlus,
-    label: 'User Management',
-    path: '/user-management',
-    color: 'text-blue-600',
-    requiredPermission: 'users:view',
-  },
-  {
-    icon: Settings,
-    label: 'Settings',
-    path: '/settings',
-    color: 'text-gray-600',
-    requiredPermission: null, // Settings always visible to authenticated users
+    label: 'System',
+    items: [
+      {
+        icon: Settings,
+        label: 'Settings',
+        path: '/settings',
+        requiredPermission: null,
+      },
+    ],
   },
 ]
 
@@ -235,60 +263,62 @@ export default function Sidebar() {
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([])
   const { member, hasPermission } = useAuth()
 
-  // Filter menu items based on user permissions (strict permissions-based access)
-  const menuItems = useMemo(() => {
-    if (!member) {
-      return [];
-    }
+  // Filter menu groups based on user permissions
+  const filteredGroups = useMemo(() => {
+    if (!member) return []
 
-    const filtered = baseMenuItems.filter(item => {
-      // Show items with no required permission (e.g., Settings)
-      if (item.requiredPermission === null) {
-        return true;
-      }
-      // Check if user has the required permission
-      return hasPermission(item.requiredPermission);
-    }).map(item => {
-      // Also filter sub-items based on permissions
-      if (item.hasDropdown && item.subItems) {
-        return {
-          ...item,
-          subItems: item.subItems.filter(subItem =>
-            !subItem.requiredPermission || hasPermission(subItem.requiredPermission)
-          )
-        };
-      }
-      return item;
-    });
-
-    return filtered;
+    return menuGroups
+      .map((group) => ({
+        ...group,
+        items: group.items
+          .filter((item) => {
+            if (item.requiredPermission === null) return true
+            return hasPermission(item.requiredPermission)
+          })
+          .map((item) => {
+            if (item.hasDropdown && item.subItems) {
+              return {
+                ...item,
+                subItems: item.subItems.filter(
+                  (subItem) =>
+                    !subItem.requiredPermission ||
+                    hasPermission(subItem.requiredPermission)
+                ),
+              }
+            }
+            return item
+          }),
+      }))
+      .filter((group) => group.items.length > 0)
   }, [member, hasPermission])
 
   const toggleDropdown = (itemPath: string) => {
-    setOpenDropdowns(prev =>
+    setOpenDropdowns((prev) =>
       prev.includes(itemPath)
-        ? prev.filter(path => path !== itemPath)
+        ? prev.filter((path) => path !== itemPath)
         : [...prev, itemPath]
     )
   }
 
   const isDropdownOpen = (itemPath: string) => openDropdowns.includes(itemPath)
 
-  const isSubItemActive = (subItems: any[]) => {
-    return subItems?.some(subItem => {
-      if (subItem.path.includes('?')) {
-        const [pathname, queryString] = subItem.path.split('?')
-        const urlParams = new URLSearchParams(queryString)
-        const currentParams = new URLSearchParams(location.search)
+  const isPathActive = (path: string) => {
+    if (path.includes('?')) {
+      const [pathname, queryString] = path.split('?')
+      const urlParams = new URLSearchParams(queryString)
+      const currentParams = new URLSearchParams(location.search)
+      return (
+        location.pathname === pathname &&
+        Array.from(urlParams.entries()).every(
+          ([key, value]) => currentParams.get(key) === value
+        )
+      )
+    }
+    return location.pathname === path
+  }
 
-        // Check if pathname matches and all query params from subItem are present
-        return location.pathname === pathname &&
-               Array.from(urlParams.entries()).every(([key, value]) =>
-                 currentParams.get(key) === value
-               )
-      }
-      return location.pathname === subItem.path
-    })
+  const isSubItemActive = (subItems?: SubMenuItem[]) => {
+    return subItems?.some((subItem) => isPathActive(subItem.path))
   }
 
   useEffect(() => {
@@ -304,436 +334,264 @@ export default function Sidebar() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  if (isMobile) {
-    return (
-      <>
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md border border-border"
-        >
-          <Menu className="h-6 w-6" />
-        </button>
+  const NavItem = ({
+    item,
+    collapsed = false,
+    onNavigate,
+  }: {
+    item: MenuItem
+    collapsed?: boolean
+    onNavigate?: () => void
+  }) => {
+    const isActive = isPathActive(item.path)
+    const hasSubItems = item.hasDropdown && item.subItems
+    const isOpen = isDropdownOpen(item.path)
+    const hasActiveSubItem = hasSubItems && isSubItemActive(item.subItems)
 
-        {/* Mobile Overlay */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50 md:hidden"
-              onClick={() => setMobileMenuOpen(false)}
+    return (
+      <div>
+        <div className="flex items-center">
+          <Link
+            to={item.path}
+            onClick={onNavigate}
+            className={cn(
+              'flex items-center gap-3 flex-1 px-3 py-2 text-[13px] rounded-lg transition-all duration-200',
+              'text-slate-400 hover:text-white hover:bg-slate-700/50',
+              (isActive || hasActiveSubItem) &&
+                'bg-gradient-to-r from-indigo-600/20 to-purple-600/20 text-white border-l-2 border-indigo-500',
+              collapsed && 'justify-center px-2'
+            )}
+          >
+            <item.icon
+              className={cn(
+                'w-4 h-4 flex-shrink-0',
+                (isActive || hasActiveSubItem) && 'text-indigo-400'
+              )}
             />
+            {!collapsed && (
+              <span className="font-medium truncate">{item.label}</span>
+            )}
+          </Link>
+          {!collapsed && hasSubItems && (
+            <button
+              onClick={() => toggleDropdown(item.path)}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                'text-slate-500 hover:text-white hover:bg-slate-700/50'
+              )}
+            >
+              <ChevronDown
+                className={cn(
+                  'w-3.5 h-3.5 transition-transform duration-200',
+                  isOpen && 'rotate-180'
+                )}
+              />
+            </button>
+          )}
+        </div>
+
+        {/* Sub Items */}
+        <AnimatePresence>
+          {!collapsed && hasSubItems && isOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="ml-4 mt-1 pl-3 border-l border-slate-700 space-y-0.5">
+                {item.subItems?.map((subItem) => {
+                  const isSubActive = isPathActive(subItem.path)
+                  return (
+                    <Link
+                      key={subItem.path}
+                      to={subItem.path}
+                      onClick={onNavigate}
+                      className={cn(
+                        'flex items-center gap-2.5 px-2.5 py-1.5 text-[12px] rounded-md transition-all duration-200',
+                        'text-slate-500 hover:text-white hover:bg-slate-700/30',
+                        isSubActive &&
+                          'text-indigo-300 bg-slate-700/40'
+                      )}
+                    >
+                      <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{subItem.label}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Mobile Sidebar */}
+        {/* Collapsed Tooltip */}
+        {collapsed && (
+          <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-lg border border-slate-700">
+            {item.label}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Mobile Sidebar
+  if (isMobile) {
+    return (
+      <>
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="md:hidden fixed top-4 left-4 z-50 p-2.5 bg-slate-800 text-white rounded-xl shadow-lg border border-slate-700"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
         <AnimatePresence>
           {mobileMenuOpen && (
-            <motion.div
-              initial={{ x: -300 }}
-              animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border z-50 flex flex-col shadow-xl"
-            >
-              {/* Mobile Header */}
-              <div className="flex items-center justify-between p-4 border-b border-border">
-                <h2 className="font-bold text-lg text-foreground">
-                  PowerPoint Tribe
-                </h2>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-1 hover:bg-muted rounded-md transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+                onClick={() => setMobileMenuOpen(false)}
+              />
+              <motion.div
+                initial={{ x: -300 }}
+                animate={{ x: 0 }}
+                exit={{ x: -300 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="fixed left-0 top-0 h-full w-72 bg-slate-900 z-50 flex flex-col shadow-2xl"
+              >
+                {/* Mobile Header */}
+                <div className="flex items-center justify-between p-4 border-b border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">P</span>
+                    </div>
+                    <span className="font-semibold text-white text-sm">
+                      PowerPoint Tribe
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
 
-              {/* Mobile Navigation */}
-              <nav className="flex-1 p-4">
-                <ul className="space-y-2">
-                  {menuItems.map((item) => {
-                    const isActive = location.pathname === item.path
-                    const hasSubItems = item.hasDropdown && item.subItems
-                    const isDropdownOpenState = isDropdownOpen(item.path)
-                    const hasActiveSubItem = hasSubItems && isSubItemActive(item.subItems)
+                {/* Mobile Navigation */}
+                <nav className="flex-1 overflow-y-auto p-3 space-y-4">
+                  {filteredGroups.map((group) => (
+                    <div key={group.label}>
+                      <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                        {group.label}
+                      </div>
+                      <div className="space-y-0.5">
+                        {group.items.map((item) => (
+                          <NavItem
+                            key={item.path}
+                            item={item}
+                            onNavigate={() => setMobileMenuOpen(false)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </nav>
 
-                    return (
-                      <li key={item.path}>
-                        {hasSubItems ? (
-                          <div>
-                            <div className="flex">
-                              <Link
-                                to={item.path}
-                                onClick={() => setMobileMenuOpen(false)}
-                                className={cn(
-                                  'nav-link flex-1',
-                                  (isActive || hasActiveSubItem) && 'nav-link-active bg-primary-50 text-primary-700 border-l-4 border-primary-600'
-                                )}
-                              >
-                                <item.icon className={cn("h-5 w-5 shrink-0", item.color)} />
-                                <span className="font-medium">{item.label}</span>
-                              </Link>
-                              <button
-                                onClick={() => toggleDropdown(item.path)}
-                                className={cn(
-                                  'px-3 py-2 hover:bg-muted rounded-r-md transition-colors',
-                                  (isActive || hasActiveSubItem) && 'bg-primary-50 text-primary-700'
-                                )}
-                              >
-                                {isDropdownOpenState ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4" />
-                                )}
-                              </button>
-                            </div>
-
-                            <AnimatePresence>
-                              {isDropdownOpenState && (
-                                <motion.ul
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: 'auto' }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="ml-4 mt-1 space-y-1 overflow-hidden"
-                                >
-                                  {item.subItems.map((subItem) => {
-                                    const isSubActive = (() => {
-                                      if (subItem.path.includes('?')) {
-                                        const [pathname, queryString] = subItem.path.split('?')
-                                        const urlParams = new URLSearchParams(queryString)
-                                        const currentParams = new URLSearchParams(location.search)
-                                        return location.pathname === pathname &&
-                                               Array.from(urlParams.entries()).every(([key, value]) =>
-                                                 currentParams.get(key) === value
-                                               )
-                                      }
-                                      return location.pathname === subItem.path
-                                    })()
-                                    return (
-                                      <li key={subItem.path}>
-                                        <Link
-                                          to={subItem.path}
-                                          onClick={() => setMobileMenuOpen(false)}
-                                          className={cn(
-                                            'nav-link text-sm',
-                                            isSubActive && 'nav-link-active bg-primary-50 text-primary-700 border-l-4 border-primary-600'
-                                          )}
-                                        >
-                                          <subItem.icon className={cn("h-4 w-4 shrink-0", subItem.color)} />
-                                          <span className="font-medium">{subItem.label}</span>
-                                        </Link>
-                                      </li>
-                                    )
-                                  })}
-                                </motion.ul>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        ) : (
-                          <Link
-                            to={item.path}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={cn(
-                              'nav-link',
-                              isActive && 'nav-link-active bg-primary-50 text-primary-700 border-l-4 border-primary-600'
-                            )}
-                          >
-                            <item.icon className={cn("h-5 w-5 shrink-0", item.color)} />
-                            <span className="font-medium">{item.label}</span>
-                          </Link>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-              </nav>
-            </motion.div>
+                {/* Mobile Footer */}
+                <div className="p-4 border-t border-slate-800">
+                  <p className="text-[10px] text-slate-600 text-center">
+                    Church Management System
+                  </p>
+                </div>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       </>
     )
   }
 
+  // Desktop Sidebar
   return (
     <motion.div
       className={cn(
-        'hidden md:flex fixed left-0 top-0 h-full bg-card border-r border-border z-40 flex-col shadow-sm',
-        sidebarCollapsed ? 'w-16' : 'w-64'
+        'hidden md:flex fixed left-0 top-0 h-full bg-slate-900 z-40 flex-col',
+        'border-r border-slate-800'
       )}
       initial={false}
-      animate={{ width: sidebarCollapsed ? 64 : 256 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      animate={{ width: sidebarCollapsed ? 64 : 240 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       {/* Header */}
-      <div className="p-4 border-b border-border">
+      <div className="p-3 border-b border-slate-800">
         <div className="flex items-center justify-between">
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {!sidebarCollapsed && (
               <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="font-bold text-lg text-foreground"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2.5"
               >
-                PowerPoint Tribe
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                  <span className="text-white font-bold text-sm">P</span>
+                </div>
+                <span className="font-semibold text-white text-sm">
+                  PowerPoint
+                </span>
               </motion.div>
             )}
           </AnimatePresence>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-1.5 hover:bg-accent rounded-md transition-colors text-muted-foreground hover:text-foreground"
+            className={cn(
+              'p-1.5 rounded-lg transition-colors',
+              'text-slate-500 hover:text-white hover:bg-slate-800',
+              sidebarCollapsed && 'mx-auto'
+            )}
           >
             {sidebarCollapsed ? (
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-4 w-4" />
             ) : (
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4" />
             )}
           </button>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4">
-        <ul className="space-y-1">
-          {menuItems.map((item, index) => {
-            const isActive = location.pathname === item.path
-            const hasSubItems = item.hasDropdown && item.subItems
-            const isDropdownOpenState = isDropdownOpen(item.path)
-            const hasActiveSubItem = hasSubItems && isSubItemActive(item.subItems)
-
-            return (
-              <motion.li
-                key={item.path}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                {hasSubItems ? (
-                  <div>
-                    <div className={cn("flex", sidebarCollapsed ? "" : "")}>
-                      <Link
-                        to={item.path}
-                        className={cn(
-                          'nav-link relative group flex-1',
-                          (isActive || hasActiveSubItem) && 'nav-link-active bg-primary-50 text-primary-700',
-                          sidebarCollapsed ? 'justify-center' : ''
-                        )}
-                      >
-                        <item.icon className={cn(
-                          "h-5 w-5 shrink-0 transition-colors",
-                          (isActive || hasActiveSubItem) ? 'text-primary-600' : item.color
-                        )} />
-
-                        <AnimatePresence>
-                          {!sidebarCollapsed && (
-                            <motion.span
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -10 }}
-                              transition={{ duration: 0.2 }}
-                              className="font-medium"
-                            >
-                              {item.label}
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Tooltip for collapsed sidebar */}
-                        {sidebarCollapsed && (
-                          <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
-                            {item.label}
-                          </div>
-                        )}
-
-                        {/* Active indicator */}
-                        {(isActive || hasActiveSubItem) && (
-                          <motion.div
-                            layoutId="activeTab"
-                            className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r-full"
-                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                          />
-                        )}
-                      </Link>
-
-                      {!sidebarCollapsed && (
-                        <button
-                          onClick={() => toggleDropdown(item.path)}
-                          className={cn(
-                            'px-3 py-2 hover:bg-muted rounded-r-md transition-colors relative group',
-                            (isActive || hasActiveSubItem) && 'bg-primary-50 text-primary-700'
-                          )}
-                        >
-                          {isDropdownOpenState ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Dropdown Content */}
-                    <AnimatePresence>
-                      {isDropdownOpenState && !sidebarCollapsed && (
-                        <motion.ul
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="ml-4 mt-1 space-y-1 overflow-hidden"
-                        >
-                          {item.subItems.map((subItem, subIndex) => {
-                            const isSubActive = (() => {
-                              if (subItem.path.includes('?')) {
-                                const [pathname, queryString] = subItem.path.split('?')
-                                const urlParams = new URLSearchParams(queryString)
-                                const currentParams = new URLSearchParams(location.search)
-                                return location.pathname === pathname &&
-                                       Array.from(urlParams.entries()).every(([key, value]) =>
-                                         currentParams.get(key) === value
-                                       )
-                              }
-                              return location.pathname === subItem.path
-                            })()
-                            return (
-                              <motion.li
-                                key={subItem.path}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: subIndex * 0.05 }}
-                              >
-                                <Link
-                                  to={subItem.path}
-                                  className={cn(
-                                    'nav-link relative group text-sm',
-                                    isSubActive && 'nav-link-active bg-primary-50 text-primary-700'
-                                  )}
-                                >
-                                  <subItem.icon className={cn(
-                                    "h-4 w-4 shrink-0 transition-colors",
-                                    isSubActive ? 'text-primary-600' : subItem.color
-                                  )} />
-                                  <span className="font-medium">{subItem.label}</span>
-
-                                  {/* Active indicator for sub items */}
-                                  {isSubActive && (
-                                    <motion.div
-                                      layoutId="activeSubTab"
-                                      className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r-full"
-                                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                                    />
-                                  )}
-                                </Link>
-                              </motion.li>
-                            )
-                          })}
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Collapsed sidebar dropdown menu */}
-                    {sidebarCollapsed && (
-                      <div className="absolute left-full ml-2 top-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
-                        <div className="bg-card border border-border rounded-md shadow-lg py-2 min-w-[200px]">
-                          <div className="px-3 py-2 text-sm font-medium text-muted-foreground border-b border-border">
-                            {item.label}
-                          </div>
-                          {item.subItems.map((subItem) => {
-                            const isSubActive = (() => {
-                              if (subItem.path.includes('?')) {
-                                const [pathname, queryString] = subItem.path.split('?')
-                                const urlParams = new URLSearchParams(queryString)
-                                const currentParams = new URLSearchParams(location.search)
-                                return location.pathname === pathname &&
-                                       Array.from(urlParams.entries()).every(([key, value]) =>
-                                         currentParams.get(key) === value
-                                       )
-                              }
-                              return location.pathname === subItem.path
-                            })()
-                            return (
-                              <Link
-                                key={subItem.path}
-                                to={subItem.path}
-                                className={cn(
-                                  'flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted transition-colors',
-                                  isSubActive && 'bg-primary-50 text-primary-700'
-                                )}
-                              >
-                                <subItem.icon className={cn("h-4 w-4", subItem.color)} />
-                                <span>{subItem.label}</span>
-                              </Link>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Link
-                    to={item.path}
-                    className={cn(
-                      'nav-link relative group',
-                      isActive && 'nav-link-active bg-primary-50 text-primary-700'
-                    )}
-                  >
-                    <item.icon className={cn(
-                      "h-5 w-5 shrink-0 transition-colors",
-                      isActive ? 'text-primary-600' : item.color
-                    )} />
-
-                    <AnimatePresence>
-                      {!sidebarCollapsed && (
-                        <motion.span
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
-                          transition={{ duration: 0.2 }}
-                          className="font-medium"
-                        >
-                          {item.label}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Tooltip for collapsed sidebar */}
-                    {sidebarCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
-                        {item.label}
-                      </div>
-                    )}
-
-                    {/* Active indicator */}
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute left-0 top-0 bottom-0 w-1 bg-primary-600 rounded-r-full"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                  </Link>
-                )}
-              </motion.li>
-            )
-          })}
-        </ul>
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+        {filteredGroups.map((group) => (
+          <div key={group.label}>
+            {!sidebarCollapsed && (
+              <div className="px-3 py-1 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+                {group.label}
+              </div>
+            )}
+            {sidebarCollapsed && <div className="h-px bg-slate-800 mx-2 my-2" />}
+            <div className="space-y-0.5">
+              {group.items.map((item) => (
+                <div key={item.path} className="relative group">
+                  <NavItem item={item} collapsed={sidebarCollapsed} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border">
-        <div className={cn(
-          "text-xs text-muted-foreground text-center",
-          sidebarCollapsed && "hidden"
-        )}>
-          <p>© 2024 PowerPoint Tribe</p>
-          <p className="mt-1">Church Management System</p>
+      {!sidebarCollapsed && (
+        <div className="p-3 border-t border-slate-800">
+          <p className="text-[10px] text-slate-600 text-center">
+            v1.0.0 &middot; CMS
+          </p>
         </div>
-      </div>
+      )}
     </motion.div>
   )
 }

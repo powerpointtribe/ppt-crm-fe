@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Users, UserPlus, UsersIcon, GroupIcon, ArrowRight, TrendingUp, Activity, Calendar, Bell, BarChart3, PieChart, Clock, MapPin, Database } from 'lucide-react'
+import { Users, UserPlus, UsersIcon, GroupIcon, ArrowRight, TrendingUp, TrendingDown, Activity, Calendar, BarChart3, ChevronDown, FileText, Eye, Edit, Trash2, LogIn, LogOut, Settings } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -9,6 +9,56 @@ import Badge from '@/components/ui/Badge'
 import { SkeletonDashboard } from '@/components/ui/Skeleton'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import { dashboardService, DashboardOverview } from '@/services/dashboard'
+import { serviceReportsService, ServiceReportStats } from '@/services/service-reports'
+import { auditService, AuditLog, AuditAction } from '@/services/audit'
+
+type DateRangePreset = '1m' | '3m' | '6m' | '1y' | 'custom'
+
+interface DateRangeOption {
+  label: string
+  value: DateRangePreset
+}
+
+const dateRangePresets: DateRangeOption[] = [
+  { label: 'Last Month', value: '1m' },
+  { label: 'Last 3 Months', value: '3m' },
+  { label: 'Last 6 Months', value: '6m' },
+  { label: 'Last Year', value: '1y' },
+  { label: 'Custom Range', value: 'custom' },
+]
+
+const getPresetDateRange = (preset: DateRangePreset): { startDate: string; endDate: string } => {
+  const end = new Date()
+  const start = new Date()
+
+  switch (preset) {
+    case '1m':
+      start.setMonth(start.getMonth() - 1)
+      break
+    case '3m':
+      start.setMonth(start.getMonth() - 3)
+      break
+    case '6m':
+      start.setMonth(start.getMonth() - 6)
+      break
+    case '1y':
+      start.setFullYear(start.getFullYear() - 1)
+      break
+    default:
+      start.setMonth(start.getMonth() - 3) // Default to 3 months
+  }
+
+  return { startDate: start.toISOString(), endDate: end.toISOString() }
+}
+
+const formatDateForInput = (date: Date): string => {
+  return date.toISOString().split('T')[0]
+}
+
+const formatDateDisplay = (dateStr: string): string => {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 const formatTimeAgo = (timestamp: string) => {
   const now = new Date()
@@ -27,20 +77,87 @@ const formatTimeAgo = (timestamp: string) => {
 
 export default function Dashboard() {
   const [stats, setStats] = useState<Partial<DashboardOverview> | null>(null)
+  const [serviceReportStats, setServiceReportStats] = useState<ServiceReportStats | null>(null)
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRangePreset>('3m')
+  const [showDateRangeDropdown, setShowDateRangeDropdown] = useState(false)
+  const [customStartDate, setCustomStartDate] = useState<string>(() => {
+    const date = new Date()
+    date.setMonth(date.getMonth() - 3)
+    return formatDateForInput(date)
+  })
+  const [customEndDate, setCustomEndDate] = useState<string>(() => formatDateForInput(new Date()))
+  const [appliedCustomDates, setAppliedCustomDates] = useState<{ start: string; end: string } | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
+  const currentDateRangeOption = useMemo(() => {
+    return dateRangePresets.find(opt => opt.value === selectedDateRange) || dateRangePresets[1]
+  }, [selectedDateRange])
+
+  const currentDateRange = useMemo(() => {
+    if (selectedDateRange === 'custom' && appliedCustomDates) {
+      return {
+        startDate: new Date(appliedCustomDates.start).toISOString(),
+        endDate: new Date(appliedCustomDates.end).toISOString()
+      }
+    }
+    if (selectedDateRange === 'custom') {
+      // Custom selected but not applied yet - use default 3 months
+      return getPresetDateRange('3m')
+    }
+    return getPresetDateRange(selectedDateRange)
+  }, [selectedDateRange, appliedCustomDates])
+
+  // Only refresh when preset changes (not custom) or when custom dates are applied
   useEffect(() => {
-    loadDashboardStats()
-  }, [])
+    if (selectedDateRange !== 'custom') {
+      loadDashboardStats()
+    }
+  }, [selectedDateRange])
+
+  useEffect(() => {
+    if (appliedCustomDates) {
+      loadDashboardStats()
+    }
+  }, [appliedCustomDates])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDateRangeDropdown(false)
+      }
+    }
+
+    if (showDateRangeDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDateRangeDropdown])
 
   const loadDashboardStats = async () => {
     try {
+      setLoading(true)
       setError(null)
-      const dashboardData = await dashboardService.getStats()
+      const range = currentDateRange
+
+      // Load all data in parallel with date range filtering
+      const [dashboardData, serviceStats, recentAuditLogs] = await Promise.all([
+        dashboardService.getStats(range.startDate, range.endDate),
+        serviceReportsService.getServiceReportStats({ dateFrom: range.startDate, dateTo: range.endDate }).catch(() => null),
+        auditService.getRecentActivity(10, range.startDate, range.endDate).catch(() => [])
+      ])
+
       console.log('Dashboard data received:', dashboardData)
       setStats(dashboardData)
+      setServiceReportStats(serviceStats)
+      setAuditLogs(recentAuditLogs)
     } catch (error: any) {
       console.error('Error loading dashboard stats:', error)
 
@@ -75,12 +192,36 @@ export default function Dashboard() {
     }
   }
 
+  const handleDateRangeChange = (value: DateRangePreset) => {
+    setSelectedDateRange(value)
+    setShowDateRangeDropdown(false)
+    // Clear applied custom dates when switching to a preset
+    if (value !== 'custom') {
+      setAppliedCustomDates(null)
+    }
+  }
+
+  const getTrendIcon = (trend: string) => {
+    const value = parseFloat(trend)
+    if (value > 0) return TrendingUp
+    if (value < 0) return TrendingDown
+    return TrendingUp
+  }
+
+  const getTrendVariant = (trend: string): 'success' | 'destructive' | 'default' => {
+    const value = parseFloat(trend)
+    if (value > 0) return 'success'
+    if (value < 0) return 'destructive'
+    return 'default'
+  }
+
   const modules = [
     {
       title: 'Members',
-      description: 'Church members directory',
-      count: stats?.totalMembers ?? 0,
-      trend: stats?.trends?.membersTrend || '+8%',
+      description: 'New members in period',
+      periodCount: stats?.periodMembers ?? 0,
+      totalCount: stats?.totalMembers ?? 0,
+      trend: stats?.trends?.membersTrend || '0%',
       icon: UsersIcon,
       gradient: 'from-green-500 to-green-600',
       bgColor: 'bg-green-50',
@@ -88,9 +229,10 @@ export default function Dashboard() {
     },
     {
       title: 'Groups',
-      description: 'Ministry and small groups',
-      count: stats?.totalGroups ?? 0,
-      trend: stats?.trends?.groupsTrend || '+3%',
+      description: 'New groups in period',
+      periodCount: stats?.periodGroups ?? 0,
+      totalCount: stats?.totalGroups ?? 0,
+      trend: stats?.trends?.groupsTrend || '0%',
       icon: GroupIcon,
       gradient: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-50',
@@ -98,25 +240,44 @@ export default function Dashboard() {
     },
     {
       title: 'First Timers',
-      description: 'New visitors to track',
-      count: stats?.totalFirstTimers ?? 0,
-      trend: stats?.trends?.firstTimersTrend || '+15%',
+      description: 'New visitors in period',
+      periodCount: stats?.periodFirstTimers ?? 0,
+      totalCount: stats?.totalFirstTimers ?? 0,
+      trend: stats?.trends?.firstTimersTrend || '0%',
       icon: UserPlus,
       gradient: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50',
       path: '/first-timers',
     },
-    {
-      title: 'Bulk Operations',
-      description: 'Data import and management',
-      count: stats?.totalBulkOperations ?? 156,
-      trend: '+24%',
-      icon: Database,
-      gradient: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      path: '/bulk-operations',
-    }
   ]
+
+  // Helper function to get audit action icon
+  const getAuditActionIcon = (action: string) => {
+    if (action.includes('LOGIN')) return LogIn
+    if (action.includes('LOGOUT')) return LogOut
+    if (action.includes('CREATE') || action.includes('CREATED')) return UserPlus
+    if (action.includes('UPDATE') || action.includes('UPDATED')) return Edit
+    if (action.includes('DELETE') || action.includes('DELETED')) return Trash2
+    if (action.includes('VIEW') || action.includes('READ')) return Eye
+    if (action.includes('CONFIG') || action.includes('SETTING')) return Settings
+    return Activity
+  }
+
+  // Helper function to get audit action color
+  const getAuditActionColor = (action: string) => {
+    if (action.includes('LOGIN')) return 'bg-blue-500'
+    if (action.includes('LOGOUT')) return 'bg-gray-500'
+    if (action.includes('CREATE') || action.includes('CREATED')) return 'bg-green-500'
+    if (action.includes('UPDATE') || action.includes('UPDATED')) return 'bg-yellow-500'
+    if (action.includes('DELETE') || action.includes('DELETED')) return 'bg-red-500'
+    if (action.includes('VIEW') || action.includes('READ')) return 'bg-purple-500'
+    return 'bg-blue-500'
+  }
+
+  // Format audit action for display
+  const formatAuditAction = (action: string) => {
+    return action.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+  }
 
   if (loading) {
     return (
@@ -140,44 +301,133 @@ export default function Dashboard() {
 
   return (
     <Layout title="Dashboard">
-      <div className="space-y-8">
+      <div className="space-y-6">
+        {/* Date Range Filter */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="text-sm text-muted-foreground">
+              Showing data for{' '}
+              <span className="font-medium text-foreground">
+                {selectedDateRange === 'custom' && appliedCustomDates
+                  ? `${formatDateDisplay(appliedCustomDates.start)} - ${formatDateDisplay(appliedCustomDates.end)}`
+                  : selectedDateRange === 'custom'
+                  ? 'custom range (select dates)'
+                  : currentDateRangeOption.label.toLowerCase()}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Custom Date Inputs - Show when custom is selected */}
+              {selectedDateRange === 'custom' && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">From:</span>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      max={customEndDate}
+                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">To:</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      min={customStartDate}
+                      max={formatDateForInput(new Date())}
+                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setAppliedCustomDates({ start: customStartDate, end: customEndDate })}
+                    disabled={!customStartDate || !customEndDate}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              )}
+
+              {/* Date Range Preset Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowDateRangeDropdown(!showDateRangeDropdown)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors text-sm font-medium"
+                >
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  {currentDateRangeOption.label}
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showDateRangeDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                {showDateRangeDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    {dateRangePresets.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => handleDateRangeChange(option.value)}
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                          selectedDateRange === option.value ? 'bg-primary-50 text-primary-600 font-medium' : 'text-foreground'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          {modules.map((module, index) => (
-            <motion.div
-              key={module.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-            >
-              <Card className="p-4 hover:shadow-lg transition-all duration-300 cursor-pointer group transform hover:scale-105"
-                    onClick={() => navigate(module.path)}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`p-2 rounded-lg bg-gradient-to-r ${module.gradient} shadow-sm transition-transform group-hover:scale-110`}>
-                    <module.icon className="h-4 w-4 text-white" />
-                  </div>
-                  <Badge variant="success" className="text-xs flex items-center">
-                    <TrendingUp className="h-2 w-2 mr-1" />
-                    {module.trend}
-                  </Badge>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
+          {modules.map((module, index) => {
+            const TrendIcon = module.trend ? getTrendIcon(module.trend) : null
+            const trendVariant = module.trend ? getTrendVariant(module.trend) : 'default'
 
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-foreground group-hover:text-primary-600 transition-colors">
-                    {module.title}
-                  </h3>
-
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <p className="text-xl font-bold text-foreground">{typeof module.count === 'number' ? module.count.toLocaleString() : module.count}</p>
-                      <p className="text-xs text-muted-foreground">Total</p>
+            return (
+              <motion.div
+                key={module.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <Card className="p-4 hover:shadow-lg transition-all duration-300 cursor-pointer group transform hover:scale-105"
+                      onClick={() => navigate(module.path)}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`p-2 rounded-lg bg-gradient-to-r ${module.gradient} shadow-sm transition-transform group-hover:scale-110`}>
+                      <module.icon className="h-4 w-4 text-white" />
                     </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary-600 transform group-hover:translate-x-1 transition-all" />
+                    {module.trend && TrendIcon && (
+                      <Badge variant={trendVariant} className="text-xs flex items-center">
+                        <TrendIcon className="h-2 w-2 mr-1" />
+                        {module.trend}
+                      </Badge>
+                    )}
                   </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-foreground group-hover:text-primary-600 transition-colors">
+                      {module.title}
+                    </h3>
+
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-foreground">
+                          {module.periodCount.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          In period • {module.totalCount.toLocaleString()} total
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary-600 transform group-hover:translate-x-1 transition-all" />
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            )
+          })}
         </div>
 
         {/* Quick Actions Section */}
@@ -216,9 +466,9 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Analytics & Activity Section */}
+        {/* Service Reports & Audit Trail Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Analytics Overview */}
+          {/* Service Reports Stats */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -226,56 +476,81 @@ export default function Dashboard() {
           >
             <Card className="h-full">
               <div className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <BarChart3 className="h-5 w-5 text-white" />
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground">Service Reports</h2>
+                      <p className="text-sm text-muted-foreground">Attendance and service statistics</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-foreground">Growth Analytics</h2>
-                    <p className="text-sm text-muted-foreground">Track your community growth</p>
-                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/service-reports')}>
+                    View All
+                  </Button>
                 </div>
 
-                {/* Key Metrics */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600 mb-1">{stats?.recentFirstTimers || 12}</div>
-                    <div className="text-sm text-blue-600 font-medium">New This Month</div>
-                  </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600 mb-1">89%</div>
-                    <div className="text-sm text-green-600 font-medium">Active Rate</div>
-                  </div>
-                </div>
-
-                {/* Progress Indicators */}
-                <div className="space-y-4">
-                  {[
-                    { label: 'Member Engagement', value: stats?.analytics?.memberEngagement || 78, color: 'bg-green-500' },
-                    { label: 'Group Participation', value: stats?.analytics?.groupParticipation || 65, color: 'bg-purple-500' },
-                    { label: 'Event Attendance', value: stats?.analytics?.eventAttendance || 92, color: 'bg-blue-500' },
-                  ].map((metric, index) => (
-                    <div key={metric.label}>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-foreground">{metric.label}</span>
-                        <span className="text-sm font-semibold text-foreground">{metric.value}%</span>
+                {serviceReportStats ? (
+                  <>
+                    {/* Key Metrics */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600 mb-1">
+                          {serviceReportStats.overall?.totalReports?.toLocaleString() || 0}
+                        </div>
+                        <div className="text-sm text-blue-600 font-medium">Total Reports</div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <motion.div
-                          className={`h-2 rounded-full ${metric.color}`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${metric.value}%` }}
-                          transition={{ duration: 1, delay: 1 + index * 0.2 }}
-                        ></motion.div>
+                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600 mb-1">
+                          {serviceReportStats.overall?.totalAttendance?.toLocaleString() || 0}
+                        </div>
+                        <div className="text-sm text-green-600 font-medium">Total Attendance</div>
                       </div>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Additional Stats */}
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm font-medium text-foreground">Avg. Attendance</span>
+                        <span className="text-sm font-bold text-foreground">
+                          {Math.round(serviceReportStats.overall?.averageAttendance || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm font-medium text-foreground">Highest Attendance</span>
+                        <span className="text-sm font-bold text-foreground">
+                          {(serviceReportStats.overall?.highestAttendance || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm font-medium text-foreground">Total First Timers</span>
+                        <span className="text-sm font-bold text-foreground">
+                          {(serviceReportStats.overall?.totalFirstTimers || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm font-medium text-foreground">Avg. First Timers/Service</span>
+                        <span className="text-sm font-bold text-foreground">
+                          {Math.round(serviceReportStats.overall?.averageFirstTimers || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                    <p className="text-sm text-muted-foreground">No service reports data available</p>
+                    <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/service-reports/new')}>
+                      Create First Report
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           </motion.div>
 
-          {/* Recent Activity */}
+          {/* Audit Trail / Recent Activity */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -283,69 +558,67 @@ export default function Dashboard() {
           >
             <Card className="h-full">
               <div className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
-                    <Activity className="h-5 w-5 text-white" />
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+                      <Activity className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground">Recent Activity</h2>
+                      <p className="text-sm text-muted-foreground">System audit trail</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-foreground">Recent Activity</h2>
-                    <p className="text-sm text-muted-foreground">Latest community updates</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {(stats?.recentActivity || [
-                    { id: '1', action: 'New member registered', user: 'John Doe', timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(), type: 'member' as const },
-                    { id: '2', action: 'Member profile updated', user: 'Jane Smith', timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), type: 'member' as const },
-                    { id: '3', action: 'First-timer registered', user: 'Mike Johnson', timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(), type: 'first_timer' as const },
-                    { id: '4', action: 'Group meeting scheduled', user: 'Admin', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), type: 'group' as const },
-                  ]).map((activity, index) => {
-                    const getActivityIcon = (type: string) => {
-                      switch (type) {
-                        case 'member': return UsersIcon
-                        case 'first_timer': return UserPlus
-                        case 'group': return GroupIcon
-                        default: return UsersIcon
-                      }
-                    }
-
-                    const getActivityColor = (type: string) => {
-                      switch (type) {
-                        case 'member': return 'bg-green-500'
-                        case 'first_timer': return 'bg-orange-500'
-                        case 'group': return 'bg-purple-500'
-                        default: return 'bg-green-500'
-                      }
-                    }
-
-                    const ActivityIcon = getActivityIcon(activity.type)
-
-                    return (
-                      <motion.div
-                        key={activity.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.1 + index * 0.1 }}
-                        className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className={`w-8 h-8 ${getActivityColor(activity.type)} rounded-full flex items-center justify-center flex-shrink-0`}>
-                          <ActivityIcon className="h-4 w-4 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-foreground truncate">{activity.action}</p>
-                          <p className="text-xs text-muted-foreground">by {activity.user}</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">{formatTimeAgo(activity.timestamp)}</span>
-                      </motion.div>
-                    )
-                  })}
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button variant="ghost" size="sm" className="w-full text-sm">
-                    View All Activity
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/audit/logs')}>
+                    View All
                   </Button>
                 </div>
+
+                <div className="space-y-3">
+                  {auditLogs.length > 0 ? (
+                    auditLogs.map((log, index) => {
+                      const ActionIcon = getAuditActionIcon(log.action)
+                      const actionColor = getAuditActionColor(log.action)
+
+                      return (
+                        <motion.div
+                          key={log._id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 1.1 + index * 0.1 }}
+                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <div className={`w-8 h-8 ${actionColor} rounded-full flex items-center justify-center flex-shrink-0`}>
+                            <ActionIcon className="h-4 w-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm text-foreground truncate">
+                              {formatAuditAction(log.action)}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {log.description || `${log.entity || log.entityType || 'System'}`} • by {log.performedBy?.firstName || 'System'} {log.performedBy?.lastName || ''}
+                            </p>
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatTimeAgo(log.timestamp || log.createdAt)}
+                          </span>
+                        </motion.div>
+                      )
+                    })
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Activity className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                      <p className="text-sm text-muted-foreground">No recent activity</p>
+                    </div>
+                  )}
+                </div>
+
+                {auditLogs.length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <Button variant="ghost" size="sm" className="w-full text-sm" onClick={() => navigate('/audit/logs')}>
+                      View Full Audit Trail
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           </motion.div>

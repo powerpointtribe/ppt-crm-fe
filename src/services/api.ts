@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import type { ApiError } from '../types'
+import { useAppStore } from '@/store'
 
 class ApiService {
   private client: AxiosInstance
@@ -21,6 +22,9 @@ class ApiService {
   private setupInterceptors() {
     this.client.interceptors.request.use(
       (config) => {
+        // Start loading indicator
+        useAppStore.getState().startApiLoading()
+
         const token = localStorage.getItem('auth_token') || localStorage.getItem('token')
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
@@ -30,12 +34,22 @@ class ApiService {
         }
         return config
       },
-      (error) => Promise.reject(error)
+      (error) => {
+        // Stop loading on request error
+        useAppStore.getState().stopApiLoading()
+        return Promise.reject(error)
+      }
     )
 
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Stop loading on successful response
+        useAppStore.getState().stopApiLoading()
+        return response
+      },
       (error) => {
+        // Stop loading on error response
+        useAppStore.getState().stopApiLoading()
         console.error('API Error Details:', {
           message: error.message,
           status: error.response?.status,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -7,12 +7,13 @@ import {
   Mail,
   Edit,
   Eye,
-  Search,
   Download,
   MapPin,
   Calendar,
   UserPlus,
-  X
+  X,
+  User,
+  Filter
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
@@ -20,9 +21,33 @@ import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import { SkeletonTable } from '@/components/ui/Skeleton'
+import PageToolbar, { SearchResult } from '@/components/ui/PageToolbar'
+import FilterModal from '@/components/ui/FilterModal'
 import { Member, MemberSearchParams, membersService } from '@/services/members-unified'
 import { groupsService } from '@/services/groups'
 import { formatDate } from '@/utils/formatters'
+
+// Filter options
+const statusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'new_convert', label: 'New Convert' },
+  { value: 'worker', label: 'Worker' },
+  { value: 'leader', label: 'Leader' },
+  { value: 'transferred', label: 'Transferred' },
+]
+
+const genderOptions = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+]
+
+const maritalStatusOptions = [
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'divorced', label: 'Divorced' },
+  { value: 'widowed', label: 'Widowed' },
+]
 
 export default function Members() {
   const navigate = useNavigate()
@@ -45,9 +70,74 @@ export default function Members() {
   const [selectedDistrict, setSelectedDistrict] = useState('')
   const [assigning, setAssigning] = useState(false)
 
+  // Filter states (applied filters)
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
+  const [maritalStatusFilter, setMaritalStatusFilter] = useState('')
+  const [districtFilter, setDistrictFilter] = useState('')
+
+  // Temporary filter states (for modal - only applied when user clicks Apply)
+  const [tempStatusFilter, setTempStatusFilter] = useState('')
+  const [tempGenderFilter, setTempGenderFilter] = useState('')
+  const [tempMaritalStatusFilter, setTempMaritalStatusFilter] = useState('')
+  const [tempDistrictFilter, setTempDistrictFilter] = useState('')
+  const [tempDateFrom, setTempDateFrom] = useState('')
+  const [tempDateTo, setTempDateTo] = useState('')
+
+  // Applied date range filters
+  const [dateFromFilter, setDateFromFilter] = useState('')
+  const [dateToFilter, setDateToFilter] = useState('')
+
+  const hasActiveFilters = statusFilter || genderFilter || maritalStatusFilter || districtFilter || dateFromFilter || dateToFilter
+  const activeFilterCount = [statusFilter, genderFilter, maritalStatusFilter, districtFilter, dateFromFilter, dateToFilter].filter(Boolean).length
+
+  const openFilterModal = () => {
+    // Sync temp filters with current applied filters
+    setTempStatusFilter(statusFilter)
+    setTempGenderFilter(genderFilter)
+    setTempMaritalStatusFilter(maritalStatusFilter)
+    setTempDistrictFilter(districtFilter)
+    setTempDateFrom(dateFromFilter)
+    setTempDateTo(dateToFilter)
+    setShowFilterModal(true)
+  }
+
+  const closeFilterModal = () => {
+    setShowFilterModal(false)
+  }
+
+  const applyFilters = () => {
+    setStatusFilter(tempStatusFilter)
+    setGenderFilter(tempGenderFilter)
+    setMaritalStatusFilter(tempMaritalStatusFilter)
+    setDistrictFilter(tempDistrictFilter)
+    setDateFromFilter(tempDateFrom)
+    setDateToFilter(tempDateTo)
+    setShowFilterModal(false)
+  }
+
+  const clearAllFilters = () => {
+    setTempStatusFilter('')
+    setTempGenderFilter('')
+    setTempMaritalStatusFilter('')
+    setTempDistrictFilter('')
+    setTempDateFrom('')
+    setTempDateTo('')
+  }
+
+  const clearAppliedFilters = () => {
+    setStatusFilter('')
+    setGenderFilter('')
+    setMaritalStatusFilter('')
+    setDistrictFilter('')
+    setDateFromFilter('')
+    setDateToFilter('')
+  }
+
   useEffect(() => {
     loadMembers()
-  }, [searchParams, activeTab])
+  }, [searchParams, activeTab, statusFilter, genderFilter, maritalStatusFilter, districtFilter, dateFromFilter, dateToFilter])
 
   useEffect(() => {
     loadCounts()
@@ -75,8 +165,16 @@ export default function Members() {
       setError(null)
       setLoading(true)
 
-      // Use server-side filtering based on active tab
-      const params = { ...searchParams }
+      // Build params with filters
+      const params: MemberSearchParams = {
+        ...searchParams,
+        membershipStatus: statusFilter || undefined,
+        gender: genderFilter as 'male' | 'female' | undefined,
+        maritalStatus: maritalStatusFilter as Member['maritalStatus'] | undefined,
+        districtId: districtFilter || undefined,
+        dateJoinedFrom: dateFromFilter || undefined,
+        dateJoinedTo: dateToFilter || undefined,
+      }
       const response = await membersService.getMembers(params)
 
       // Filter members based on active tab
@@ -131,6 +229,28 @@ export default function Members() {
     setSearchParams(prev => ({ ...prev, page: 1 }))
   }
 
+  // Fetch search results for autocomplete
+  const fetchSearchResults = useCallback(async (query: string): Promise<SearchResult[]> => {
+    try {
+      const response = await membersService.getMembers({ search: query, limit: 5 })
+      return response.items.map((member) => ({
+        id: member._id,
+        title: `${member.firstName} ${member.lastName}`,
+        subtitle: member.email || member.phone,
+        type: 'Member',
+        path: `/members/${member._id}`,
+        icon: <User className="h-4 w-4 text-green-600" />
+      }))
+    } catch (error) {
+      console.error('Error fetching search results:', error)
+      return []
+    }
+  }, [])
+
+  const handleSelectSearchResult = useCallback((result: SearchResult) => {
+    navigate(result.path || `/members/${result.id}`)
+  }, [navigate])
+
   const handleOpenAssignModal = (member: Member) => {
     setSelectedMember(member)
     setSelectedDistrict('')
@@ -179,51 +299,6 @@ export default function Members() {
     }
   }
 
-  // Search Section to be displayed in header
-  const searchSection = (
-    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
-      <div className="flex-1 min-w-[200px]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search members by name, email, or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
-          />
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
-      >
-        Search
-      </button>
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="flex items-center gap-2"
-        onClick={() => navigate('/members/new')}
-      >
-        <Plus className="h-4 w-4" />
-        Add Member
-      </Button>
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="flex items-center gap-2"
-      >
-        <Download className="h-4 w-4" />
-        Export
-      </Button>
-    </form>
-  )
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -243,7 +318,7 @@ export default function Members() {
 
   if (loading) {
     return (
-      <Layout title="Members" subtitle="Manage church members and their information" searchSection={searchSection}>
+      <Layout title="Members" subtitle="Manage church members">
         <SkeletonTable />
       </Layout>
     )
@@ -251,15 +326,73 @@ export default function Members() {
 
   if (error) {
     return (
-      <Layout title="Members" subtitle="Manage church members and their information" searchSection={searchSection}>
+      <Layout title="Members" subtitle="Manage church members">
         <ErrorBoundary error={error} onRetry={loadMembers} />
       </Layout>
     )
   }
 
   return (
-    <Layout title="Members" subtitle="Manage church members and their information" searchSection={searchSection}>
+    <Layout title="Members" subtitle="Manage church members">
       <div className="space-y-6">
+        {/* Page Toolbar with Search and Actions */}
+        <PageToolbar
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          onSearchSubmit={handleSearch}
+          searchPlaceholder="Search members by name, email, or phone..."
+          enableAutocomplete={true}
+          onFetchResults={fetchSearchResults}
+          onSelectResult={handleSelectSearchResult}
+          secondaryActions={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openFilterModal}
+                className={hasActiveFilters ? 'border-primary-500 text-primary-600' : ''}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary-500 text-white rounded-full">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAppliedFilters}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          }
+          primaryActions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {}}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate('/members/new')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Member
+              </Button>
+            </>
+          }
+        />
 
         {/* Tabs */}
         <motion.div
@@ -544,6 +677,59 @@ export default function Members() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={closeFilterModal}
+        onApply={applyFilters}
+        onReset={clearAllFilters}
+        title="Filter Members"
+        subtitle="Refine your search results"
+        activeFilterCount={activeFilterCount}
+        filters={[
+          {
+            id: 'status',
+            label: 'Membership Status',
+            value: tempStatusFilter,
+            onChange: setTempStatusFilter,
+            options: statusOptions,
+            placeholder: 'All Status',
+          },
+          {
+            id: 'gender',
+            label: 'Gender',
+            value: tempGenderFilter,
+            onChange: setTempGenderFilter,
+            options: genderOptions,
+            placeholder: 'All Genders',
+          },
+          {
+            id: 'maritalStatus',
+            label: 'Marital Status',
+            value: tempMaritalStatusFilter,
+            onChange: setTempMaritalStatusFilter,
+            options: maritalStatusOptions,
+            placeholder: 'All Marital Status',
+          },
+          {
+            id: 'district',
+            label: 'District',
+            value: tempDistrictFilter,
+            onChange: setTempDistrictFilter,
+            options: districts.map(d => ({ value: d._id, label: d.name })),
+            placeholder: 'All Districts',
+          },
+        ]}
+        dateRange={{
+          id: 'dateJoined',
+          label: 'Date Joined',
+          fromValue: tempDateFrom,
+          toValue: tempDateTo,
+          onFromChange: setTempDateFrom,
+          onToChange: setTempDateTo,
+        }}
+      />
     </Layout>
   )
 }

@@ -12,7 +12,6 @@ import {
   Menu,
   X,
   LayoutDashboard,
-  UserCheck,
   GroupIcon,
   Database,
   ChevronDown,
@@ -77,12 +76,6 @@ const baseMenuItems = [
     requiredModule: 'first-timers',
     hasDropdown: true,
     subItems: [
-      {
-        icon: UserCheck,
-        label: 'My Assignments',
-        path: '/my-assigned-first-timers',
-        color: 'text-blue-600'
-      },
       {
         icon: Phone,
         label: 'Call Reports',
@@ -164,7 +157,7 @@ const baseMenuItems = [
     label: 'Audit',
     path: '/audit',
     color: 'text-red-600',
-    requiredModule: 'audit-logs',
+    requiredModule: null, // Always visible
     hasDropdown: true,
     subItems: [
       {

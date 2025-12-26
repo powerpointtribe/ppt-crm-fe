@@ -57,7 +57,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return null;
   };
 
-  const [member, setMember] = useState<Member | null>(null);
+  // Initialize cached member synchronously
+  const initCachedMember = (): Member | null => {
+    const cachedMember = localStorage.getItem('cached_member');
+    if (cachedMember) {
+      try {
+        return JSON.parse(cachedMember);
+      } catch (e) {
+        console.error('Failed to parse cached member:', e);
+      }
+    }
+    return null;
+  };
+
+  const [member, setMember] = useState<Member | null>(initCachedMember());
   const [isLoading, setIsLoading] = useState(true);
   const [cachedPermissions, setCachedPermissions] = useState<{
     accessibleModules: string[];
@@ -112,6 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
 
         setMember(memberWithPermissions);
+        localStorage.setItem('cached_member', JSON.stringify(memberWithPermissions));
 
         // Cache permissions for offline use
         const permissions = {
@@ -127,6 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Failed to fetch permissions, using profile data only:', permError);
         // Fallback to just profile data if permissions fetch fails
         setMember(memberProfile);
+        localStorage.setItem('cached_member', JSON.stringify(memberProfile));
         const permissions = {
           accessibleModules: memberProfile.accessibleModules || [],
           systemRoles: memberProfile.systemRoles || [],
@@ -157,6 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('Authentication error detected, clearing token and permissions');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('cached_permissions');
+        localStorage.removeItem('cached_member');
         setMember(null);
         setCachedPermissions(null);
       } else if (isNetworkError) {
@@ -194,6 +210,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
 
         setMember(memberWithPermissions);
+        localStorage.setItem('cached_member', JSON.stringify(memberWithPermissions));
 
         // Cache permissions for offline use
         const permissions = {
@@ -209,6 +226,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Failed to fetch permissions after login, using member data only:', permError);
         // Fallback to just member data if permissions fetch fails
         setMember(memberData);
+        localStorage.setItem('cached_member', JSON.stringify(memberData));
         const permissions = {
           accessibleModules: memberData.accessibleModules || [],
           systemRoles: memberData.systemRoles || [],
@@ -231,6 +249,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('cached_permissions');
+    localStorage.removeItem('cached_member');
     setMember(null);
     setCachedPermissions(null);
   };

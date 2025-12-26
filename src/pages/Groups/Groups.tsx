@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, Filter, Download, Users, MapPin, Calendar, Crown, Shield, Star, Settings as SettingsIcon, Eye, Edit, Trash2, Archive, Upload, Search } from 'lucide-react'
+import { Plus, Filter, Download, Users, MapPin, Calendar, Crown, Shield, Star, Settings as SettingsIcon, Eye, Edit, Trash2, Archive, Upload, Search, X } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import { SkeletonTable } from '@/components/ui/Skeleton'
+import FilterModal from '@/components/ui/FilterModal'
 import { BulkSelectableTable, BulkSelectHeader, BulkSelectRow, TableBody, TableHead, TableCell } from '@/components/ui/BulkSelectableTable'
 import BulkActions, { commonBulkActions, BulkAction } from '@/components/ui/BulkActions'
 import BulkConfirmationModal from '@/components/ui/BulkConfirmationModal'
@@ -35,6 +36,19 @@ export default function Groups() {
   const [pagination, setPagination] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
   const [filteredType, setFilteredType] = useState<string | null>(urlSearchParams.get('type'))
+  const [showFilterModal, setShowFilterModal] = useState(false)
+
+  // Filter states
+  const [typeFilter, setTypeFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [dateFromFilter, setDateFromFilter] = useState('')
+  const [dateToFilter, setDateToFilter] = useState('')
+
+  // Temp filter states for modal
+  const [tempTypeFilter, setTempTypeFilter] = useState('')
+  const [tempStatusFilter, setTempStatusFilter] = useState('')
+  const [tempDateFrom, setTempDateFrom] = useState('')
+  const [tempDateTo, setTempDateTo] = useState('')
 
   // Bulk operations state
   const bulkSelection = useBulkSelection<Group>()
@@ -176,6 +190,63 @@ export default function Groups() {
     newParams.set('page', '1')
     setUrlSearchParams(newParams)
   }
+
+  // Filter modal functions
+  const openFilterModal = () => {
+    setTempTypeFilter(typeFilter)
+    setTempStatusFilter(statusFilter)
+    setTempDateFrom(dateFromFilter)
+    setTempDateTo(dateToFilter)
+    setShowFilterModal(true)
+  }
+
+  const closeFilterModal = () => {
+    setShowFilterModal(false)
+  }
+
+  const applyFilters = () => {
+    setTypeFilter(tempTypeFilter)
+    setStatusFilter(tempStatusFilter)
+    setDateFromFilter(tempDateFrom)
+    setDateToFilter(tempDateTo)
+    // Apply filters using URL params
+    const newParams = new URLSearchParams(urlSearchParams)
+    if (tempTypeFilter) {
+      newParams.set('type', tempTypeFilter)
+    } else {
+      newParams.delete('type')
+    }
+    if (tempStatusFilter) {
+      newParams.set('isActive', tempStatusFilter)
+    } else {
+      newParams.delete('isActive')
+    }
+    newParams.set('page', '1')
+    setUrlSearchParams(newParams)
+    setShowFilterModal(false)
+  }
+
+  const resetTempFilters = () => {
+    setTempTypeFilter('')
+    setTempStatusFilter('')
+    setTempDateFrom('')
+    setTempDateTo('')
+  }
+
+  const clearAppliedFilters = () => {
+    setTypeFilter('')
+    setStatusFilter('')
+    setDateFromFilter('')
+    setDateToFilter('')
+    const newParams = new URLSearchParams(urlSearchParams)
+    newParams.delete('type')
+    newParams.delete('isActive')
+    newParams.set('page', '1')
+    setUrlSearchParams(newParams)
+  }
+
+  const hasActiveFilters = !!(typeFilter || statusFilter || dateFromFilter || dateToFilter)
+  const activeFilterCount = [typeFilter, statusFilter, dateFromFilter, dateToFilter].filter(Boolean).length
 
   // Bulk operations handlers
   const handleBulkDelete = () => {
@@ -440,37 +511,39 @@ export default function Groups() {
         </div>
       </div>
 
-      {!filteredType && (
-        <select
-          value={searchParams.type || ''}
-          onChange={(e) => handleFilter({ type: e.target.value as any || undefined })}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
-        >
-          <option value="">All Types</option>
-          <option value="district">Districts</option>
-          <option value="unit">Units</option>
-          <option value="fellowship">Fellowships</option>
-          <option value="ministry">Ministries</option>
-          <option value="committee">Committees</option>
-        </select>
-      )}
-
-      <select
-        value={searchParams.isActive?.toString() || ''}
-        onChange={(e) => handleFilter({ isActive: e.target.value ? e.target.value === 'true' : undefined })}
-        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
-      >
-        <option value="">All Status</option>
-        <option value="true">Active</option>
-        <option value="false">Inactive</option>
-      </select>
-
       <button
         type="submit"
         className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
       >
         Search
       </button>
+
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={openFilterModal}
+        className={hasActiveFilters ? 'border-primary-500 text-primary-600' : ''}
+      >
+        <Filter className="h-4 w-4 mr-2" />
+        Filters
+        {activeFilterCount > 0 && (
+          <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary-500 text-white rounded-full">
+            {activeFilterCount}
+          </span>
+        )}
+      </Button>
+
+      {hasActiveFilters && (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={clearAppliedFilters}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X className="h-4 w-4 mr-1" />
+          Clear
+        </Button>
+      )}
 
       <Button onClick={() => navigate('/groups/new')}>
         <Plus className="h-4 w-4 mr-2" />
@@ -882,6 +955,52 @@ export default function Groups() {
           'location', 'meetingDay', 'meetingTime', 'meetingFrequency',
           'districtPastor', 'unitHead'
         ]}
+      />
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={closeFilterModal}
+        onApply={applyFilters}
+        onReset={resetTempFilters}
+        title="Filter Groups"
+        subtitle="Refine your search results"
+        activeFilterCount={activeFilterCount}
+        filters={[
+          ...(!filteredType ? [{
+            id: 'type',
+            label: 'Group Type',
+            value: tempTypeFilter,
+            onChange: setTempTypeFilter,
+            options: [
+              { value: 'district', label: 'Districts' },
+              { value: 'unit', label: 'Units' },
+              { value: 'fellowship', label: 'Fellowships' },
+              { value: 'ministry', label: 'Ministries' },
+              { value: 'committee', label: 'Committees' },
+            ],
+            placeholder: 'All Types',
+          }] : []),
+          {
+            id: 'status',
+            label: 'Status',
+            value: tempStatusFilter,
+            onChange: setTempStatusFilter,
+            options: [
+              { value: 'true', label: 'Active' },
+              { value: 'false', label: 'Inactive' },
+            ],
+            placeholder: 'All Status',
+          },
+        ]}
+        dateRange={{
+          id: 'createdDate',
+          label: 'Created Date Range',
+          fromValue: tempDateFrom,
+          toValue: tempDateTo,
+          onFromChange: setTempDateFrom,
+          onToChange: setTempDateTo,
+        }}
       />
     </Layout>
   )

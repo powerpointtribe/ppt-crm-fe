@@ -433,7 +433,7 @@ export default function AuditLogs() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {log.entity ? log.entity.replace(/_/g, ' ') : 'N/A'}
+                        {(log.entity || log.entityType) ? (log.entity || log.entityType)!.replace(/_/g, ' ') : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {log.performedBy?.firstName || ''} {log.performedBy?.lastName || ''}
@@ -541,7 +541,7 @@ export default function AuditLogs() {
                       </div>
                       <div>
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Entity</label>
-                        <p className="text-sm text-gray-900 mt-1">{selectedLog.entity ? selectedLog.entity.replace(/_/g, ' ') : 'N/A'}</p>
+                        <p className="text-sm text-gray-900 mt-1">{(selectedLog.entity || selectedLog.entityType) ? (selectedLog.entity || selectedLog.entityType)!.replace(/_/g, ' ') : 'N/A'}</p>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Performed By</label>

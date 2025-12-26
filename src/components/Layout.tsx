@@ -11,10 +11,13 @@ interface LayoutProps {
   children: ReactNode
   title?: string
   subtitle?: string
+  /** @deprecated Use PageToolbar in children instead */
   searchSection?: ReactNode
+  /** Optional actions to display next to the title */
+  actions?: ReactNode
 }
 
-export default function Layout({ children, title = 'Dashboard', subtitle, searchSection }: LayoutProps) {
+export default function Layout({ children, title = 'Dashboard', subtitle, searchSection, actions }: LayoutProps) {
   const { sidebarCollapsed } = useAppStore()
   const [isMobile, setIsMobile] = useState(false)
 
@@ -39,7 +42,7 @@ export default function Layout({ children, title = 'Dashboard', subtitle, search
           isMobile ? 'ml-0' : sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
         )}
       >
-        <Header title={title} subtitle={subtitle} searchSection={searchSection} />
+        <Header title={title} subtitle={subtitle} searchSection={searchSection} actions={actions} />
 
         <motion.div
           className="flex-1 p-4 md:p-6"

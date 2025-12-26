@@ -2,16 +2,18 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  Plus, Search, Phone, Mail, Calendar, User,
+  Plus, Phone, Mail, Calendar, User,
   MoreHorizontal, Eye, Edit, Trash2, UserPlus,
   Users, Clock, CheckCircle, TrendingUp, UserCheck,
-  Filter, X, ChevronDown
+  X, Filter
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import Modal from '@/components/ui/Modal'
+import PageToolbar, { SearchResult } from '@/components/ui/PageToolbar'
+import FilterModal from '@/components/ui/FilterModal'
 import { FirstTimer, FirstTimerSearchParams, firstTimersService } from '@/services/first-timers'
 import { Member, membersService } from '@/services/members'
 import { formatDate } from '@/utils/formatters'
@@ -28,8 +30,15 @@ export default function FirstTimers() {
   const [howDidYouHearFilter, setHowDidYouHearFilter] = useState('')
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null)
+  const [showFilterModal, setShowFilterModal] = useState(false)
+
+  // Temp filter states for modal
+  const [tempStatusFilter, setTempStatusFilter] = useState('')
+  const [tempVisitorTypeFilter, setTempVisitorTypeFilter] = useState('')
+  const [tempHowDidYouHearFilter, setTempHowDidYouHearFilter] = useState('')
+  const [tempDateFrom, setTempDateFrom] = useState('')
+  const [tempDateTo, setTempDateTo] = useState('')
   const [stats, setStats] = useState<any>(null)
   const [statsLoading, setStatsLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -121,6 +130,28 @@ export default function FirstTimers() {
     loadFirstTimers(1)
   }
 
+  // Fetch search results for autocomplete
+  const fetchSearchResults = useCallback(async (query: string): Promise<SearchResult[]> => {
+    try {
+      const response = await firstTimersService.getFirstTimers({ search: query, limit: 5 })
+      return (response.items || []).map((firstTimer) => ({
+        id: firstTimer._id,
+        title: `${firstTimer.firstName} ${firstTimer.lastName}`,
+        subtitle: firstTimer.email || firstTimer.phone,
+        type: 'First Timer',
+        path: `/first-timers/${firstTimer._id}`,
+        icon: <UserPlus className="h-4 w-4 text-orange-600" />
+      }))
+    } catch (error) {
+      console.error('Error fetching search results:', error)
+      return []
+    }
+  }, [])
+
+  const handleSelectSearchResult = useCallback((result: SearchResult) => {
+    navigate(result.path || `/first-timers/${result.id}`)
+  }, [navigate])
+
   const handleStatusFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setStatusFilter(e.target.value)
   }
@@ -155,6 +186,45 @@ export default function FirstTimers() {
     setDateToFilter('')
   }
 
+  // Modal filter functions
+  const openFilterModal = () => {
+    setTempStatusFilter(statusFilter)
+    setTempVisitorTypeFilter(visitorTypeFilter)
+    setTempHowDidYouHearFilter(howDidYouHearFilter)
+    setTempDateFrom(dateFromFilter)
+    setTempDateTo(dateToFilter)
+    setShowFilterModal(true)
+  }
+
+  const closeFilterModal = () => {
+    setShowFilterModal(false)
+  }
+
+  const applyFilters = () => {
+    setStatusFilter(tempStatusFilter)
+    setVisitorTypeFilter(tempVisitorTypeFilter)
+    setHowDidYouHearFilter(tempHowDidYouHearFilter)
+    setDateFromFilter(tempDateFrom)
+    setDateToFilter(tempDateTo)
+    setShowFilterModal(false)
+  }
+
+  const resetTempFilters = () => {
+    setTempStatusFilter('')
+    setTempVisitorTypeFilter('')
+    setTempHowDidYouHearFilter('')
+    setTempDateFrom('')
+    setTempDateTo('')
+  }
+
+  const clearAppliedFilters = () => {
+    setStatusFilter('')
+    setVisitorTypeFilter('')
+    setHowDidYouHearFilter('')
+    setDateFromFilter('')
+    setDateToFilter('')
+  }
+
   // Pagination handlers
   const handlePrevPage = () => {
     if (pagination && pagination.hasPrev) {
@@ -176,11 +246,8 @@ export default function FirstTimers() {
     }
   }
 
-  const hasActiveFilters = !!(
-    searchTerm || statusFilter || assignedFilter ||
-    visitorTypeFilter || howDidYouHearFilter ||
-    dateFromFilter || dateToFilter
-  )
+  const hasActiveFilters = !!(statusFilter || visitorTypeFilter || howDidYouHearFilter || dateFromFilter || dateToFilter)
+  const activeFilterCount = [statusFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter].filter(Boolean).length
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this visitor?')) return
@@ -285,60 +352,17 @@ export default function FirstTimers() {
     )
   }
 
-  // Search Section to be displayed in header
-  const searchSection = (
-    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
-      <div className="flex-1 min-w-[200px]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search visitors..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
-          />
-        </div>
-      </div>
-
-      <select
-        value={statusFilter}
-        onChange={handleStatusFilter}
-        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
-      >
-        <option value="">All Status</option>
-        <option value="new">New</option>
-        <option value="engaged">Engaged</option>
-        <option value="closed">Closed</option>
-      </select>
-
-      <button
-        type="submit"
-        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
-      >
-        Search
-      </button>
-
-      <Button
-        variant="secondary"
-        onClick={() => navigate('/my-assigned-first-timers')}
-      >
-        <UserCheck className="h-4 w-4 mr-2" />
-        My Assignments
-      </Button>
-
-      <Button onClick={() => navigate('/first-timers/new')}>
-        <Plus className="h-4 w-4 mr-2" />
-        Add Visitor
-      </Button>
-    </form>
-  )
+  const statusOptions = [
+    { value: 'new', label: 'New' },
+    { value: 'not_contacted', label: 'Not Contacted' },
+    { value: 'contacted', label: 'Contacted' },
+    { value: 'visited', label: 'Visited' },
+    { value: 'converted', label: 'Converted' },
+    { value: 'lost_contact', label: 'Lost Contact' },
+  ]
 
   return (
-    <Layout
-      title="First Timers"
-      searchSection={searchSection}
-    >
+    <Layout title="First Timers" subtitle="Manage visitors and follow-ups">
       <div className="space-y-6">
         {/* Overview Stats */}
         {(stats || statsLoading) && (
@@ -419,6 +443,65 @@ export default function FirstTimers() {
             </div>
           </div>
         )}
+
+        {/* Page Toolbar with Search, Filters, and Actions */}
+        <PageToolbar
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          onSearchSubmit={handleSearch}
+          searchPlaceholder="Search visitors by name, email, or phone..."
+          enableAutocomplete={true}
+          onFetchResults={fetchSearchResults}
+          onSelectResult={handleSelectSearchResult}
+          secondaryActions={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openFilterModal}
+                className={hasActiveFilters ? 'border-primary-500 text-primary-600' : ''}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary-500 text-white rounded-full">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAppliedFilters}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          }
+          primaryActions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/my-assigned-first-timers')}
+              >
+                <UserCheck className="h-4 w-4 mr-2" />
+                My Assignments
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate('/first-timers/new')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Visitor
+              </Button>
+            </>
+          }
+        />
 
         {/* Visitors Table */}
         {loading ? (
@@ -778,6 +861,60 @@ export default function FirstTimers() {
           </div>
         </div>
       </Modal>
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={closeFilterModal}
+        onApply={applyFilters}
+        onReset={resetTempFilters}
+        title="Filter Visitors"
+        subtitle="Refine your search results"
+        activeFilterCount={activeFilterCount}
+        filters={[
+          {
+            id: 'status',
+            label: 'Follow-up Status',
+            value: tempStatusFilter,
+            onChange: setTempStatusFilter,
+            options: statusOptions,
+            placeholder: 'All Status',
+          },
+          {
+            id: 'visitorType',
+            label: 'Visitor Type',
+            value: tempVisitorTypeFilter,
+            onChange: setTempVisitorTypeFilter,
+            options: [
+              { value: 'first_time', label: 'First Time' },
+              { value: 'returning', label: 'Returning' },
+            ],
+            placeholder: 'All Types',
+          },
+          {
+            id: 'howDidYouHear',
+            label: 'How They Heard About Us',
+            value: tempHowDidYouHearFilter,
+            onChange: setTempHowDidYouHearFilter,
+            options: [
+              { value: 'friend', label: 'Friend' },
+              { value: 'social_media', label: 'Social Media' },
+              { value: 'website', label: 'Website' },
+              { value: 'flyer', label: 'Flyer' },
+              { value: 'other', label: 'Other' },
+            ],
+            placeholder: 'All Sources',
+          },
+        ]}
+        dateRange={{
+          id: 'visitDate',
+          label: 'Visit Date Range',
+          fromValue: tempDateFrom,
+          toValue: tempDateTo,
+          onFromChange: setTempDateFrom,
+          onToChange: setTempDateTo,
+        }}
+      />
     </Layout>
   )
 }

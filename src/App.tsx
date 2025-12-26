@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion'
 import Layout from '@/components/Layout'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { ModuleAccessGuard } from '@/guards'
+import GlobalLoadingIndicator from '@/components/GlobalLoadingIndicator'
 
 // Auth Pages
 import Login from '@/pages/auth/Login'
@@ -71,8 +72,10 @@ import UserManagement from '@/pages/UserManagement'
 
 function App() {
   return (
-    <AnimatePresence mode="wait">
-      <Routes>
+    <>
+      <GlobalLoadingIndicator />
+      <AnimatePresence mode="wait">
+        <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
@@ -351,8 +354,9 @@ function App() {
             <UserManagement />
           </ProtectedRoute>
         } />
-      </Routes>
-    </AnimatePresence>
+        </Routes>
+      </AnimatePresence>
+    </>
   )
 }
 

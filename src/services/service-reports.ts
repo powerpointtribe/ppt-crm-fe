@@ -150,8 +150,8 @@ export const serviceReportsService = {
     await apiService.delete(`/service-reports/${id}`)
   },
 
-  getServiceReportStats: async (): Promise<ServiceReportStats> => {
-    const response = await apiService.get<ApiResponse<ServiceReportStats>>('/service-reports/stats')
+  getServiceReportStats: async (params?: { dateFrom?: string; dateTo?: string }): Promise<ServiceReportStats> => {
+    const response = await apiService.get<ApiResponse<ServiceReportStats>>('/service-reports/stats', { params })
     return transformSingleResponse<ServiceReportStats>(response) as ServiceReportStats
   },
 

@@ -1,9 +1,19 @@
 import { apiService } from './api'
 
+export interface DateRange {
+  startDate: string
+  endDate: string
+}
+
 export interface DashboardOverview {
+  // All-time totals
   totalMembers: number
   totalGroups: number
   totalFirstTimers: number
+  // Period-specific counts (within selected date range)
+  periodMembers: number
+  periodGroups: number
+  periodFirstTimers: number
   recentFirstTimers: number
   recentActivity: ActivityItem[]
   analytics: {
@@ -17,6 +27,7 @@ export interface DashboardOverview {
     groupsTrend: string
     firstTimersTrend: string
   }
+  dateRange?: DateRange
 }
 
 export interface ActivityItem {
@@ -42,32 +53,55 @@ class DashboardService {
     }
   }
 
+  private formatPercentage(percentage?: number, trend?: string): string {
+    if (percentage === undefined || percentage === null) {
+      return this.formatTrend(trend)
+    }
+    const sign = percentage >= 0 ? '+' : ''
+    return `${sign}${percentage}%`
+  }
+
   async getOverview(): Promise<DashboardOverview> {
     return apiService.get<DashboardOverview>('/dashboard/overview')
   }
 
-  async getStats(): Promise<Partial<DashboardOverview>> {
+  async getStats(startDate?: string, endDate?: string): Promise<Partial<DashboardOverview>> {
     try {
-      const response = await apiService.get<any>('/dashboard/overview')
+      // Build query params
+      const params = new URLSearchParams()
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
+
+      const queryString = params.toString()
+      const url = `/dashboard/overview${queryString ? `?${queryString}` : ''}`
+
+      const response = await apiService.get<any>(url)
 
       // Map the API response structure to our expected format
+      const recentActivity = response.data?.recentActivity
       const mappedData: Partial<DashboardOverview> = {
+        // All-time totals
         totalMembers: response.data?.stats?.totalMembers || 0,
         totalGroups: response.data?.stats?.totalGroups || 0,
         totalFirstTimers: response.data?.stats?.totalFirstTimers || 0,
-        recentFirstTimers: response.data?.recentActivity?.recentFirstTimers?.count || 0,
+        // Period-specific counts (from recentActivity which is filtered by date range)
+        periodMembers: recentActivity?.recentMembers?.count || 0,
+        periodGroups: recentActivity?.recentGroups?.count || 0,
+        periodFirstTimers: recentActivity?.recentFirstTimers?.count || 0,
+        recentFirstTimers: recentActivity?.recentFirstTimers?.count || 0,
         analytics: {
-          memberEngagement: response.data?.recentActivity?.recentMembers?.percentage || 0,
-          groupParticipation: response.data?.recentActivity?.recentGroups?.percentage || 0,
+          memberEngagement: recentActivity?.recentMembers?.percentage || 0,
+          groupParticipation: recentActivity?.recentGroups?.percentage || 0,
           eventAttendance: 0, // Not provided in API
           monthlyGrowth: 0 // Calculate from membershipTrends if needed
         },
         trends: {
-          membersTrend: this.formatTrend(response.data?.recentActivity?.recentMembers?.trend),
-          groupsTrend: this.formatTrend(response.data?.recentActivity?.recentGroups?.trend),
-          firstTimersTrend: this.formatTrend(response.data?.recentActivity?.recentFirstTimers?.trend)
+          membersTrend: this.formatPercentage(recentActivity?.recentMembers?.percentage, recentActivity?.recentMembers?.trend),
+          groupsTrend: this.formatPercentage(recentActivity?.recentGroups?.percentage, recentActivity?.recentGroups?.trend),
+          firstTimersTrend: this.formatPercentage(recentActivity?.recentFirstTimers?.percentage, recentActivity?.recentFirstTimers?.trend)
         },
-        recentActivity: [] // Map from upcomingTasks if needed
+        recentActivity: [], // Map from upcomingTasks if needed
+        dateRange: response.data?.dateRange
       }
 
       return mappedData
@@ -78,6 +112,9 @@ class DashboardService {
         totalMembers: 800,
         totalGroups: 45,
         totalFirstTimers: 120,
+        periodMembers: 25,
+        periodGroups: 3,
+        periodFirstTimers: 15,
         recentFirstTimers: 15,
         analytics: {
           memberEngagement: 78,

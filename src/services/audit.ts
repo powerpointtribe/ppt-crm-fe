@@ -69,7 +69,8 @@ export enum AuditSeverity {
 export interface AuditLog {
   _id: string
   action: AuditAction
-  entity: AuditEntity
+  entity?: AuditEntity // Frontend field name
+  entityType?: AuditEntity // Backend field name
   entityId?: string
   performedBy: {
     _id: string
@@ -332,9 +333,15 @@ export const auditService = {
   },
 
   // Get recent activity
-  getRecentActivity: async (limit: number = 50): Promise<AuditLog[]> => {
+  getRecentActivity: async (
+    limit: number = 50,
+    startDate?: string,
+    endDate?: string
+  ): Promise<AuditLog[]> => {
     const response = await auditService.getAuditLogs({
       limit,
+      startDate,
+      endDate,
       sortBy: 'timestamp',
       sortOrder: 'desc'
     })

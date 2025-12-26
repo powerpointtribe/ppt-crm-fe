@@ -14,7 +14,8 @@ import {
   Trash2,
   TrendingUp,
   UserCheck,
-  BarChart3
+  BarChart3,
+  X
 } from 'lucide-react'
 import {
   LineChart,
@@ -32,6 +33,7 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { SkeletonTable } from '@/components/ui/Skeleton'
+import FilterModal from '@/components/ui/FilterModal'
 import {
   serviceReportsService,
   ServiceReport,
@@ -57,16 +59,32 @@ export default function ServiceReports() {
   const [pagination, setPagination] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
   const [chartData, setChartData] = useState<any[]>([])
+  const [showFilterModal, setShowFilterModal] = useState(false)
 
-  const memoizedSearchParams = useMemo(() => searchParams, [
+  // Filter states
+  const [serviceTagFilter, setServiceTagFilter] = useState('')
+  const [dateFromFilter, setDateFromFilter] = useState('')
+  const [dateToFilter, setDateToFilter] = useState('')
+
+  // Temp filter states for modal
+  const [tempServiceTagFilter, setTempServiceTagFilter] = useState('')
+  const [tempDateFrom, setTempDateFrom] = useState('')
+  const [tempDateTo, setTempDateTo] = useState('')
+
+  const memoizedSearchParams = useMemo(() => ({
+    ...searchParams,
+    serviceTag: serviceTagFilter || undefined,
+    dateFrom: dateFromFilter || undefined,
+    dateTo: dateToFilter || undefined,
+  }), [
     searchParams.page,
     searchParams.limit,
     searchParams.search,
     searchParams.sortBy,
     searchParams.sortOrder,
-    searchParams.serviceTag,
-    searchParams.dateFrom,
-    searchParams.dateTo,
+    serviceTagFilter,
+    dateFromFilter,
+    dateToFilter,
     searchParams.reportedBy,
     searchParams.serviceName,
     searchParams.minAttendance,
@@ -127,6 +145,41 @@ export default function ServiceReports() {
     setSearchParams(prev => ({ ...prev, page }))
   }
 
+  // Filter modal functions
+  const openFilterModal = () => {
+    setTempServiceTagFilter(serviceTagFilter)
+    setTempDateFrom(dateFromFilter)
+    setTempDateTo(dateToFilter)
+    setShowFilterModal(true)
+  }
+
+  const closeFilterModal = () => {
+    setShowFilterModal(false)
+  }
+
+  const applyFilters = () => {
+    setServiceTagFilter(tempServiceTagFilter)
+    setDateFromFilter(tempDateFrom)
+    setDateToFilter(tempDateTo)
+    setSearchParams(prev => ({ ...prev, page: 1 }))
+    setShowFilterModal(false)
+  }
+
+  const resetTempFilters = () => {
+    setTempServiceTagFilter('')
+    setTempDateFrom('')
+    setTempDateTo('')
+  }
+
+  const clearAppliedFilters = () => {
+    setServiceTagFilter('')
+    setDateFromFilter('')
+    setDateToFilter('')
+  }
+
+  const hasActiveFilters = !!(serviceTagFilter || dateFromFilter || dateToFilter)
+  const activeFilterCount = [serviceTagFilter, dateFromFilter, dateToFilter].filter(Boolean).length
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this service report?')) {
       return
@@ -183,10 +236,29 @@ export default function ServiceReports() {
         Search
       </button>
 
-      <Button variant="secondary">
+      <Button
+        variant="secondary"
+        onClick={openFilterModal}
+        className={hasActiveFilters ? 'border-primary-500 text-primary-600' : ''}
+      >
         <Filter className="w-4 h-4 mr-2" />
-        Advanced Filters
+        Filters
+        {activeFilterCount > 0 && (
+          <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary-500 text-white rounded-full">
+            {activeFilterCount}
+          </span>
+        )}
       </Button>
+      {hasActiveFilters && (
+        <Button
+          variant="ghost"
+          onClick={clearAppliedFilters}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <X className="h-4 w-4 mr-1" />
+          Clear
+        </Button>
+      )}
 
       <Button onClick={() => navigate('/members/service-reports/new')}>
         <Plus className="w-5 h-5 mr-2" />
@@ -534,6 +606,38 @@ export default function ServiceReports() {
           </div>
         </motion.div>
       </div>
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={closeFilterModal}
+        onApply={applyFilters}
+        onReset={resetTempFilters}
+        title="Filter Service Reports"
+        subtitle="Refine your search results"
+        activeFilterCount={activeFilterCount}
+        filters={[
+          {
+            id: 'serviceTag',
+            label: 'Service Type',
+            value: tempServiceTagFilter,
+            onChange: setTempServiceTagFilter,
+            options: Object.entries(SERVICE_TAG_LABELS).map(([value, label]) => ({
+              value,
+              label,
+            })),
+            placeholder: 'All Service Types',
+          },
+        ]}
+        dateRange={{
+          id: 'serviceDate',
+          label: 'Service Date Range',
+          fromValue: tempDateFrom,
+          toValue: tempDateTo,
+          onFromChange: setTempDateFrom,
+          onToChange: setTempDateTo,
+        }}
+      />
     </Layout>
   )
 }

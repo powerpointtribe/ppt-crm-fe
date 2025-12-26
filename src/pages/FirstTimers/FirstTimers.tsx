@@ -11,15 +11,18 @@ import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
-import Modal from '@/components/ui/Modal'
 import PageToolbar, { SearchResult } from '@/components/ui/PageToolbar'
 import FilterModal from '@/components/ui/FilterModal'
+import AssignmentModal from '@/components/ui/AssignmentModal'
+import { ToastContainer } from '@/components/ui/Toast'
+import { useToast } from '@/hooks/useToast'
 import { FirstTimer, FirstTimerSearchParams, firstTimersService } from '@/services/first-timers'
 import { Member, membersService } from '@/services/members'
 import { formatDate } from '@/utils/formatters'
 
 export default function FirstTimers() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -302,14 +305,18 @@ export default function FirstTimers() {
   }
 
 
-  const handleBulkAssign = async () => {
-    if (selectedIds.length === 0 || !selectedAssignee) return
+  const handleBulkAssign = async (assigneeId: string) => {
+    if (selectedIds.length === 0 || !assigneeId) return
 
     try {
       setAssignmentLoading(true)
       await firstTimersService.bulkAssignForFollowUp(
-        selectedIds.map(firstTimerId => ({ firstTimerId, assigneeId: selectedAssignee }))
+        selectedIds.map(firstTimerId => ({ firstTimerId, assigneeId }))
       )
+
+      // Get assignee name for the toast message
+      const assignee = members.find(m => m._id === assigneeId)
+      const assigneeName = assignee ? `${assignee.firstName} ${assignee.lastName}` : 'team member'
 
       // Reload data to reflect changes
       await loadFirstTimers()
@@ -320,11 +327,17 @@ export default function FirstTimers() {
       setShowBulkAssignModal(false)
       setSelectedAssignee('')
 
-      // Show success message (you can implement a toast system later)
-      alert(`Successfully assigned ${selectedIds.length} first-timers for follow-up`)
+      // Show success toast
+      toast.success(
+        'Assignment Successful',
+        `${selectedIds.length} first-timer${selectedIds.length !== 1 ? 's' : ''} assigned to ${assigneeName}`
+      )
     } catch (error: any) {
       console.error('Bulk assignment error:', error)
-      alert('Failed to assign first-timers. Please try again.')
+      toast.error(
+        'Assignment Failed',
+        error.message || 'Failed to assign first-timers. Please try again.'
+      )
     } finally {
       setAssignmentLoading(false)
     }
@@ -798,69 +811,21 @@ export default function FirstTimers() {
       </div>
 
       {/* Bulk Assignment Modal */}
-      <Modal
+      <AssignmentModal
         isOpen={showBulkAssignModal}
         onClose={() => {
           setShowBulkAssignModal(false)
           setSelectedAssignee('')
         }}
-        title="Assign First-Timers for Follow-up"
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="text-sm text-gray-600">
-            Assign {selectedIds.length} selected first-timer{selectedIds.length !== 1 ? 's' : ''} to a team member for follow-up.
-          </div>
+        onAssign={handleBulkAssign}
+        selectedFirstTimers={firstTimers.filter(ft => selectedIds.includes(ft._id))}
+        members={members}
+        membersLoading={membersLoading}
+        assignmentLoading={assignmentLoading}
+      />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Team Member
-            </label>
-            {membersLoading ? (
-              <div className="flex items-center justify-center py-4">
-                <LoadingSpinner size="sm" />
-              </div>
-            ) : (
-              <select
-                value={selectedAssignee}
-                onChange={(e) => setSelectedAssignee(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select a team member...</option>
-                {members.map((member) => (
-                  <option key={member._id} value={member._id}>
-                    {member.firstName} {member.lastName}
-                    {member.leadershipRoles?.isDistrictPastor && ' (District Pastor)'}
-                    {member.leadershipRoles?.isChamp && ' (Champ)'}
-                    {member.leadershipRoles?.isUnitHead && ' (Unit Head)'}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowBulkAssignModal(false)
-                setSelectedAssignee('')
-              }}
-              disabled={assignmentLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleBulkAssign}
-              loading={assignmentLoading}
-              disabled={!selectedAssignee || assignmentLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Assign for Follow-up
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {/* Toast Container */}
+      <ToastContainer toasts={toast.toasts} />
 
       {/* Filter Modal */}
       <FilterModal

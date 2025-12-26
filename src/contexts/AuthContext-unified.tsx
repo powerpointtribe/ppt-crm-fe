@@ -60,9 +60,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize cached member synchronously
   const initCachedMember = (): Member | null => {
     const cachedMember = localStorage.getItem('cached_member');
+    const hasToken = localStorage.getItem('auth_token');
+    console.log('initCachedMember called:', {
+      hasCachedMember: !!cachedMember,
+      hasToken: !!hasToken
+    });
     if (cachedMember) {
       try {
-        return JSON.parse(cachedMember);
+        const parsed = JSON.parse(cachedMember);
+        console.log('Loaded cached member:', parsed?.email || parsed?.firstName);
+        return parsed;
       } catch (e) {
         console.error('Failed to parse cached member:', e);
       }
@@ -70,7 +77,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return null;
   };
 
-  const [member, setMember] = useState<Member | null>(initCachedMember());
+  const [member, setMember] = useState<Member | null>(() => {
+    const cached = initCachedMember();
+    console.log('Initial member state:', cached ? 'loaded from cache' : 'null');
+    return cached;
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [cachedPermissions, setCachedPermissions] = useState<{
     accessibleModules: string[];
@@ -111,6 +122,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Try to get user profile to validate token
       const memberProfile = await membersService.getProfile();
+
+      // If profile is null/undefined, keep cached data and exit
+      if (!memberProfile) {
+        console.log('Profile API returned null, keeping cached member data');
+        setIsLoading(false);
+        return;
+      }
 
       // Fetch user permissions from backend
       try {
@@ -154,14 +172,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error: any) {
       console.error('Auth check failed:', error);
+      console.log('Error details:', {
+        code: error.code,
+        message: error.message,
+        status: error.status,
+        response: error.response
+      });
 
-      // Only remove token for authentication errors, not network errors
+      // Only remove token for explicit 401 authentication errors
+      // Be very specific to avoid false positives
       const isAuthError = error.code === 401 ||
-                         error.code === 'UNAUTHORIZED' ||
-                         error.message?.includes('401') ||
-                         error.message?.includes('Unauthorized') ||
-                         error.message?.includes('invalid token') ||
-                         error.message?.includes('expired');
+                         error.code === '401' ||
+                         error.status === 401 ||
+                         error.response?.status === 401;
 
       const isNetworkError = error.code === 'NETWORK_ERROR' ||
                             error.message === 'Network Error' ||
@@ -169,20 +192,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                             !navigator.onLine;
 
       if (isAuthError) {
-        console.log('Authentication error detected, clearing token and permissions');
+        console.log('401 Authentication error detected, clearing token and permissions');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('cached_permissions');
         localStorage.removeItem('cached_member');
         setMember(null);
         setCachedPermissions(null);
       } else if (isNetworkError) {
-        console.log('Network error detected, keeping token and user session');
-        // For network errors, try to preserve the session by keeping existing member data
-        // We'll keep the user logged in but they might see cached data
+        console.log('Network error detected, keeping cached user session');
+        // For network errors, keep the cached member data - don't clear anything
       } else {
-        console.log('Unknown error, keeping token but clearing member data temporarily');
-        // For other errors, keep token but clear member data
-        // This allows for retry on next page load
+        console.log('Non-auth error occurred, keeping cached user session');
+        // For other errors, keep the cached data - don't clear member
+        // The cached member from initialization will remain
       }
     } finally {
       setIsLoading(false);

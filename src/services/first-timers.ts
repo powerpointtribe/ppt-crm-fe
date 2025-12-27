@@ -118,6 +118,13 @@ export interface FirstTimer {
   memberCreatedAt?: string
   pendingDistrictAssignment: boolean
 
+  // Branch assignment
+  branch?: string | {
+    _id: string
+    name: string
+    slug?: string
+  }
+
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -143,6 +150,7 @@ export interface CreateFirstTimerData {
   occupation?: string
   emergencyContact?: FirstTimer['emergencyContact']
   notes?: string
+  branch?: string // Optional - auto-assigned from user's branch if not specified
 }
 
 export interface UpdateFirstTimerData extends Partial<CreateFirstTimerData> {

@@ -354,18 +354,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const hasLeadershipRole = (role: 'district_pastor' | 'unit_head' | 'champ'): boolean => {
-    if (!member?.leadershipRoles) {
-      // Fallback: check if super_admin has leadership access
-      return (member as any)?.role === 'super_admin' || false;
-    }
-
+    // Leadership roles are now handled by the role-based permission system
+    // Check if user has appropriate permissions instead
     switch (role) {
       case 'district_pastor':
-        return member.leadershipRoles.isDistrictPastor;
+        return hasPermission('members:view-district') || hasPermission('members:manage-district');
       case 'unit_head':
-        return member.leadershipRoles.isUnitHead;
+        return hasPermission('units:manage') || hasPermission('units:update');
       case 'champ':
-        return member.leadershipRoles.isChamp;
+        return hasPermission('members:view-district');
       default:
         return false;
     }

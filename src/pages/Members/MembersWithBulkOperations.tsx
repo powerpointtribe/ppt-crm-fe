@@ -261,11 +261,19 @@ export default function MembersWithBulkOperations() {
     return statusColors[status as keyof typeof statusColors] || statusColors.new_convert
   }
 
-  const getLeadershipRoles = (member: Member) => {
+  const getRoleDisplay = (member: Member) => {
     const roles = []
-    if (member.leadershipRoles?.isDistrictPastor) roles.push('District Pastor')
-    if (member.leadershipRoles?.isChamp) roles.push('Champ')
-    if (member.leadershipRoles?.isUnitHead) roles.push('Unit Head')
+    // Display role from new RBAC system
+    if (member.role && typeof member.role === 'object') {
+      roles.push(member.role.displayName || member.role.name)
+    }
+    // Also show system roles if they exist
+    if (member.systemRoles?.length > 0) {
+      const displayedSystemRoles = member.systemRoles
+        .filter(role => role !== 'member')
+        .map(role => role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()))
+      roles.push(...displayedSystemRoles)
+    }
     return roles
   }
 
@@ -561,11 +569,15 @@ export default function MembersWithBulkOperations() {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {getLeadershipRoles(member).map((role, index) => (
-                        <div key={index} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1">
-                          {role}
-                        </div>
-                      ))}
+                      {getRoleDisplay(member).length > 0 ? (
+                        getRoleDisplay(member).map((role, index) => (
+                          <div key={index} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1">
+                            {role}
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">

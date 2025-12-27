@@ -75,7 +75,7 @@ export default function ServiceReports() {
   const [tempDateTo, setTempDateTo] = useState('')
   const [tempBranchFilter, setTempBranchFilter] = useState('')
 
-  // Show branch filter when viewing "All Expressions"
+  // Show branch filter when viewing "All Campuses"
   const showBranchFilter = !selectedBranch && branches.length > 0
 
   const memoizedSearchParams = useMemo(() => {
@@ -637,11 +637,11 @@ export default function ServiceReports() {
         filters={[
           ...(showBranchFilter ? [{
             id: 'branch',
-            label: 'Expression',
+            label: 'Campus',
             value: tempBranchFilter,
             onChange: setTempBranchFilter,
             options: branches.map(b => ({ value: b._id, label: b.name })),
-            placeholder: 'All Expressions',
+            placeholder: 'All Campuses',
           }] : []),
           {
             id: 'serviceTag',

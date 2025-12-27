@@ -34,7 +34,7 @@ export default function UserManagement() {
   const [branchFilter, setBranchFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Show branch filter when viewing "All Expressions"
+  // Show branch filter when viewing "All Campuses"
   const showBranchFilter = !selectedBranch && branches.length > 0;
 
   // Active Users State
@@ -271,7 +271,7 @@ export default function UserManagement() {
           onChange={(e) => setBranchFilter(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
         >
-          <option value="">All Expressions</option>
+          <option value="">All Campuses</option>
           {branches.map(branch => (
             <option key={branch._id} value={branch._id}>{branch.name}</option>
           ))}

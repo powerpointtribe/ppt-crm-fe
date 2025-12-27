@@ -1,5 +1,13 @@
 import { apiService } from './api'
 
+interface ApiResponse<T> {
+  success: boolean
+  message: string
+  data: T
+}
+
+export type MembershipStatusTag = 'MEMBER' | 'DC' | 'LXL' | 'DIRECTOR' | 'PASTOR' | 'CAMPUS_PASTOR' | 'SENIOR_PASTOR' | 'LEFT'
+
 export interface Role {
   _id: string
   name: string
@@ -12,6 +20,7 @@ export interface Role {
   isSystemRole: boolean
   isActive: boolean
   colorCode?: string
+  membershipStatusTag?: MembershipStatusTag // When this role is assigned, member's membershipStatus is updated to this value
   metadata?: Record<string, any>
   createdAt: string
   updatedAt: string
@@ -42,6 +51,7 @@ export interface CreateRoleDto {
   parentRole?: string
   level?: number
   colorCode?: string
+  membershipStatusTag?: MembershipStatusTag
   metadata?: Record<string, any>
 }
 
@@ -54,6 +64,7 @@ export interface UpdateRoleDto {
   level?: number
   isActive?: boolean
   colorCode?: string
+  membershipStatusTag?: MembershipStatusTag
   metadata?: Record<string, any>
 }
 
@@ -79,7 +90,12 @@ class RolesService {
     if (filters?.isSystemRole !== undefined) params.append('isSystemRole', String(filters.isSystemRole))
     if (filters?.search) params.append('search', filters.search)
 
-    return await apiService.get<Role[]>(`/roles?${params.toString()}`)
+    const response = await apiService.get<ApiResponse<Role[]> | Role[]>(`/roles?${params.toString()}`)
+    // Handle both wrapped and unwrapped responses
+    if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+      return response.data
+    }
+    return response as Role[]
   }
 
   /**

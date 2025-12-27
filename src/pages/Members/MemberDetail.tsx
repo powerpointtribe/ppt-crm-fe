@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowLeft, Edit, Phone, Mail, MapPin, Calendar, User, Users, Crown, Shield, Star, Clock } from 'lucide-react'
+import { ArrowLeft, Edit, Phone, Mail, User, Users, Star, Clock, Briefcase } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -39,28 +38,17 @@ export default function MemberDetail() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      new_convert: 'bg-green-100 text-green-800',
-      worker: 'bg-blue-100 text-blue-800',
-      volunteer: 'bg-purple-100 text-purple-800',
-      leader: 'bg-yellow-100 text-yellow-800',
-      district_pastor: 'bg-red-100 text-red-800',
-      champ: 'bg-indigo-100 text-indigo-800',
-      unit_head: 'bg-orange-100 text-orange-800',
-      inactive: 'bg-gray-100 text-gray-800',
-      transferred: 'bg-pink-100 text-pink-800'
+  const getStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'success' | 'warning' | 'destructive' => {
+    const variants: Record<string, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
+      MEMBER: 'default',
+      DC: 'secondary',
+      LXL: 'secondary',
+      DIRECTOR: 'warning',
+      PASTOR: 'success',
+      SENIOR_PASTOR: 'success',
+      LEFT: 'destructive'
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
-  }
-
-  const getLeadershipIcon = (role: string) => {
-    switch (role) {
-      case 'district_pastor': return <Crown className="h-4 w-4" />
-      case 'champ': return <Shield className="h-4 w-4" />
-      case 'unit_head': return <Star className="h-4 w-4" />
-      default: return <User className="h-4 w-4" />
-    }
+    return variants[status] || 'default'
   }
 
   if (loading) {
@@ -86,366 +74,289 @@ export default function MemberDetail() {
 
   return (
     <Layout title={`${member.firstName} ${member.lastName}`}>
-      <div className="space-y-6">
+      <div className="max-w-5xl mx-auto space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/members')}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Members
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/members')}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {member.firstName} {member.lastName}
-              </h1>
-              <p className="text-gray-600">Member since {formatDate(member.dateJoined)}</p>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 bg-primary-100 rounded-full flex items-center justify-center">
+                <User className="h-6 w-6 text-primary-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-bold text-foreground">
+                    {member.firstName} {member.lastName}
+                  </h1>
+                  <Badge variant={getStatusBadgeVariant(member.membershipStatus)} className="text-xs">
+                    {member.membershipStatus?.replace('_', ' ') || 'Member'}
+                  </Badge>
+                  {member.role && typeof member.role === 'object' && (
+                    <Badge variant="secondary" className="text-xs">
+                      {member.role.displayName || member.role.name}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Member since {formatDate(member.dateJoined)}
+                </p>
+              </div>
             </div>
           </div>
-          <Button onClick={() => navigate(`/members/${member._id}/edit`)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Member
+          <Button size="sm" onClick={() => navigate(`/members/${member._id}/edit`)}>
+            <Edit className="h-4 w-4 mr-1.5" />
+            Edit
           </Button>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+        <div className="border-b border-border">
+          <nav className="-mb-px flex gap-6">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 border-b-2 text-sm font-medium transition-colors ${
                 activeTab === 'profile'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <User className="h-4 w-4 mr-2 inline" />
-              Profile Information
+              <User className="h-4 w-4 mr-1.5 inline" />
+              Profile
             </button>
             <button
               onClick={() => setActiveTab('timeline')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 border-b-2 text-sm font-medium transition-colors ${
                 activeTab === 'timeline'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Clock className="h-4 w-4 mr-2 inline" />
-              Activity Timeline
+              <Clock className="h-4 w-4 mr-1.5 inline" />
+              Timeline
             </button>
           </nav>
         </div>
 
         {/* Tab Content */}
         {activeTab === 'profile' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Information */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Basic Information */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Basic Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Contact & Personal Info */}
+              <Card className="p-4">
+                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary-600" />
+                  Personal Information
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Full Name</label>
-                    <p className="text-gray-900">{member.firstName} {member.lastName}</p>
+                    <p className="text-muted-foreground text-xs">Email</p>
+                    <a href={`mailto:${member.email}`} className="text-primary-600 hover:underline truncate block">
+                      {member.email}
+                    </a>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Email</label>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <a href={`mailto:${member.email}`} className="text-blue-600 hover:underline">
-                        {member.email}
-                      </a>
+                    <p className="text-muted-foreground text-xs">Phone</p>
+                    <a href={`tel:${member.phone}`} className="text-primary-600 hover:underline">
+                      {member.phone}
+                    </a>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Date of Birth</p>
+                    <p>{formatDate(member.dateOfBirth)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Gender</p>
+                    <p className="capitalize">{member.gender}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Marital Status</p>
+                    <p className="capitalize">{member.maritalStatus?.replace('_', ' ')}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Occupation</p>
+                    <p>{member.occupation || '-'}</p>
+                  </div>
+                  {member.address && (
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs">Address</p>
+                      <p className="truncate">
+                        {[member.address.street, member.address.city, member.address.state].filter(Boolean).join(', ')}
+                      </p>
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Phone</label>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <a href={`tel:${member.phone}`} className="text-blue-600 hover:underline">
-                        {member.phone}
-                      </a>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Date of Birth</label>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <p className="text-gray-900">{formatDate(member.dateOfBirth)}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Gender</label>
-                    <p className="text-gray-900 capitalize">{member.gender}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Marital Status</label>
-                    <p className="text-gray-900 capitalize">{member.maritalStatus.replace('_', ' ')}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Membership Status</label>
-                    <div>
-                      <Badge className={getStatusColor(member.membershipStatus)}>
-                        {member.membershipStatus.replace('_', ' ').toUpperCase()}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Occupation</label>
-                    <p className="text-gray-900">{member.occupation || 'Not specified'}</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* Address Information */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Address Information</h2>
-              <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-gray-400 mt-1" />
-                <div>
-                  <p className="text-gray-900">{member.address.street}</p>
-                  <p className="text-gray-600">
-                    {member.address.city}, {member.address.state} {member.address.zipCode}
-                  </p>
-                  <p className="text-gray-600">{member.address.country}</p>
-                </div>
-              </div>
-              {member.workAddress && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <label className="text-sm font-medium text-gray-500">Work Address</label>
-                  <p className="text-gray-900 mt-1">{member.workAddress}</p>
-                </div>
-              )}
-            </Card>
-
-            {/* Church Information */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Church Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
+              {/* Church Information */}
+              <Card className="p-4">
+                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary-600" />
+                  Church Information
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Date Joined</label>
-                    <p className="text-gray-900">{formatDate(member.dateJoined)}</p>
+                    <p className="text-muted-foreground text-xs">Date Joined</p>
+                    <p>{formatDate(member.dateJoined)}</p>
                   </div>
                   {member.baptismDate && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Baptism Date</label>
-                      <p className="text-gray-900">{formatDate(member.baptismDate)}</p>
+                      <p className="text-muted-foreground text-xs">Baptism Date</p>
+                      <p>{formatDate(member.baptismDate)}</p>
                     </div>
                   )}
                   {member.confirmationDate && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Confirmation Date</label>
-                      <p className="text-gray-900">{formatDate(member.confirmationDate)}</p>
+                      <p className="text-muted-foreground text-xs">Confirmation</p>
+                      <p>{formatDate(member.confirmationDate)}</p>
                     </div>
                   )}
-                </div>
-                <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">District</label>
-                    <p className="text-gray-900">{typeof member.district === 'object' ? member.district?.name : member.district || 'Not assigned'}</p>
+                    <p className="text-muted-foreground text-xs">District</p>
+                    <p>{typeof member.district === 'object' ? member.district?.name : member.district || '-'}</p>
                   </div>
                   {member.unit && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Unit</label>
-                      <p className="text-gray-900">{typeof member.unit === 'object' ? member.unit?.name : member.unit}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            {/* Ministries & Skills */}
-            {(member.ministries && member.ministries.length > 0) || (member.skills && member.skills.length > 0) ? (
-              <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Ministries & Skills</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {member.ministries && member.ministries.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Ministries</label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {member.ministries.map((ministry, index) => (
-                          <Badge key={index} variant="default">
-                            {ministry}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {member.skills && member.skills.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Skills</label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {member.skills.map((skill, index) => (
-                          <Badge key={index} variant="secondary">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
+                      <p className="text-muted-foreground text-xs">Unit</p>
+                      <p>{typeof member.unit === 'object' ? member.unit?.name : member.unit}</p>
                     </div>
                   )}
                 </div>
               </Card>
-            ) : null}
 
-            {/* Notes */}
-            {member.notes && (
-              <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Notes</h2>
-                <p className="text-gray-700 whitespace-pre-wrap">{member.notes}</p>
+              {/* Ministries & Skills */}
+              {((member.ministries && member.ministries.length > 0) || (member.skills && member.skills.length > 0)) && (
+                <Card className="p-4">
+                  <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-primary-600" />
+                    Ministries & Skills
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {member.ministries && member.ministries.length > 0 && (
+                      <div>
+                        <p className="text-muted-foreground text-xs mb-1.5">Ministries</p>
+                        <div className="flex flex-wrap gap-1">
+                          {member.ministries.map((ministry, index) => (
+                            <Badge key={index} variant="default" className="text-xs">
+                              {ministry}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {member.skills && member.skills.length > 0 && (
+                      <div>
+                        <p className="text-muted-foreground text-xs mb-1.5">Skills</p>
+                        <div className="flex flex-wrap gap-1">
+                          {member.skills.map((skill, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* Notes */}
+              {member.notes && (
+                <Card className="p-4">
+                  <h2 className="text-sm font-semibold mb-2">Notes</h2>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{member.notes}</p>
+                </Card>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-4">
+              {/* Quick Actions */}
+              <Card className="p-4">
+                <h2 className="text-sm font-semibold mb-3">Quick Actions</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" className="text-xs" asChild>
+                    <a href={`tel:${member.phone}`}>
+                      <Phone className="h-3.5 w-3.5 mr-1" />
+                      Call
+                    </a>
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs" asChild>
+                    <a href={`mailto:${member.email}`}>
+                      <Mail className="h-3.5 w-3.5 mr-1" />
+                      Email
+                    </a>
+                  </Button>
+                </div>
               </Card>
-            )}
-          </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Leadership Roles */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Leadership Roles</h2>
-              <div className="space-y-3">
-                {member.leadershipRoles.isDistrictPastor && (
-                  <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
-                    <Crown className="h-5 w-5 text-red-600" />
-                    <div>
-                      <p className="font-medium text-red-800">District Pastor</p>
-                      {member.leadershipRoles.pastorsDistrict && (
-                        <p className="text-sm text-red-600">District: {member.leadershipRoles.pastorsDistrict}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {member.leadershipRoles.isChamp && (
-                  <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg">
-                    <Shield className="h-5 w-5 text-indigo-600" />
-                    <div>
-                      <p className="font-medium text-indigo-800">Champ</p>
-                      {member.leadershipRoles.champForDistrict && (
-                        <p className="text-sm text-indigo-600">For District: {member.leadershipRoles.champForDistrict}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {member.leadershipRoles.isUnitHead && (
-                  <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
-                    <Star className="h-5 w-5 text-orange-600" />
-                    <div>
-                      <p className="font-medium text-orange-800">Unit Head</p>
-                      {member.leadershipRoles.leadsUnit && (
-                        <p className="text-sm text-orange-600">Leads Unit: {member.leadershipRoles.leadsUnit}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {!member.leadershipRoles.isDistrictPastor &&
-                 !member.leadershipRoles.isChamp &&
-                 !member.leadershipRoles.isUnitHead && (
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <User className="h-5 w-5 text-gray-400" />
-                    <p className="text-gray-600">No leadership roles assigned</p>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            {/* Family Information */}
-            {(member.spouse || (member.children && member.children.length > 0) || member.parent) && (
-              <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Family Information</h2>
-                <div className="space-y-3">
-                  {member.spouse && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Spouse</label>
-                      <p className="text-gray-900">{typeof member.spouse === 'object' ? `${member.spouse?.firstName} ${member.spouse?.lastName}` : member.spouse}</p>
-                    </div>
-                  )}
-                  {member.children && member.children.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Children</label>
-                      <div className="space-y-1">
+              {/* Family Information */}
+              {(member.spouse || (member.children && member.children.length > 0) || member.parent) && (
+                <Card className="p-4">
+                  <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary-600" />
+                    Family
+                  </h2>
+                  <div className="space-y-2 text-sm">
+                    {member.spouse && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">Spouse</p>
+                        <p>{typeof member.spouse === 'object' ? `${member.spouse?.firstName} ${member.spouse?.lastName}` : member.spouse}</p>
+                      </div>
+                    )}
+                    {member.children && member.children.length > 0 && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">Children</p>
                         {member.children.map((child, index) => (
-                          <p key={index} className="text-gray-900">{typeof child === 'object' ? `${child?.firstName} ${child?.lastName}` : child}</p>
+                          <p key={index}>{typeof child === 'object' ? `${child?.firstName} ${child?.lastName}` : child}</p>
                         ))}
                       </div>
-                    </div>
-                  )}
-                  {member.parent && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Parent</label>
-                      <p className="text-gray-900">{typeof member.parent === 'object' ? `${member.parent?.firstName} ${member.parent?.lastName}` : member.parent}</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
+                    )}
+                    {member.parent && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">Parent</p>
+                        <p>{typeof member.parent === 'object' ? `${member.parent?.firstName} ${member.parent?.lastName}` : member.parent}</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
 
-            {/* Emergency Contact */}
-            {member.emergencyContact && (
-              <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Emergency Contact</h2>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Name</label>
-                    <p className="text-gray-900">{member.emergencyContact.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Relationship</label>
-                    <p className="text-gray-900">{member.emergencyContact.relationship}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Phone</label>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <a href={`tel:${member.emergencyContact.phone}`} className="text-blue-600 hover:underline">
-                        {member.emergencyContact.phone}
-                      </a>
-                    </div>
-                  </div>
-                  {member.emergencyContact.email && (
+              {/* Emergency Contact */}
+              {member.emergencyContact && member.emergencyContact.name && (
+                <Card className="p-4">
+                  <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-primary-600" />
+                    Emergency Contact
+                  </h2>
+                  <div className="space-y-2 text-sm">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Email</label>
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-gray-400" />
-                        <a href={`mailto:${member.emergencyContact.email}`} className="text-blue-600 hover:underline">
-                          {member.emergencyContact.email}
+                      <p className="text-muted-foreground text-xs">Name</p>
+                      <p>{member.emergencyContact.name}</p>
+                    </div>
+                    {member.emergencyContact.relationship && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">Relationship</p>
+                        <p>{member.emergencyContact.relationship}</p>
+                      </div>
+                    )}
+                    {member.emergencyContact.phone && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">Phone</p>
+                        <a href={`tel:${member.emergencyContact.phone}`} className="text-primary-600 hover:underline">
+                          {member.emergencyContact.phone}
                         </a>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* Quick Actions */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-              <div className="space-y-3">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Phone className="h-4 w-4 mr-2" />
-                  Call Member
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Email
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Users className="h-4 w-4 mr-2" />
-                  View Groups
-                </Button>
-              </div>
-            </Card>
+                    )}
+                  </div>
+                </Card>
+              )}
+            </div>
           </div>
-        </div>
         ) : (
-          <div className="mt-6">
-            <MemberTimeline memberId={member._id} />
-          </div>
+          <MemberTimeline memberId={member._id} />
         )}
       </div>
     </Layout>

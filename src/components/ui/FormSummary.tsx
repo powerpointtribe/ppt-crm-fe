@@ -51,8 +51,7 @@ export default function FormSummary({
         { label: 'District', value: data.district },
         { label: 'Unit', value: data.unit },
         { label: 'Membership Status', value: data.membershipStatus?.replace('_', ' ') },
-        { label: 'Date Joined', value: data.dateJoined },
-        { label: 'Leadership Roles', value: getLeadershipRoles(data) }
+        { label: 'Date Joined', value: data.dateJoined }
       ].filter(item => item.value)
     },
     {
@@ -83,14 +82,6 @@ export default function FormSummary({
       ].filter(item => item.value)
     }
   ]
-
-  function getLeadershipRoles(data: Partial<MemberFormData>) {
-    const roles = []
-    if (data.leadershipRoles?.isDistrictPastor) roles.push('District Pastor')
-    if (data.leadershipRoles?.isChamp) roles.push('Champ')
-    if (data.leadershipRoles?.isUnitHead) roles.push('Unit Head')
-    return roles.join(', ')
-  }
 
   return (
     <motion.div

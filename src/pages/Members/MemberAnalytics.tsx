@@ -498,14 +498,14 @@ export default function MemberAnalytics() {
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                     <Building2 className="h-4 w-4 text-primary-600" />
-                    Expression/Branch
+                    Campus
                   </label>
                   <select
                     value={tempBranchFilter}
                     onChange={(e) => setTempBranchFilter(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                   >
-                    <option value="">All Expressions</option>
+                    <option value="">All Campuses</option>
                     {branches.map((branch) => (
                       <option key={branch._id} value={branch._id}>
                         {branch.name}

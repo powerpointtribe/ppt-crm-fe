@@ -49,16 +49,6 @@ export interface Member {
   unit?: any
   additionalGroups?: string[]
 
-  // Leadership roles
-  leadershipRoles: {
-    isDistrictPastor: boolean
-    isChamp: boolean
-    isUnitHead: boolean
-    champForDistrict?: string
-    leadsUnit?: string
-    pastorsDistrict?: string
-  }
-
   // Personal info
   address?: {
     street: string

@@ -28,8 +28,8 @@ import type { Branch, CreateBranchData } from '@/types/branch';
 const branchSchema = z.object({
   name: z
     .string()
-    .min(2, 'Expression name must be at least 2 characters')
-    .max(100, 'Expression name cannot exceed 100 characters'),
+    .min(2, 'Campus name must be at least 2 characters')
+    .max(100, 'Campus name cannot exceed 100 characters'),
   slug: z
     .string()
     .min(2, 'Slug must be at least 2 characters')
@@ -134,7 +134,7 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
       setValue('serviceTypes', data.serviceTypes || []);
     } catch (err: any) {
       console.error('Error fetching branch:', err);
-      setError(err.message || 'Failed to load expression');
+      setError(err.message || 'Failed to load campus');
     } finally {
       setLoading(false);
     }
@@ -160,7 +160,7 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
       navigate('/branches');
     } catch (err: any) {
       console.error('Error saving branch:', err);
-      setError(err.message || 'Failed to save expression');
+      setError(err.message || 'Failed to save campus');
     } finally {
       setSubmitting(false);
     }
@@ -188,12 +188,12 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Building2 className="h-7 w-7 text-primary-600" />
-              {isEditMode ? 'Edit Expression' : 'Create New Expression'}
+              {isEditMode ? 'Edit Campus' : 'Create New Campus'}
             </h1>
             <p className="text-muted-foreground mt-1">
               {isEditMode
-                ? 'Update expression information and settings'
-                : 'Add a new church expression to the system'}
+                ? 'Update campus information and settings'
+                : 'Add a new church campus to the system'}
             </p>
           </div>
         </div>
@@ -216,11 +216,11 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Expression Name *
+                  Campus Name *
                 </label>
                 <Input
                   {...register('name')}
-                  placeholder="e.g., Lagos Mainland Expression"
+                  placeholder="e.g., Lagos Mainland Campus"
                   className={errors.name ? 'border-red-500' : ''}
                 />
                 {errors.name && (
@@ -241,7 +241,7 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
                   <p className="text-red-500 text-sm mt-1">{errors.slug.message}</p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
-                  Used in URLs for expression-specific forms
+                  Used in URLs for campus-specific forms
                 </p>
               </div>
 
@@ -253,7 +253,7 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
                   {...register('description')}
                   rows={3}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                  placeholder="Brief description of the expression..."
+                  placeholder="Brief description of the campus..."
                 />
                 {errors.description && (
                   <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
@@ -293,7 +293,7 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
                   <Input
                     {...register('email')}
                     type="email"
-                    placeholder="expression@church.org"
+                    placeholder="campus@church.org"
                     className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
                   />
                 </div>
@@ -384,7 +384,7 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
                   className="h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500"
                 />
                 <label htmlFor="isActive" className="text-sm text-foreground">
-                  Expression is active and visible in the system
+                  Campus is active and visible in the system
                 </label>
               </div>
 
@@ -397,7 +397,7 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
                 />
                 <label htmlFor="isMainBranch" className="text-sm text-foreground flex items-center gap-1">
                   <Star className="h-4 w-4 text-yellow-500" />
-                  This is the main/headquarters expression
+                  This is the main/headquarters campus
                 </label>
               </div>
             </div>
@@ -421,7 +421,7 @@ export default function BranchForm({ mode = 'create' }: BranchFormProps) {
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {isEditMode ? 'Update Expression' : 'Create Expression'}
+                  {isEditMode ? 'Update Campus' : 'Create Campus'}
                 </>
               )}
             </Button>

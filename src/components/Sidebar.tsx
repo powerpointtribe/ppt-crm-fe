@@ -156,7 +156,7 @@ const menuGroups: MenuGroup[] = [
       },
       {
         icon: GitBranch,
-        label: 'Expressions',
+        label: 'Campuses',
         path: '/branches',
         requiredPermission: 'branches:view',
       },
@@ -384,7 +384,7 @@ export default function Sidebar() {
             <Globe className="w-3 h-3 text-emerald-400" />
           )}
           <span className="text-[11px] font-medium text-slate-300 max-w-[100px] truncate">
-            {selectedBranch?.name || 'All Expressions'}
+            {selectedBranch?.name || 'All Campuses'}
           </span>
           <ChevronDown
             className={cn(
@@ -415,7 +415,7 @@ export default function Sidebar() {
                   )}
                 >
                   <Globe className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[11px] text-white flex-1">All Expressions</span>
+                  <span className="text-[11px] text-white flex-1">All Campuses</span>
                   {!selectedBranch && (
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
                   )}
@@ -451,7 +451,7 @@ export default function Sidebar() {
 
                 {branches.length === 0 && (
                   <div className="px-3 py-2 text-[11px] text-slate-500 text-center">
-                    No expressions available
+                    No campuses available
                   </div>
                 )}
               </div>

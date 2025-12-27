@@ -59,7 +59,6 @@ export default function MemberForm({
       district: member.district,
       unit: member.unit || '',
       additionalGroups: member.additionalGroups || [],
-      leadershipRoles: member.leadershipRoles || {},
       membershipStatus: member.membershipStatus,
       dateJoined: member.dateJoined,
       baptismDate: member.baptismDate || '',
@@ -96,11 +95,6 @@ export default function MemberForm({
       district: '',
       unit: '',
       additionalGroups: [],
-      leadershipRoles: {
-        isDistrictPastor: false,
-        isChamp: false,
-        isUnitHead: false
-      },
       membershipStatus: 'new_convert',
       dateJoined: new Date().toISOString().split('T')[0],
       baptismDate: '',
@@ -149,7 +143,6 @@ export default function MemberForm({
     name: 'children'
   })
 
-  const watchedLeadershipRoles = watch('leadershipRoles')
   const watchedMaritalStatus = watch('maritalStatus')
 
   // Fetch districts and units on component mount
@@ -187,11 +180,6 @@ export default function MemberForm({
         if (errors.address?.state) errorCount++
         if (errors.address?.zipCode) errorCount++
         if (errors.address?.country) errorCount++
-      } else if (field === 'leadershipRoles') {
-        // Handle leadership roles object errors
-        if (errors.leadershipRoles?.pastorsDistrict) errorCount++
-        if (errors.leadershipRoles?.champForDistrict) errorCount++
-        if (errors.leadershipRoles?.leadsUnit) errorCount++
       } else if (field === 'emergencyContact') {
         // Handle emergency contact object errors
         if (errors.emergencyContact?.name) errorCount++
@@ -327,20 +315,6 @@ export default function MemberForm({
       if (data.spouse?.trim()) transformedData.spouse = data.spouse.trim()
       if (data.parent?.trim()) transformedData.parent = data.parent.trim()
 
-      // Handle leadership roles
-      const leadershipRoles: any = {
-        isDistrictPastor: data.leadershipRoles?.isDistrictPastor || false,
-        isChamp: data.leadershipRoles?.isChamp || false,
-        isUnitHead: data.leadershipRoles?.isUnitHead || false,
-      }
-      const leadsUnitId = extractId(data.leadershipRoles?.leadsUnit)
-      if (leadsUnitId) leadershipRoles.leadsUnit = leadsUnitId
-      const pastorsDistrictId = extractId(data.leadershipRoles?.pastorsDistrict)
-      if (pastorsDistrictId) leadershipRoles.pastorsDistrict = pastorsDistrictId
-      const champForDistrictId = extractId(data.leadershipRoles?.champForDistrict)
-      if (champForDistrictId) leadershipRoles.champForDistrict = champForDistrictId
-      transformedData.leadershipRoles = leadershipRoles
-
       // Handle arrays - filter out empty strings
       transformedData.ministries = data.ministries?.filter(Boolean) || []
       transformedData.skills = data.skills?.filter(Boolean) || []
@@ -403,7 +377,7 @@ export default function MemberForm({
       title: 'Church Information',
       subtitle: 'Church roles and membership details',
       icon: Building,
-      fields: ['district', 'unit', 'membershipStatus', 'dateJoined', 'baptismDate', 'confirmationDate', 'leadershipRoles']
+      fields: ['district', 'unit', 'membershipStatus', 'dateJoined', 'baptismDate', 'confirmationDate']
     },
     {
       id: 4,
@@ -995,110 +969,6 @@ export default function MemberForm({
           </div>
         </div>
 
-        {/* Leadership Roles */}
-        <div className="bg-gray-50 rounded-lg p-6">
-          <h4 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
-            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            Leadership Roles
-          </h4>
-          <div className="space-y-4">
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                {...register('leadershipRoles.isDistrictPastor')}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">District Pastor</span>
-            </label>
-
-            {watchedLeadershipRoles?.isDistrictPastor && (
-              <div className="ml-7">
-                <select
-                  {...register('leadershipRoles.pastorsDistrict')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  disabled={loadingData}
-                >
-                  <option value="">Select district you pastor</option>
-                  {districts.map((district) => (
-                    <option key={district._id} value={district._id}>
-                      {district.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.leadershipRoles?.pastorsDistrict && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {errors.leadershipRoles.pastorsDistrict.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                {...register('leadershipRoles.isChamp')}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">Champ</span>
-            </label>
-
-            {watchedLeadershipRoles?.isChamp && (
-              <div className="ml-7">
-                <select
-                  {...register('leadershipRoles.champForDistrict')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  disabled={loadingData}
-                >
-                  <option value="">Select district you're champ for</option>
-                  {districts.map((district) => (
-                    <option key={district._id} value={district._id}>
-                      {district.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.leadershipRoles?.champForDistrict && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {errors.leadershipRoles.champForDistrict.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                {...register('leadershipRoles.isUnitHead')}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">Unit Head</span>
-            </label>
-
-            {watchedLeadershipRoles?.isUnitHead && (
-              <div className="ml-7">
-                <select
-                  {...register('leadershipRoles.leadsUnit')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                  disabled={loadingData}
-                >
-                  <option value="">Select unit you lead</option>
-                  {units.map((unit) => (
-                    <option key={unit._id} value={unit._id}>
-                      {unit.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.leadershipRoles?.leadsUnit && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {errors.leadershipRoles.leadsUnit.message}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </motion.div>
   )

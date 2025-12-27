@@ -96,7 +96,7 @@ export default function Dashboard() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
-  // Show branch filter when viewing "All Expressions"
+  // Show branch filter when viewing "All Campuses"
   const showBranchFilter = !selectedBranch && branches.length > 0
 
   const currentDateRangeOption = useMemo(() => {

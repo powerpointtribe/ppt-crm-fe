@@ -54,7 +54,7 @@ export default function Groups() {
   const [tempDateTo, setTempDateTo] = useState('')
   const [tempBranchFilter, setTempBranchFilter] = useState('')
 
-  // Show branch filter when viewing "All Expressions"
+  // Show branch filter when viewing "All Campuses"
   const showBranchFilter = !selectedBranch && branches.length > 0
 
   // Bulk operations state
@@ -985,11 +985,11 @@ export default function Groups() {
         filters={[
           ...(showBranchFilter ? [{
             id: 'branch',
-            label: 'Expression',
+            label: 'Campus',
             value: tempBranchFilter,
             onChange: setTempBranchFilter,
             options: branches.map(b => ({ value: b._id, label: b.name })),
-            placeholder: 'All Expressions',
+            placeholder: 'All Campuses',
           }] : []),
           ...(!filteredType ? [{
             id: 'type',

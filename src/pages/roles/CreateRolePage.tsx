@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react'
-import { rolesService, CreateRoleDto } from '@/services/roles'
+import { rolesService, CreateRoleDto, MembershipStatusTag } from '@/services/roles'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import Layout from '@/components/Layout'
 
@@ -14,9 +14,22 @@ export default function CreateRolePage() {
     slug: '',
     displayName: '',
     description: '',
-    colorCode: '#6B7280'
+    colorCode: '#6B7280',
+    membershipStatusTag: undefined
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Membership status options
+  const membershipStatusOptions: { value: MembershipStatusTag | ''; label: string }[] = [
+    { value: '', label: 'None (No automatic status change)' },
+    { value: 'MEMBER', label: 'Member' },
+    { value: 'DC', label: "David's Company (DC)" },
+    { value: 'LXL', label: 'League of Xtraordinary Leaders (LXL)' },
+    { value: 'DIRECTOR', label: 'Director' },
+    { value: 'PASTOR', label: 'Pastor' },
+    { value: 'CAMPUS_PASTOR', label: 'Campus Pastor' },
+    { value: 'SENIOR_PASTOR', label: 'Senior Pastor' },
+  ]
 
   // Check if user has permission to create roles
   const canCreateRole = hasPermission('roles:create-role')
@@ -207,6 +220,36 @@ export default function CreateRolePage() {
               placeholder="#6B7280"
             />
           </div>
+        </div>
+
+        {/* Membership Status Tag */}
+        <div>
+          <label htmlFor="membershipStatusTag" className="block text-sm font-medium text-gray-700 mb-1">
+            Membership Status Tag
+          </label>
+          <select
+            id="membershipStatusTag"
+            name="membershipStatusTag"
+            value={formData.membershipStatusTag || ''}
+            onChange={(e) => {
+              const value = e.target.value
+              setFormData(prev => ({
+                ...prev,
+                membershipStatusTag: value ? value as MembershipStatusTag : undefined
+              }))
+            }}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white appearance-none cursor-pointer"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+          >
+            {membershipStatusOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            When this role is assigned to a member, their membership status will automatically update to this value.
+          </p>
         </div>
 
         {/* Actions */}

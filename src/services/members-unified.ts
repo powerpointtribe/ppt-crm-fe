@@ -127,7 +127,7 @@ export const membersService = {
   },
 
   // Access control methods
-  assignRole: async (id: string, roleData: { systemRoles: string[]; leadershipRoles?: any }): Promise<Member> => {
+  assignRole: async (id: string, roleData: { roleId: string }): Promise<Member> => {
     const response = await apiService.patch<ApiResponse<Member>>(`/members/${id}/assign-role`, roleData)
     return transformSingleResponse<Member>(response) as Member
   },

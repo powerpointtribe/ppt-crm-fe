@@ -6,7 +6,6 @@ import { Member } from '@/types'
 // LEGACY FILE: This service is deprecated. Use members-unified.ts instead.
 // These type aliases are kept for backward compatibility
 export type Address = NonNullable<Member['address']>
-export type LeadershipRoles = Member['leadershipRoles']
 export type EmergencyContact = NonNullable<Member['emergencyContact']>
 
 // Re-export Member for backward compatibility
@@ -24,7 +23,6 @@ export interface CreateMemberData {
   district: string
   unit?: string
   additionalGroups?: string[]
-  leadershipRoles?: Partial<LeadershipRoles>
   membershipStatus?: Member['membershipStatus']
   dateJoined?: string
   baptismDate?: string

@@ -59,15 +59,24 @@ export default function AssignmentModal({
 
   // Get member role badge
   const getMemberRoleBadge = (member: Member) => {
-    if (member.leadershipRoles?.isDistrictPastor) {
-      return { label: 'District Pastor', color: 'bg-purple-100 text-purple-700' }
+    // Check new RBAC role first
+    if (member.role && typeof member.role === 'object') {
+      const roleName = member.role.displayName || member.role.name
+      return { label: roleName, color: 'bg-purple-100 text-purple-700' }
     }
-    if (member.leadershipRoles?.isChamp) {
-      return { label: 'Champ', color: 'bg-blue-100 text-blue-700' }
+    // Check membership status for leadership levels
+    if (member.membershipStatus) {
+      if (member.membershipStatus === 'SENIOR_PASTOR') {
+        return { label: 'Senior Pastor', color: 'bg-purple-100 text-purple-700' }
+      }
+      if (member.membershipStatus === 'PASTOR') {
+        return { label: 'Pastor', color: 'bg-purple-100 text-purple-700' }
+      }
+      if (member.membershipStatus === 'DIRECTOR') {
+        return { label: 'Director', color: 'bg-blue-100 text-blue-700' }
+      }
     }
-    if (member.leadershipRoles?.isUnitHead) {
-      return { label: 'Unit Head', color: 'bg-green-100 text-green-700' }
-    }
+    // Check system roles
     if (member.systemRoles?.includes('admin') || member.systemRoles?.includes('super_admin')) {
       return { label: 'Admin', color: 'bg-red-100 text-red-700' }
     }

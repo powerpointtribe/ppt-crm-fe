@@ -24,16 +24,26 @@ export default function Header({ title, subtitle, searchSection, actions }: Head
 
   // Helper to get primary role for display
   const getPrimaryRole = () => {
+    // Check for new role-based system first
+    if (member?.role && typeof member.role === 'object') {
+      return member.role.displayName || member.role.name
+    }
+
+    // Check membership status for leadership levels
+    if (member?.membershipStatus) {
+      const status = member.membershipStatus
+      if (status === 'SENIOR_PASTOR') return 'senior pastor'
+      if (status === 'PASTOR') return 'pastor'
+      if (status === 'DIRECTOR') return 'director'
+      if (status === 'LXL') return 'lxl'
+      if (status === 'DC') return 'dc'
+    }
+
     if (!member?.systemRoles?.length) return 'member'
 
     // Prioritize admin and pastor roles for display
     if (member.systemRoles.includes('admin')) return 'admin'
     if (member.systemRoles.includes('pastor')) return 'pastor'
-
-    // Show leadership roles
-    if (member.leadershipRoles?.isDistrictPastor) return 'district pastor'
-    if (member.leadershipRoles?.isUnitHead) return 'unit head'
-    if (member.leadershipRoles?.isChamp) return 'champ'
 
     // Default to first system role
     return member.systemRoles[0]

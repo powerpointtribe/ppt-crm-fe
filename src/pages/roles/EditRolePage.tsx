@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Save, Shield, Check, AlertCircle } from 'lucide-react'
-import { rolesService, Role, Permission, UpdateRoleDto } from '@/services/roles'
+import { rolesService, Role, Permission, UpdateRoleDto, MembershipStatusTag } from '@/services/roles'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import Layout from '@/components/Layout'
 
@@ -18,8 +18,21 @@ export default function EditRolePage() {
     displayName: '',
     description: '',
     colorCode: '#6B7280',
-    isActive: true
+    isActive: true,
+    membershipStatusTag: undefined
   })
+
+  // Membership status options
+  const membershipStatusOptions: { value: MembershipStatusTag | ''; label: string }[] = [
+    { value: '', label: 'None (No automatic status change)' },
+    { value: 'MEMBER', label: 'Member' },
+    { value: 'DC', label: "David's Company (DC)" },
+    { value: 'LXL', label: 'League of Xtraordinary Leaders (LXL)' },
+    { value: 'DIRECTOR', label: 'Director' },
+    { value: 'PASTOR', label: 'Pastor' },
+    { value: 'CAMPUS_PASTOR', label: 'Campus Pastor' },
+    { value: 'SENIOR_PASTOR', label: 'Senior Pastor' },
+  ]
 
   // Check if user has permission to update roles
   const canUpdateRole = hasPermission('roles:update-role')
@@ -67,13 +80,16 @@ export default function EditRolePage() {
         displayName: roleData.displayName,
         description: roleData.description,
         colorCode: roleData.colorCode || '#6B7280',
-        isActive: roleData.isActive
+        isActive: roleData.isActive,
+        membershipStatusTag: roleData.membershipStatusTag
       })
       setAllPermissions(permissionsByModule)
 
-      // Set currently selected permissions
-      const selectedIds = new Set(roleData.permissions || [])
-      setSelectedPermissions(selectedIds)
+      // Set currently selected permissions (extract IDs from populated permission objects)
+      const permissionIds = (roleData.permissions || []).map((p: any) =>
+        typeof p === 'string' ? p : p._id
+      )
+      setSelectedPermissions(new Set(permissionIds))
     } catch (error) {
       console.error('Failed to fetch role:', error)
       alert('Failed to load role')
@@ -128,8 +144,10 @@ export default function EditRolePage() {
       // Update role details
       await rolesService.updateRole(id, formData)
 
-      // Update permissions (replace all)
-      await rolesService.assignPermissions(id, Array.from(selectedPermissions))
+      // Update permissions (replace all) - only if user has permission
+      if (canAssignPermissions && selectedPermissions.size > 0) {
+        await rolesService.assignPermissions(id, Array.from(selectedPermissions))
+      }
 
       alert('Role updated successfully')
       navigate('/roles')
@@ -266,6 +284,36 @@ export default function EditRolePage() {
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
               />
             </div>
+          </div>
+
+          {/* Membership Status Tag */}
+          <div>
+            <label htmlFor="membershipStatusTag" className="block text-sm font-medium text-gray-700 mb-1">
+              Membership Status Tag
+            </label>
+            <select
+              id="membershipStatusTag"
+              name="membershipStatusTag"
+              value={formData.membershipStatusTag || ''}
+              onChange={(e) => {
+                const value = e.target.value
+                setFormData(prev => ({
+                  ...prev,
+                  membershipStatusTag: value ? value as MembershipStatusTag : undefined
+                }))
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white appearance-none cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+            >
+              {membershipStatusOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              When this role is assigned to a member, their membership status will automatically update to this value.
+            </p>
           </div>
 
           {/* Active Status */}

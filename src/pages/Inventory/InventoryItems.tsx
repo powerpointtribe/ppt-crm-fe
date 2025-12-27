@@ -65,7 +65,7 @@ export default function InventoryItems() {
     hasPrev: false
   })
 
-  // Show branch filter when viewing "All Expressions"
+  // Show branch filter when viewing "All Campuses"
   const showBranchFilter = !selectedBranch && branches.length > 0
 
   useEffect(() => {
@@ -254,13 +254,13 @@ export default function InventoryItems() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {showBranchFilter && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Expression</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Campus</label>
                     <select
                       value={branchFilter}
                       onChange={(e) => setBranchFilter(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="">All Expressions</option>
+                      <option value="">All Campuses</option>
                       {branches.map(branch => (
                         <option key={branch._id} value={branch._id}>{branch.name}</option>
                       ))}

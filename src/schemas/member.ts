@@ -17,16 +17,6 @@ export const emergencyContactSchema = z.object({
   email: z.string().email('Valid email is required').optional().or(z.literal(''))
 })
 
-// Leadership roles schema
-export const leadershipRolesSchema = z.object({
-  isDistrictPastor: z.boolean().default(false),
-  isChamp: z.boolean().default(false),
-  isUnitHead: z.boolean().default(false),
-  champForDistrict: z.string().optional(),
-  leadsUnit: z.string().optional(),
-  pastorsDistrict: z.string().optional()
-})
-
 // Main member schema
 export const memberSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(50, 'First name too long'),
@@ -44,7 +34,6 @@ export const memberSchema = z.object({
   district: z.string().optional(),
   unit: z.string().optional(),
   additionalGroups: z.array(z.string()).optional().default([]),
-  leadershipRoles: leadershipRolesSchema.optional().default({}),
   membershipStatus: z.enum([
     'new_convert',
     'worker',
@@ -68,21 +57,6 @@ export const memberSchema = z.object({
   parent: z.string().optional(),
   emergencyContact: emergencyContactSchema.optional(),
   notes: z.string().optional()
-}).refine((data) => {
-  // If leadership roles are selected, validate required fields
-  if (data.leadershipRoles?.isDistrictPastor && !data.leadershipRoles.pastorsDistrict) {
-    return false
-  }
-  if (data.leadershipRoles?.isChamp && !data.leadershipRoles.champForDistrict) {
-    return false
-  }
-  if (data.leadershipRoles?.isUnitHead && !data.leadershipRoles.leadsUnit) {
-    return false
-  }
-  return true
-}, {
-  message: 'Leadership role assignments are incomplete',
-  path: ['leadershipRoles']
 }).refine((data) => {
   // Validate baptism date is after birth date
   if (data.baptismDate && data.dateOfBirth) {
@@ -128,7 +102,6 @@ export const memberEditSchema = z.object({
   district: z.string().optional(),
   unit: z.string().optional(),
   additionalGroups: z.array(z.string()).optional(),
-  leadershipRoles: leadershipRolesSchema.optional(),
   membershipStatus: z.enum([
     'new_convert', 'worker', 'volunteer', 'leader', 'district_pastor',
     'champ', 'unit_head', 'inactive', 'transferred'

@@ -151,7 +151,7 @@ export default function Members() {
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
 
-  // Show branch filter only when viewing all expressions
+  // Show branch filter only when viewing all campuses
   const showBranchFilter = !selectedBranch && branches.length > 0
 
   const hasActiveFilters = statusFilter || genderFilter || maritalStatusFilter || districtFilter || branchFilter || dateFromFilter || dateToFilter
@@ -1099,14 +1099,14 @@ export default function Members() {
         subtitle="Refine your search results"
         activeFilterCount={activeFilterCount}
         filters={[
-          // Branch filter - only shown when viewing all expressions
+          // Branch filter - only shown when viewing all campuses
           ...(showBranchFilter ? [{
             id: 'branch',
-            label: 'Expression',
+            label: 'Campus',
             value: tempBranchFilter,
             onChange: setTempBranchFilter,
             options: branches.map(b => ({ value: b._id, label: b.name })),
-            placeholder: 'All Expressions',
+            placeholder: 'All Campuses',
           }] : []),
           {
             id: 'status',

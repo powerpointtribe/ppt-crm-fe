@@ -68,11 +68,6 @@ export const mockMembers = [
     },
     district: 'District A',
     unit: 'Unit 1',
-    leadershipRoles: {
-      isDistrictPastor: false,
-      isChamp: true,
-      isUnitHead: false
-    },
     membershipStatus: 'worker' as const,
     dateJoined: '2023-03-10',
     createdAt: '2023-03-10T10:00:00Z',
@@ -95,11 +90,6 @@ export const mockMembers = [
       country: 'USA'
     },
     district: 'District B',
-    leadershipRoles: {
-      isDistrictPastor: false,
-      isChamp: false,
-      isUnitHead: false
-    },
     membershipStatus: 'new_convert' as const,
     dateJoined: '2024-01-05',
     createdAt: '2024-01-05T10:00:00Z',

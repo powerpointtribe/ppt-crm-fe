@@ -4,7 +4,6 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 import ConnectionStatus from './ConnectionStatus'
 import DevModeIndicator from './DevModeIndicator'
-import { useAppStore } from '@/store'
 import { cn } from '@/utils/cn'
 
 interface LayoutProps {
@@ -18,7 +17,6 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, title = 'Dashboard', subtitle, searchSection, actions }: LayoutProps) {
-  const { sidebarCollapsed } = useAppStore()
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -39,7 +37,7 @@ export default function Layout({ children, title = 'Dashboard', subtitle, search
       <main
         className={cn(
           'flex flex-col min-h-screen transition-all duration-300',
-          isMobile ? 'ml-0' : sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
+          isMobile ? 'ml-0' : 'md:ml-[240px]'
         )}
       >
         <Header title={title} subtitle={subtitle} searchSection={searchSection} actions={actions} />

@@ -11,6 +11,7 @@ import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import { dashboardService, DashboardOverview } from '@/services/dashboard'
 import { serviceReportsService, ServiceReportStats } from '@/services/service-reports'
 import { auditService, AuditLog, AuditAction } from '@/services/audit'
+import { useAppStore } from '@/store'
 
 type DateRangePreset = '1m' | '3m' | '6m' | '1y' | 'custom'
 
@@ -76,6 +77,7 @@ const formatTimeAgo = (timestamp: string) => {
 }
 
 export default function Dashboard() {
+  const { selectedBranch, branches } = useAppStore()
   const [stats, setStats] = useState<Partial<DashboardOverview> | null>(null)
   const [serviceReportStats, setServiceReportStats] = useState<ServiceReportStats | null>(null)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
@@ -83,6 +85,7 @@ export default function Dashboard() {
   const [error, setError] = useState<any>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<DateRangePreset>('3m')
   const [showDateRangeDropdown, setShowDateRangeDropdown] = useState(false)
+  const [branchFilter, setBranchFilter] = useState('')
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
     const date = new Date()
     date.setMonth(date.getMonth() - 3)
@@ -92,6 +95,9 @@ export default function Dashboard() {
   const [appliedCustomDates, setAppliedCustomDates] = useState<{ start: string; end: string } | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+
+  // Show branch filter when viewing "All Expressions"
+  const showBranchFilter = !selectedBranch && branches.length > 0
 
   const currentDateRangeOption = useMemo(() => {
     return dateRangePresets.find(opt => opt.value === selectedDateRange) || dateRangePresets[1]
@@ -124,6 +130,11 @@ export default function Dashboard() {
     }
   }, [appliedCustomDates])
 
+  // Reload when branch filter changes
+  useEffect(() => {
+    loadDashboardStats()
+  }, [branchFilter, selectedBranch])
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -146,11 +157,13 @@ export default function Dashboard() {
       setLoading(true)
       setError(null)
       const range = currentDateRange
+      // Use selectedBranch if set, otherwise use the filter dropdown
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
 
       // Load all data in parallel with date range filtering
       const [dashboardData, serviceStats, recentAuditLogs] = await Promise.all([
-        dashboardService.getStats(range.startDate, range.endDate),
-        serviceReportsService.getServiceReportStats({ dateFrom: range.startDate, dateTo: range.endDate }).catch(() => null),
+        dashboardService.getStats(range.startDate, range.endDate, effectiveBranchId),
+        serviceReportsService.getServiceReportStats({ dateFrom: range.startDate, dateTo: range.endDate, branchId: effectiveBranchId }).catch(() => null),
         auditService.getRecentActivity(10, range.startDate, range.endDate).catch(() => [])
       ])
 

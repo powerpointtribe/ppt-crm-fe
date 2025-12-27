@@ -118,7 +118,11 @@ export default function MembersWithBulkOperations() {
   }
 
   const handleFilter = (filters: Partial<MemberSearchParams>) => {
-    setSearchParams(prev => ({ ...prev, ...filters, page: 1 }))
+    // Convert empty strings to undefined to avoid sending invalid values to API
+    const cleanedFilters = Object.fromEntries(
+      Object.entries(filters).map(([key, value]) => [key, value === '' ? undefined : value])
+    )
+    setSearchParams(prev => ({ ...prev, ...cleanedFilters, page: 1 }))
   }
 
   // Bulk operations handlers

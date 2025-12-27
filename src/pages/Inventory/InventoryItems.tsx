@@ -23,6 +23,7 @@ import Badge from '@/components/ui/Badge'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { inventoryService, InventoryItem, InventoryQueryParams } from '@/services/inventory'
 import { formatDate, formatCurrency } from '@/utils/formatters'
+import { useAppStore } from '@/store'
 
 function getStockStatusColor(stockStatus: string): string {
   switch (stockStatus) {
@@ -46,12 +47,14 @@ function getStatusColor(status: string): string {
 
 export default function InventoryItems() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { selectedBranch, branches } = useAppStore()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
   const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || '')
+  const [branchFilter, setBranchFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
@@ -62,13 +65,18 @@ export default function InventoryItems() {
     hasPrev: false
   })
 
+  // Show branch filter when viewing "All Expressions"
+  const showBranchFilter = !selectedBranch && branches.length > 0
+
   useEffect(() => {
     loadItems()
-  }, [searchParams])
+  }, [searchParams, branchFilter, selectedBranch])
 
   const loadItems = async () => {
     try {
       setLoading(true)
+      // Use selectedBranch if set, otherwise use the filter dropdown
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
       const params: InventoryQueryParams = {
         page: parseInt(searchParams.get('page') || '1'),
         limit: 20,
@@ -77,6 +85,7 @@ export default function InventoryItems() {
         status: searchParams.get('status') as any || undefined,
         lowStock: searchParams.get('lowStock') === 'true' || undefined,
         expiring: searchParams.get('expiring') === 'true' || undefined,
+        branchId: effectiveBranchId,
         sortBy: searchParams.get('sortBy') || 'name',
         sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'asc'
       }
@@ -124,6 +133,7 @@ export default function InventoryItems() {
     setSearchTerm('')
     setSelectedCategory('')
     setSelectedStatus('')
+    setBranchFilter('')
     setSearchParams({})
   }
 
@@ -133,7 +143,7 @@ export default function InventoryItems() {
     setSearchParams(newParams)
   }
 
-  const hasActiveFilters = searchTerm || selectedCategory || selectedStatus || searchParams.get('lowStock') || searchParams.get('expiring')
+  const hasActiveFilters = searchTerm || selectedCategory || selectedStatus || branchFilter || searchParams.get('lowStock') || searchParams.get('expiring')
 
   // Search Section to be displayed in header
   const searchSection = (
@@ -241,7 +251,22 @@ export default function InventoryItems() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {showBranchFilter && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Expression</label>
+                    <select
+                      value={branchFilter}
+                      onChange={(e) => setBranchFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">All Expressions</option>
+                      {branches.map(branch => (
+                        <option key={branch._id} value={branch._id}>{branch.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <select

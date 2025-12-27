@@ -1,54 +1,102 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Edit, Trash2, Shield, Search, AlertCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Plus, Edit2, Trash2, Shield, Eye, AlertCircle, Lock, Filter, X } from 'lucide-react'
 import { rolesService, Role } from '@/services/roles'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import { PermissionGuard } from '@/guards'
 import Layout from '@/components/Layout'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
+import PageToolbar from '@/components/ui/PageToolbar'
+import FilterModal from '@/components/ui/FilterModal'
+import { SkeletonTable } from '@/components/ui/Skeleton'
+
+const statusOptions = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+]
+
+const typeOptions = [
+  { value: 'system', label: 'System Roles' },
+  { value: 'custom', label: 'Custom Roles' },
+]
 
 export default function RolesListPage() {
   const navigate = useNavigate()
-  const { hasPermission, canAccessModule } = useAuth()
+  const { hasPermission } = useAuth()
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined)
-  const [filterSystem, setFilterSystem] = useState<boolean | undefined>(undefined)
 
-  // Check if user has permission to view roles
+  // Applied filter states
+  const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+
+  // Temporary filter states (for modal)
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [tempStatusFilter, setTempStatusFilter] = useState('')
+  const [tempTypeFilter, setTempTypeFilter] = useState('')
+
+  const hasActiveFilters = statusFilter || typeFilter
+  const activeFilterCount = [statusFilter, typeFilter].filter(Boolean).length
+
   const canViewRoles = hasPermission('roles:view-roles')
-  const canCreateRole = hasPermission('roles:create-role')
-  const canEditRole = hasPermission('roles:update-role')
-  const canDeleteRole = hasPermission('roles:delete-role')
 
-  // If user doesn't have view permission, show access denied message
+  const openFilterModal = () => {
+    setTempStatusFilter(statusFilter)
+    setTempTypeFilter(typeFilter)
+    setShowFilterModal(true)
+  }
+
+  const closeFilterModal = () => {
+    setShowFilterModal(false)
+  }
+
+  const applyFilters = () => {
+    setStatusFilter(tempStatusFilter)
+    setTypeFilter(tempTypeFilter)
+    setShowFilterModal(false)
+  }
+
+  const clearTempFilters = () => {
+    setTempStatusFilter('')
+    setTempTypeFilter('')
+  }
+
+  const clearAppliedFilters = () => {
+    setStatusFilter('')
+    setTypeFilter('')
+  }
+
   if (!canViewRoles) {
     return (
       <Layout title="Roles Management">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <Card className="text-center py-12">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-red-800 mb-2">Access Denied</h2>
-          <p className="text-red-600 mb-4">
-            You don't have permission to view roles. Please contact your administrator.
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to view roles.
           </p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-          >
+          <Button onClick={() => navigate('/dashboard')}>
             Return to Dashboard
-          </button>
-        </div>
+          </Button>
+        </Card>
       </Layout>
     )
   }
 
   useEffect(() => {
     fetchRoles()
-  }, [filterActive, filterSystem])
+  }, [statusFilter, typeFilter])
 
   const fetchRoles = async () => {
     try {
       setLoading(true)
+      const filterActive = statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined
+      const filterSystem = typeFilter === 'system' ? true : typeFilter === 'custom' ? false : undefined
+
       const data = await rolesService.getRoles({
         isActive: filterActive,
         isSystemRole: filterSystem,
@@ -62,16 +110,14 @@ export default function RolesListPage() {
     }
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSearch = () => {
     fetchRoles()
   }
 
   const handleDelete = async (roleId: string, roleName: string) => {
-    if (!confirm(`Are you sure you want to delete the role "${roleName}"?`)) {
+    if (!confirm(`Are you sure you want to delete "${roleName}"?`)) {
       return
     }
-
     try {
       await rolesService.deleteRole(roleId)
       fetchRoles()
@@ -80,154 +126,249 @@ export default function RolesListPage() {
     }
   }
 
-  // Search Section to be displayed in header
-  const searchSection = (
-    <form onSubmit={handleSearch} className="flex gap-3 flex-wrap items-center w-full">
-      <div className="flex-1 min-w-[200px]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search roles..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
-          />
-        </div>
-      </div>
+  const filteredRoles = roles.filter(role => {
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase()
+      return (
+        role.displayName.toLowerCase().includes(search) ||
+        role.name.toLowerCase().includes(search) ||
+        role.slug?.toLowerCase().includes(search)
+      )
+    }
+    return true
+  })
 
-      <select
-        value={filterActive === undefined ? 'all' : filterActive ? 'active' : 'inactive'}
-        onChange={(e) => setFilterActive(e.target.value === 'all' ? undefined : e.target.value === 'active')}
-        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
-      >
-        <option value="all">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-
-      <select
-        value={filterSystem === undefined ? 'all' : filterSystem ? 'system' : 'custom'}
-        onChange={(e) => setFilterSystem(e.target.value === 'all' ? undefined : e.target.value === 'system')}
-        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
-      >
-        <option value="all">All Types</option>
-        <option value="system">System Roles</option>
-        <option value="custom">Custom Roles</option>
-      </select>
-
-      <button
-        type="submit"
-        className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
-      >
-        Search
-      </button>
-    </form>
-  )
+  if (loading) {
+    return (
+      <Layout title="Roles" subtitle="Manage roles and permissions">
+        <SkeletonTable />
+      </Layout>
+    )
+  }
 
   return (
-    <Layout
-      title="Roles Management"
-      subtitle="Manage user roles and their permissions"
-      searchSection={searchSection}
-    >
-      {/* Actions Row */}
-      <div className="flex justify-end mb-6">
-        <PermissionGuard permission="roles:create-role">
-          <Link
-            to="/roles/create"
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+    <Layout title="Roles" subtitle="Manage roles and permissions">
+      <div className="space-y-4">
+        <PageToolbar
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          onSearchSubmit={handleSearch}
+          searchPlaceholder="Search roles..."
+          secondaryActions={
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openFilterModal}
+                className={hasActiveFilters ? 'border-primary-500 text-primary-600' : ''}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary-500 text-white rounded-full">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAppliedFilters}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          }
+          primaryActions={
+            <PermissionGuard permission="roles:create-role">
+              <Button size="sm" onClick={() => navigate('/roles/create')}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                New Role
+              </Button>
+            </PermissionGuard>
+          }
+        />
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="overflow-hidden">
+            {filteredRoles.length === 0 ? (
+              <div className="text-center py-12">
+                <Shield className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">No roles found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Role
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Permissions
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredRoles.map((role, index) => (
+                      <motion.tr
+                        key={role._id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="hover:bg-gray-50/50 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              role.isSystemRole
+                                ? 'bg-purple-100 text-purple-600'
+                                : 'bg-primary-100 text-primary-600'
+                            }`}>
+                              {role.isSystemRole ? <Lock className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{role.displayName}</p>
+                              <p className="text-xs text-gray-500 font-mono">{role.slug}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {role.isSystemRole ? (
+                            <Badge variant="secondary" className="text-xs">System</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">Custom</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                            <Shield className="w-3.5 h-3.5 text-gray-400" />
+                            <span>{Array.isArray(role.permissions) ? role.permissions.length : 0}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {role.isActive ? (
+                            <Badge variant="success" className="text-xs">Active</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/roles/${role._id}`)}
+                              className="h-8 w-8 p-0"
+                              title="View"
+                            >
+                              <Eye className="w-4 h-4 text-gray-500" />
+                            </Button>
+                            <PermissionGuard permission="roles:update-role">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => navigate(`/roles/${role._id}/edit`)}
+                                className="h-8 w-8 p-0"
+                                title="Edit"
+                              >
+                                <Edit2 className="w-4 h-4 text-gray-500" />
+                              </Button>
+                            </PermissionGuard>
+                            <PermissionGuard permission="roles:delete-role">
+                              {!role.isSystemRole && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(role._id, role.displayName)}
+                                  className="h-8 w-8 p-0 hover:bg-red-50"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                              )}
+                            </PermissionGuard>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </motion.div>
+
+        {/* Summary Footer */}
+        {filteredRoles.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center justify-between text-sm text-gray-500 px-1"
           >
-            <Plus className="w-5 h-5" />
-            Create Role
-          </Link>
-        </PermissionGuard>
+            <span>
+              Showing {filteredRoles.length} role{filteredRoles.length !== 1 ? 's' : ''}
+            </span>
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                {filteredRoles.filter(r => r.isSystemRole).length} System
+              </span>
+              <span className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-primary-500"></div>
+                {filteredRoles.filter(r => !r.isSystemRole).length} Custom
+              </span>
+            </div>
+          </motion.div>
+        )}
       </div>
 
-      {/* Roles List */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="text-gray-600 mt-4">Loading roles...</p>
-        </div>
-      ) : roles.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-          <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No roles found</p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {roles.map((role) => (
-            <div
-              key={role._id}
-              className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      {role.displayName}
-                    </h3>
-                    {role.isSystemRole && (
-                      <span className="px-2 py-1 rounded bg-red-100 text-red-800 text-xs font-medium">
-                        System
-                      </span>
-                    )}
-                    {!role.isActive && (
-                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-800 text-xs font-medium">
-                        Inactive
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-gray-600 text-sm mb-3">
-                    {role.description || 'No description'}
-                  </p>
-
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Shield className="w-4 h-4" />
-                      {Array.isArray(role.permissions) ? role.permissions.length : 0} permissions
-                    </span>
-                    <span className="font-mono text-xs">
-                      {role.slug}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Link
-                    to={`/roles/${role._id}`}
-                    className="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
-                  >
-                    View
-                  </Link>
-                  <PermissionGuard permission="roles:update-role">
-                    <button
-                      onClick={() => navigate(`/roles/${role._id}/edit`)}
-                      className="px-3 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition flex items-center gap-1"
-                    >
-                      <Edit className="w-4 h-4" />
-                      Edit
-                    </button>
-                  </PermissionGuard>
-                  <PermissionGuard permission="roles:delete-role">
-                    {!role.isSystemRole && (
-                      <button
-                        onClick={() => handleDelete(role._id, role.displayName)}
-                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition flex items-center gap-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
-                    )}
-                  </PermissionGuard>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={closeFilterModal}
+        onApply={applyFilters}
+        onReset={clearTempFilters}
+        title="Filter Roles"
+        subtitle="Refine your role list"
+        activeFilterCount={activeFilterCount}
+        filters={[
+          {
+            id: 'status',
+            label: 'Status',
+            value: tempStatusFilter,
+            onChange: setTempStatusFilter,
+            options: statusOptions,
+            placeholder: 'All statuses',
+          },
+          {
+            id: 'type',
+            label: 'Role Type',
+            value: tempTypeFilter,
+            onChange: setTempTypeFilter,
+            options: typeOptions,
+            placeholder: 'All types',
+          },
+        ]}
+      />
     </Layout>
   )
 }

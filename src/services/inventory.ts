@@ -210,6 +210,7 @@ export interface InventoryQueryParams {
   expiring?: boolean
   expiringDays?: number
   tags?: string
+  branchId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
 }

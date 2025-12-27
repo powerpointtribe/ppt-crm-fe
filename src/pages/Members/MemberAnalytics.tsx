@@ -8,25 +8,60 @@ import {
   Calendar,
   MapPin,
   Heart,
-  User
+  User,
+  Filter,
+  Building2,
+  X
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
 import { membersService } from '@/services/members-unified'
+import { branchesService } from '@/services/branches'
 import { SkeletonTable } from '@/components/ui/Skeleton'
+import { useAuth } from '@/contexts/AuthContext-unified'
+import type { Branch } from '@/types/branch'
 
 export default function MemberAnalytics() {
+  const { selectedBranch } = useAuth()
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState('')
+  const [dateFromFilter, setDateFromFilter] = useState('')
+  const [dateToFilter, setDateToFilter] = useState('')
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [tempBranchFilter, setTempBranchFilter] = useState('')
+  const [tempDateFrom, setTempDateFrom] = useState('')
+  const [tempDateTo, setTempDateTo] = useState('')
+
+  useEffect(() => {
+    loadBranches()
+  }, [])
 
   useEffect(() => {
     loadStats()
-  }, [])
+  }, [selectedBranch, selectedBranchFilter, dateFromFilter, dateToFilter])
+
+  const loadBranches = async () => {
+    try {
+      const response = await branchesService.getBranches({ limit: 100 })
+      setBranches(response.items || [])
+    } catch (error) {
+      console.error('Error loading branches:', error)
+    }
+  }
 
   const loadStats = async () => {
     try {
-      const memberStats = await membersService.getMemberStats()
+      setLoading(true)
+      const effectiveBranchId = selectedBranch?._id || selectedBranchFilter || undefined
+      const memberStats = await membersService.getMemberStats(
+        effectiveBranchId,
+        dateFromFilter || undefined,
+        dateToFilter || undefined
+      )
       setStats(memberStats)
     } catch (error) {
       console.error('Error loading member stats:', error)
@@ -34,6 +69,26 @@ export default function MemberAnalytics() {
       setLoading(false)
     }
   }
+
+  const handleApplyFilter = () => {
+    setSelectedBranchFilter(tempBranchFilter)
+    setDateFromFilter(tempDateFrom)
+    setDateToFilter(tempDateTo)
+    setShowFilterModal(false)
+  }
+
+  const handleClearFilter = () => {
+    setSelectedBranchFilter('')
+    setDateFromFilter('')
+    setDateToFilter('')
+    setTempBranchFilter('')
+    setTempDateFrom('')
+    setTempDateTo('')
+    setShowFilterModal(false)
+  }
+
+  const activeFilterCount = [selectedBranchFilter, dateFromFilter, dateToFilter].filter(Boolean).length
+  const hasActiveFilter = activeFilterCount > 0
 
   // Calculate active members (those with 'active' status)
   const activeMembers = stats?.byStatus?.find((s: any) => s._id === 'active')?.count || 0
@@ -87,9 +142,75 @@ export default function MemberAnalytics() {
     )
   }
 
+  const getSelectedBranchName = () => {
+    if (selectedBranch) return selectedBranch.name
+    if (selectedBranchFilter) {
+      const branch = branches.find(b => b._id === selectedBranchFilter)
+      return branch?.name || 'Selected Branch'
+    }
+    return null
+  }
+
+  const formatDateRange = () => {
+    if (dateFromFilter && dateToFilter) {
+      return `${new Date(dateFromFilter).toLocaleDateString()} - ${new Date(dateToFilter).toLocaleDateString()}`
+    }
+    if (dateFromFilter) return `From ${new Date(dateFromFilter).toLocaleDateString()}`
+    if (dateToFilter) return `Until ${new Date(dateToFilter).toLocaleDateString()}`
+    return null
+  }
+
   return (
     <Layout title="Member Analytics" subtitle="View member statistics and insights">
       <div className="space-y-6">
+        {/* Filter Bar */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {getSelectedBranchName() && (
+              <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 border-primary-200">
+                <Building2 className="h-3 w-3 text-primary-600" />
+                <span className="text-primary-700">{getSelectedBranchName()}</span>
+              </Badge>
+            )}
+            {formatDateRange() && (
+              <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border-blue-200">
+                <Calendar className="h-3 w-3 text-blue-600" />
+                <span className="text-blue-700">{formatDateRange()}</span>
+              </Badge>
+            )}
+            {hasActiveFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilter}
+                className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setTempBranchFilter(selectedBranchFilter)
+              setTempDateFrom(dateFromFilter)
+              setTempDateTo(dateToFilter)
+              setShowFilterModal(true)
+            }}
+            className={hasActiveFilter ? 'border-primary-500 text-primary-600 bg-primary-50' : ''}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filter
+            {hasActiveFilter && (
+              <span className="ml-1.5 bg-primary-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </Button>
+        </div>
+
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {membershipStats.map((stat, index) => (
@@ -338,6 +459,145 @@ export default function MemberAnalytics() {
           </motion.div>
         </div>
       </div>
+
+      {/* Filter Modal */}
+      {showFilterModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFilterModal(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Filter className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Filter Analytics</h3>
+                      <p className="text-primary-100 text-sm">Refine your analytics view</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowFilterModal(false)}
+                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="h-5 w-5 text-white" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-6">
+                {/* Branch Filter */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                    <Building2 className="h-4 w-4 text-primary-600" />
+                    Expression/Branch
+                  </label>
+                  <select
+                    value={tempBranchFilter}
+                    onChange={(e) => setTempBranchFilter(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">All Expressions</option>
+                    {branches.map((branch) => (
+                      <option key={branch._id} value={branch._id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Date Range Filter */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    Date Joined Range
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">From</label>
+                      <input
+                        type="date"
+                        value={tempDateFrom}
+                        onChange={(e) => setTempDateFrom(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">To</label>
+                      <input
+                        type="date"
+                        value={tempDateTo}
+                        onChange={(e) => setTempDateTo(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Filter members by the date they joined the church</p>
+                </div>
+
+                {/* Quick Date Presets */}
+                <div>
+                  <label className="text-xs text-gray-500 mb-2 block">Quick Select</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: 'Last 30 days', days: 30 },
+                      { label: 'Last 90 days', days: 90 },
+                      { label: 'Last 6 months', days: 180 },
+                      { label: 'Last year', days: 365 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.days}
+                        onClick={() => {
+                          const to = new Date()
+                          const from = new Date()
+                          from.setDate(from.getDate() - preset.days)
+                          setTempDateFrom(from.toISOString().split('T')[0])
+                          setTempDateTo(to.toISOString().split('T')[0])
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  onClick={handleClearFilter}
+                  className="text-gray-600 hover:text-red-600"
+                >
+                  <X className="h-4 w-4 mr-1.5" />
+                  Clear All
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowFilterModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleApplyFilter}>
+                    <Filter className="h-4 w-4 mr-1.5" />
+                    Apply Filters
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

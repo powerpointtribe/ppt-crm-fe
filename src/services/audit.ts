@@ -119,6 +119,7 @@ export interface AuditQueryParams {
   search?: string
   relatedDistrict?: string
   relatedUnit?: string
+  branchId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
 }

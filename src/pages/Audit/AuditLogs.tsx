@@ -24,10 +24,12 @@ import Badge from '@/components/ui/Badge'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { auditService, AuditLog, AuditQueryParams, AuditSeverity, AuditAction, AuditEntity } from '@/services/audit'
 import { formatDateTime } from '@/utils/formatters'
+import { useAppStore } from '@/store'
 
 type TabType = 'successful' | 'other'
 
 export default function AuditLogs() {
+  const { selectedBranch, branches } = useAppStore()
   const [activeTab, setActiveTab] = useState<TabType>('successful')
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,8 +50,12 @@ export default function AuditLogs() {
   const [selectedAction, setSelectedAction] = useState('')
   const [selectedEntity, setSelectedEntity] = useState('')
   const [selectedSeverity, setSelectedSeverity] = useState('')
+  const [branchFilter, setBranchFilter] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+
+  // Show branch filter when viewing "All Expressions"
+  const showBranchFilter = !selectedBranch && branches.length > 0
 
   // Pagination
   const [pagination, setPagination] = useState({
@@ -73,7 +79,7 @@ export default function AuditLogs() {
     } else {
       loadLogs()
     }
-  }, [selectedAction, selectedEntity, selectedSeverity, startDate, endDate, searchTerm])
+  }, [selectedAction, selectedEntity, selectedSeverity, startDate, endDate, searchTerm, branchFilter, selectedBranch])
 
   const loadStats = async () => {
     try {
@@ -95,6 +101,8 @@ export default function AuditLogs() {
     try {
       setLoading(true)
       setError(null)
+      // Use selectedBranch if set, otherwise use the filter dropdown
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
       const params: AuditQueryParams = {
         page: pagination.page,
         limit: pagination.limit,
@@ -103,6 +111,7 @@ export default function AuditLogs() {
         action: selectedAction as AuditAction || undefined,
         entity: selectedEntity as AuditEntity || undefined,
         severity: selectedSeverity as AuditSeverity || undefined,
+        branchId: effectiveBranchId,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         sortBy: 'timestamp',
@@ -148,6 +157,7 @@ export default function AuditLogs() {
     setSelectedAction('')
     setSelectedEntity('')
     setSelectedSeverity('')
+    setBranchFilter('')
     setStartDate('')
     setEndDate('')
   }
@@ -161,7 +171,7 @@ export default function AuditLogs() {
     return <FileText className="h-4 w-4" />
   }
 
-  const hasActiveFilters = searchTerm || selectedAction || selectedEntity || selectedSeverity || startDate || endDate
+  const hasActiveFilters = searchTerm || selectedAction || selectedEntity || selectedSeverity || branchFilter || startDate || endDate
 
   return (
     <Layout
@@ -298,6 +308,21 @@ export default function AuditLogs() {
                       exit={{ opacity: 0, height: 0 }}
                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4"
                     >
+                      {showBranchFilter && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Expression</label>
+                          <select
+                            value={branchFilter}
+                            onChange={(e) => setBranchFilter(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">All Expressions</option>
+                            {branches.map(branch => (
+                              <option key={branch._id} value={branch._id}>{branch.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Action</label>
                         <select

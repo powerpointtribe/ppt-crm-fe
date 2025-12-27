@@ -65,12 +65,13 @@ class DashboardService {
     return apiService.get<DashboardOverview>('/dashboard/overview')
   }
 
-  async getStats(startDate?: string, endDate?: string): Promise<Partial<DashboardOverview>> {
+  async getStats(startDate?: string, endDate?: string, branchId?: string): Promise<Partial<DashboardOverview>> {
     try {
       // Build query params
       const params = new URLSearchParams()
       if (startDate) params.append('startDate', startDate)
       if (endDate) params.append('endDate', endDate)
+      if (branchId) params.append('branchId', branchId)
 
       const queryString = params.toString()
       const url = `/dashboard/overview${queryString ? `?${queryString}` : ''}`
@@ -202,23 +203,36 @@ class DashboardService {
     return response.data || response
   }
 
-  async getQuickStats(): Promise<any> {
-    const response = await apiService.get<any>('/dashboard/quick-stats')
+  async getQuickStats(branchId?: string): Promise<any> {
+    const params = new URLSearchParams()
+    if (branchId) params.append('branchId', branchId)
+    const queryString = params.toString()
+    const response = await apiService.get<any>(`/dashboard/quick-stats${queryString ? `?${queryString}` : ''}`)
     return response.data || response
   }
 
-  async getGrowthAnalytics(period: 'week' | 'month' | 'quarter' | 'year' = 'month'): Promise<any> {
-    const response = await apiService.get<any>(`/dashboard/growth-analytics?period=${period}`)
+  async getGrowthAnalytics(period: 'week' | 'month' | 'quarter' | 'year' = 'month', branchId?: string): Promise<any> {
+    const params = new URLSearchParams()
+    params.append('period', period)
+    if (branchId) params.append('branchId', branchId)
+    const response = await apiService.get<any>(`/dashboard/growth-analytics?${params.toString()}`)
     return response.data || response
   }
 
-  async getRecentActivity(limit: number = 50, days: number = 7): Promise<any> {
-    const response = await apiService.get<any>(`/dashboard/recent-activity?limit=${limit}&days=${days}`)
+  async getRecentActivity(limit: number = 50, days: number = 7, branchId?: string): Promise<any> {
+    const params = new URLSearchParams()
+    params.append('limit', limit.toString())
+    params.append('days', days.toString())
+    if (branchId) params.append('branchId', branchId)
+    const response = await apiService.get<any>(`/dashboard/recent-activity?${params.toString()}`)
     return response.data || response
   }
 
-  async getDemographics(): Promise<any> {
-    const response = await apiService.get<any>('/dashboard/demographics')
+  async getDemographics(branchId?: string): Promise<any> {
+    const params = new URLSearchParams()
+    if (branchId) params.append('branchId', branchId)
+    const queryString = params.toString()
+    const response = await apiService.get<any>(`/dashboard/demographics${queryString ? `?${queryString}` : ''}`)
     return response.data || response
   }
 }

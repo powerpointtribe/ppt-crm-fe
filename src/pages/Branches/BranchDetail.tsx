@@ -19,6 +19,9 @@ import {
   CheckCircle,
   XCircle,
   UserPlus,
+  Link2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Button from '@/components/ui/Button';
@@ -47,6 +50,26 @@ export default function BranchDetail() {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [assigning, setAssigning] = useState(false);
+
+  // Copy link state
+  const [copied, setCopied] = useState(false);
+
+  // Generate first-timer registration link
+  const getFirstTimerLink = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/visitor-registration/${branch?.slug}`;
+  };
+
+  const copyToClipboard = async () => {
+    const link = getFirstTimerLink();
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   const canUpdateBranch = hasPermission('branches:update');
   const canAssignPastor = hasPermission('branches:assign-pastor');
@@ -135,10 +158,10 @@ export default function BranchDetail() {
     return (
       <Layout>
         <div className="text-center py-12">
-          <div className="text-red-500 mb-4">{error || 'Branch not found'}</div>
+          <div className="text-red-500 mb-4">{error || 'Expression not found'}</div>
           <Button onClick={() => navigate('/branches')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Branches
+            Back to Expressions
           </Button>
         </div>
       </Layout>
@@ -160,7 +183,7 @@ export default function BranchDetail() {
                 {branch.isMainBranch && (
                   <Badge variant="warning">
                     <Star className="h-3 w-3 mr-1" />
-                    Main Branch
+                    Main Expression
                   </Badge>
                 )}
                 <Badge variant={branch.isActive ? 'success' : 'secondary'}>
@@ -175,7 +198,7 @@ export default function BranchDetail() {
           {canUpdateBranch && (
             <Button onClick={() => navigate(`/branches/${id}/edit`)}>
               <Edit className="h-4 w-4 mr-2" />
-              Edit Branch
+              Edit Expression
             </Button>
           )}
         </div>
@@ -186,6 +209,46 @@ export default function BranchDetail() {
             <p className="text-foreground">{branch.description}</p>
           </Card>
         )}
+
+        {/* Visitor Registration Link */}
+        <Card className="p-5 bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 bg-primary-100 rounded-lg flex items-center justify-center shrink-0">
+                <Link2 className="h-5 w-5 text-primary-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-foreground">Visitor Registration Link</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Share this link for new visitors to register for this expression
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <code className="text-sm bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-primary-700 break-all">
+                    {getFirstTimerLink()}
+                  </code>
+                </div>
+              </div>
+            </div>
+            <Button
+              variant={copied ? 'primary' : 'outline'}
+              size="sm"
+              onClick={copyToClipboard}
+              className={`shrink-0 transition-all ${copied ? 'bg-green-600 hover:bg-green-700 border-green-600' : ''}`}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 mr-1.5" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-1.5" />
+                  Copy Link
+                </>
+              )}
+            </Button>
+          </div>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Contact Information */}
@@ -234,12 +297,12 @@ export default function BranchDetail() {
             </div>
           </Card>
 
-          {/* Branch Pastor */}
+          {/* Expression Pastor */}
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <User className="h-5 w-5 text-primary-600" />
-                Branch Pastor
+                Expression Pastor
               </h2>
               {canAssignPastor && (
                 <Button
@@ -269,7 +332,7 @@ export default function BranchDetail() {
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-4">
-                No branch pastor assigned yet
+                No expression pastor assigned yet
               </p>
             )}
           </Card>
@@ -385,7 +448,7 @@ export default function BranchDetail() {
               </div>
             </div>
             <div>
-              <p className="text-muted-foreground">Main Branch</p>
+              <p className="text-muted-foreground">Main Expression</p>
               <div className="flex items-center gap-1 font-medium">
                 {branch.isMainBranch ? (
                   <>
@@ -405,11 +468,11 @@ export default function BranchDetail() {
       <Modal
         isOpen={showAssignPastorModal}
         onClose={() => setShowAssignPastorModal(false)}
-        title={assignmentType === 'branch' ? 'Assign Branch Pastor' : 'Add Assistant Pastor'}
+        title={assignmentType === 'branch' ? 'Assign Expression Pastor' : 'Add Assistant Pastor'}
       >
         <div className="space-y-4">
           <p className="text-muted-foreground">
-            Select a member to {assignmentType === 'branch' ? 'assign as branch pastor' : 'add as assistant pastor'}:
+            Select a member to {assignmentType === 'branch' ? 'assign as expression pastor' : 'add as assistant pastor'}:
           </p>
 
           {loadingMembers ? (

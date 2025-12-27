@@ -56,6 +56,7 @@ export interface GroupSearchParams {
   isActive?: boolean
   needsLeaders?: boolean
   nearCapacity?: boolean
+  branchId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
 }

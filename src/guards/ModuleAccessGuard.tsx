@@ -17,7 +17,7 @@ const modulePermissionMap: Record<string, string> = {
   'groups': 'units:view',
   'inventory': 'inventory:view',
   'branches': 'branches:view',
-  'roles': 'roles:view',
+  'roles': 'roles:view-roles',
   'audit-logs': 'audit-logs:view',
   'bulk-operations': 'bulk-operations:view',
   'user-management': 'user-management:view',

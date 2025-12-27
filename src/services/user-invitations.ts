@@ -75,6 +75,7 @@ export interface InvitationQueryParams {
   memberId?: string;
   roleId?: string;
   invitedBy?: string;
+  branchId?: string;
 }
 
 export interface ActiveUser {
@@ -168,6 +169,7 @@ const userInvitationsService = {
     page?: number;
     limit?: number;
     search?: string;
+    branchId?: string;
   }): Promise<PaginatedResponse<ActiveUser>> {
     const response = await apiService.get<PaginatedResponse<ActiveUser>>(
       '/user-invitations/users/active',

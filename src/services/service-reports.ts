@@ -79,6 +79,7 @@ export interface ServiceReportSearchParams {
   minAttendance?: number
   maxAttendance?: number
   minFirstTimers?: number
+  branchId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
 }

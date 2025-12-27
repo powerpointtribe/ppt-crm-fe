@@ -12,8 +12,8 @@ interface RoleGuardProps {
 
 // Map roles to their equivalent permissions (strict permissions-based)
 const roleToPermissionMap: Record<string, string[]> = {
-  'super_admin': ['roles:view', 'roles:create'],
-  'admin': ['roles:view'],
+  'super_admin': ['roles:view-roles', 'roles:create-role'],
+  'admin': ['roles:view-roles'],
   'pastor': ['members:create', 'first-timers:view'],
   'branch_pastor': ['members:view', 'units:view'],
   'district_pastor': ['members:view', 'units:view'],

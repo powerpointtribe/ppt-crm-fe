@@ -19,10 +19,12 @@ import { Group, GroupSearchParams, groupsService } from '@/services/groups'
 import { bulkOperationsService } from '@/services/bulkOperations'
 import { downloadCSV, BulkOperationProgress } from '@/utils/bulkOperations'
 import { formatDate } from '@/utils/formatters'
+import { useAppStore } from '@/store'
 
 export default function Groups() {
   const navigate = useNavigate()
   const [urlSearchParams, setUrlSearchParams] = useSearchParams()
+  const { selectedBranch, branches } = useAppStore()
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -43,12 +45,17 @@ export default function Groups() {
   const [statusFilter, setStatusFilter] = useState('')
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
+  const [branchFilter, setBranchFilter] = useState('')
 
   // Temp filter states for modal
   const [tempTypeFilter, setTempTypeFilter] = useState('')
   const [tempStatusFilter, setTempStatusFilter] = useState('')
   const [tempDateFrom, setTempDateFrom] = useState('')
   const [tempDateTo, setTempDateTo] = useState('')
+  const [tempBranchFilter, setTempBranchFilter] = useState('')
+
+  // Show branch filter when viewing "All Expressions"
+  const showBranchFilter = !selectedBranch && branches.length > 0
 
   // Bulk operations state
   const bulkSelection = useBulkSelection<Group>()
@@ -101,7 +108,7 @@ export default function Groups() {
 
   useEffect(() => {
     loadGroups()
-  }, [searchParams.page, searchParams.limit, searchParams.search, searchParams.type, searchParams.isActive])
+  }, [searchParams.page, searchParams.limit, searchParams.search, searchParams.type, searchParams.isActive, branchFilter, selectedBranch])
 
   useEffect(() => {
     loadStats()
@@ -110,7 +117,12 @@ export default function Groups() {
   const loadGroups = async () => {
     try {
       setError(null)
-      const response = await groupsService.getGroups(searchParams)
+      // Use selectedBranch if set, otherwise use the filter dropdown
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
+      const response = await groupsService.getGroups({
+        ...searchParams,
+        branchId: effectiveBranchId
+      })
       setGroups(response.items || [])
       setPagination(response.pagination)
     } catch (error: any) {
@@ -197,6 +209,7 @@ export default function Groups() {
     setTempStatusFilter(statusFilter)
     setTempDateFrom(dateFromFilter)
     setTempDateTo(dateToFilter)
+    setTempBranchFilter(branchFilter)
     setShowFilterModal(true)
   }
 
@@ -209,6 +222,7 @@ export default function Groups() {
     setStatusFilter(tempStatusFilter)
     setDateFromFilter(tempDateFrom)
     setDateToFilter(tempDateTo)
+    setBranchFilter(tempBranchFilter)
     // Apply filters using URL params
     const newParams = new URLSearchParams(urlSearchParams)
     if (tempTypeFilter) {
@@ -231,6 +245,7 @@ export default function Groups() {
     setTempStatusFilter('')
     setTempDateFrom('')
     setTempDateTo('')
+    setTempBranchFilter('')
   }
 
   const clearAppliedFilters = () => {
@@ -238,6 +253,7 @@ export default function Groups() {
     setStatusFilter('')
     setDateFromFilter('')
     setDateToFilter('')
+    setBranchFilter('')
     const newParams = new URLSearchParams(urlSearchParams)
     newParams.delete('type')
     newParams.delete('isActive')
@@ -245,8 +261,8 @@ export default function Groups() {
     setUrlSearchParams(newParams)
   }
 
-  const hasActiveFilters = !!(typeFilter || statusFilter || dateFromFilter || dateToFilter)
-  const activeFilterCount = [typeFilter, statusFilter, dateFromFilter, dateToFilter].filter(Boolean).length
+  const hasActiveFilters = !!(typeFilter || statusFilter || dateFromFilter || dateToFilter || branchFilter)
+  const activeFilterCount = [typeFilter, statusFilter, dateFromFilter, dateToFilter, branchFilter].filter(Boolean).length
 
   // Bulk operations handlers
   const handleBulkDelete = () => {
@@ -967,6 +983,14 @@ export default function Groups() {
         subtitle="Refine your search results"
         activeFilterCount={activeFilterCount}
         filters={[
+          ...(showBranchFilter ? [{
+            id: 'branch',
+            label: 'Expression',
+            value: tempBranchFilter,
+            onChange: setTempBranchFilter,
+            options: branches.map(b => ({ value: b._id, label: b.name })),
+            placeholder: 'All Expressions',
+          }] : []),
           ...(!filteredType ? [{
             id: 'type',
             label: 'Group Type',

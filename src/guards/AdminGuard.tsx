@@ -12,7 +12,7 @@ interface AdminGuardProps {
  * AdminGuard - Guards routes/components that require admin-level access
  * Uses permissions-based access control (strict permissions)
  *
- * Admin access is determined by having 'roles:view' permission
+ * Admin access is determined by having 'roles:view-roles' permission
  * Pastor access (if allowed) is determined by having 'members:create' permission
  */
 export const AdminGuard: React.FC<AdminGuardProps> = ({
@@ -24,8 +24,8 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({
   // Admin permissions: can manage roles
   // Pastor permissions: can create members (if allowPastors is true)
   const requiredPermissions = allowPastors
-    ? ['roles:view', 'members:create']
-    : ['roles:view']
+    ? ['roles:view-roles', 'members:create']
+    : ['roles:view-roles']
 
   return (
     <PermissionGuard

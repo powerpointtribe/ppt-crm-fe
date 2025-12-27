@@ -9,7 +9,6 @@ import {
   Phone,
   Mail,
   User,
-  Users,
   ChevronRight,
   Star,
   ToggleLeft,
@@ -98,16 +97,16 @@ export default function Branches() {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Building2 className="h-7 w-7 text-primary-600" />
-              Church Branches
+              Church Expressions
             </h1>
             <p className="text-muted-foreground mt-1">
-              Manage church branches and their leadership
+              Manage church expressions and their leadership
             </p>
           </div>
           {canCreateBranch && (
             <Button onClick={() => navigate('/branches/new')}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Branch
+              Add Expression
             </Button>
           )}
         </div>
@@ -121,7 +120,7 @@ export default function Branches() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{activeBranches.length}</p>
-                <p className="text-sm text-muted-foreground">Active Branches</p>
+                <p className="text-sm text-muted-foreground">Active Expressions</p>
               </div>
             </div>
           </Card>
@@ -134,7 +133,7 @@ export default function Branches() {
                 <p className="text-2xl font-bold">
                   {branches.filter((b) => b.isMainBranch).length}
                 </p>
-                <p className="text-sm text-muted-foreground">Main Branch</p>
+                <p className="text-sm text-muted-foreground">Main Expression</p>
               </div>
             </div>
           </Card>
@@ -145,7 +144,7 @@ export default function Branches() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{inactiveBranches.length}</p>
-                <p className="text-sm text-muted-foreground">Inactive Branches</p>
+                <p className="text-sm text-muted-foreground">Inactive Expressions</p>
               </div>
             </div>
           </Card>
@@ -156,7 +155,7 @@ export default function Branches() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search branches by name, location..."
+            placeholder="Search expressions by name, location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -173,16 +172,16 @@ export default function Branches() {
         {filteredBranches.length === 0 ? (
           <Card className="p-8 text-center">
             <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground">No branches found</h3>
+            <h3 className="text-lg font-medium text-foreground">No expressions found</h3>
             <p className="text-muted-foreground mt-2">
               {searchTerm
                 ? 'Try adjusting your search terms'
-                : 'Get started by creating your first branch'}
+                : 'Get started by creating your first expression'}
             </p>
             {canCreateBranch && !searchTerm && (
               <Button onClick={() => navigate('/branches/new')} className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
-                Create Branch
+                Create Expression
               </Button>
             )}
           </Card>
@@ -196,19 +195,19 @@ export default function Branches() {
                 transition={{ delay: index * 0.05 }}
               >
                 <Card className="p-5 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-foreground">{branch.name}</h3>
+                  <div className="flex justify-between items-start gap-2 mb-3">
+                    <h3 className="font-semibold text-foreground truncate">{branch.name}</h3>
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {branch.isMainBranch && (
                         <Badge variant="warning" className="text-xs">
                           <Star className="h-3 w-3 mr-1" />
                           Main
                         </Badge>
                       )}
+                      <Badge variant={branch.isActive ? 'success' : 'secondary'}>
+                        {branch.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
                     </div>
-                    <Badge variant={branch.isActive ? 'success' : 'secondary'}>
-                      {branch.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
                   </div>
 
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
@@ -246,23 +245,12 @@ export default function Branches() {
                     <div className="mt-3 pt-3 border-t border-border">
                       <div className="flex items-center gap-2 text-sm">
                         <User className="h-4 w-4 text-primary-600" />
-                        <span className="font-medium">Branch Pastor:</span>
+                        <span className="font-medium">Expression Pastor:</span>
                         <span className="text-muted-foreground">
                           {branch.branchPastorDetails.firstName}{' '}
                           {branch.branchPastorDetails.lastName}
                         </span>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Assistant Pastors Count */}
-                  {branch.assistantPastors.length > 0 && (
-                    <div className="flex items-center gap-2 text-sm mt-2">
-                      <Users className="h-4 w-4 text-blue-600" />
-                      <span className="text-muted-foreground">
-                        {branch.assistantPastors.length} Assistant Pastor
-                        {branch.assistantPastors.length > 1 ? 's' : ''}
-                      </span>
                     </div>
                   )}
 

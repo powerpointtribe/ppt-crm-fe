@@ -163,6 +163,7 @@ export interface FirstTimerSearchParams {
   needsFollowUp?: boolean
   visitorType?: FirstTimer['visitorType']
   howDidYouHear?: FirstTimer['howDidYouHear']
+  branchId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
 }

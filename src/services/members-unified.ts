@@ -25,6 +25,7 @@ export interface CreateMemberData {
   gender: 'male' | 'female'
   maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed'
   address?: Member['address']
+  branch: string // Required - every member must belong to a branch
   systemRoles?: string[]
   unitType?: string
   district?: string
@@ -44,6 +45,7 @@ export interface MemberSearchParams {
   membershipStatus?: string
   gender?: 'male' | 'female'
   maritalStatus?: string
+  branchId?: string
   districtId?: string
   unitId?: string
   unitType?: string
@@ -147,8 +149,12 @@ export const membersService = {
   },
 
   // Stats and analytics
-  getMemberStats: async (): Promise<any> => {
-    const response = await apiService.get<ApiResponse<any>>('/members/stats')
+  getMemberStats: async (branchId?: string, dateFrom?: string, dateTo?: string): Promise<any> => {
+    const params: any = {}
+    if (branchId) params.branchId = branchId
+    if (dateFrom) params.dateFrom = dateFrom
+    if (dateTo) params.dateTo = dateTo
+    const response = await apiService.get<ApiResponse<any>>('/members/stats', { params: Object.keys(params).length > 0 ? params : undefined })
     return transformSingleResponse(response)
   },
 

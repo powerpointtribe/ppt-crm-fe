@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Users, UserPlus, RefreshCw } from 'lucide-react';
+import { Plus, Search, Users, UserPlus, RefreshCw, Filter, ChevronDown } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -12,6 +12,7 @@ import { SkeletonTable } from '@/components/ui/Skeleton';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../contexts/AuthContext-unified';
 import userInvitationsService from '../services/user-invitations';
+import { useAppStore } from '@/store';
 import type {
   ActiveUser,
   UserInvitation,
@@ -25,10 +26,16 @@ import EditUserRoleModal from '../components/UserManagement/EditUserRoleModal';
 type TabType = 'active-users' | 'pending-invites';
 
 export default function UserManagement() {
+  const { selectedBranch, branches } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabType>('active-users');
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Show branch filter when viewing "All Expressions"
+  const showBranchFilter = !selectedBranch && branches.length > 0;
 
   // Active Users State
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
@@ -73,10 +80,13 @@ export default function UserManagement() {
   const fetchActiveUsers = async (page = 1, search = '') => {
     setLoading(true);
     try {
+      // Use selectedBranch if set, otherwise use the filter dropdown
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined;
       const response = await userInvitationsService.getActiveUsers({
         page,
         limit: 10,
         search,
+        branchId: effectiveBranchId,
       });
       setActiveUsers(response.data);
       setActiveUsersPage(response?.pagination?.page || 1);
@@ -94,10 +104,13 @@ export default function UserManagement() {
   const fetchPendingInvites = async (page = 1) => {
     setLoading(true);
     try {
+      // Use selectedBranch if set, otherwise use the filter dropdown
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined;
       const response = await userInvitationsService.getInvitations({
         page,
         limit: 10,
         status: 'pending',
+        branchId: effectiveBranchId,
       });
       setPendingInvites(response.data);
       setInvitesPage(response.pagination.page);
@@ -120,6 +133,15 @@ export default function UserManagement() {
       fetchPendingInvites(1);
     }
   }, [activeTab]);
+
+  // Reload when branch filter changes
+  useEffect(() => {
+    if (activeTab === 'active-users') {
+      fetchActiveUsers(1, searchQuery);
+    } else {
+      fetchPendingInvites(1);
+    }
+  }, [branchFilter, selectedBranch]);
 
   // Track initial load completion
   useEffect(() => {
@@ -229,8 +251,8 @@ export default function UserManagement() {
 
   // Search Section for Layout header
   const searchSection = (
-    <div className="flex gap-3 items-center">
-      <div className="flex-1 min-w-[300px]">
+    <div className="flex gap-3 items-center flex-wrap">
+      <div className="flex-1 min-w-[250px]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
@@ -243,6 +265,18 @@ export default function UserManagement() {
           />
         </div>
       </div>
+      {showBranchFilter && (
+        <select
+          value={branchFilter}
+          onChange={(e) => setBranchFilter(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+        >
+          <option value="">All Expressions</option>
+          {branches.map(branch => (
+            <option key={branch._id} value={branch._id}>{branch.name}</option>
+          ))}
+        </select>
+      )}
       <Button variant="outline" size="sm" onClick={handleRefresh}>
         <RefreshCw className="w-4 h-4" />
       </Button>

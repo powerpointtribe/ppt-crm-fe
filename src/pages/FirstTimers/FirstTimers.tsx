@@ -19,10 +19,12 @@ import { useToast } from '@/hooks/useToast'
 import { FirstTimer, FirstTimerSearchParams, firstTimersService } from '@/services/first-timers'
 import { Member, membersService } from '@/services/members'
 import { formatDate } from '@/utils/formatters'
+import { useAppStore } from '@/store'
 
 export default function FirstTimers() {
   const navigate = useNavigate()
   const toast = useToast()
+  const { selectedBranch, branches } = useAppStore()
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -33,6 +35,7 @@ export default function FirstTimers() {
   const [howDidYouHearFilter, setHowDidYouHearFilter] = useState('')
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
+  const [branchFilter, setBranchFilter] = useState('')
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null)
   const [showFilterModal, setShowFilterModal] = useState(false)
 
@@ -42,6 +45,10 @@ export default function FirstTimers() {
   const [tempHowDidYouHearFilter, setTempHowDidYouHearFilter] = useState('')
   const [tempDateFrom, setTempDateFrom] = useState('')
   const [tempDateTo, setTempDateTo] = useState('')
+  const [tempBranchFilter, setTempBranchFilter] = useState('')
+
+  // Show branch filter when viewing "All Expressions"
+  const showBranchFilter = !selectedBranch && branches.length > 0
   const [stats, setStats] = useState<any>(null)
   const [statsLoading, setStatsLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -59,6 +66,8 @@ export default function FirstTimers() {
     try {
       setLoading(true)
       setError(null)
+      // Use selectedBranch if set, otherwise use the filter dropdown
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
       const params: FirstTimerSearchParams = {
         page,
         limit: 10,
@@ -68,7 +77,8 @@ export default function FirstTimers() {
         visitorType: visitorTypeFilter || undefined,
         howDidYouHear: howDidYouHearFilter || undefined,
         visitDateFrom: dateFromFilter || undefined,
-        visitDateTo: dateToFilter || undefined
+        visitDateTo: dateToFilter || undefined,
+        branchId: effectiveBranchId
       }
       const response = await firstTimersService.getFirstTimers(params)
       setFirstTimers(response.items || [])
@@ -84,7 +94,7 @@ export default function FirstTimers() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, currentPage])
+  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, currentPage, selectedBranch, branchFilter])
 
   const loadStats = useCallback(async () => {
     try {
@@ -104,7 +114,7 @@ export default function FirstTimers() {
     // Reset to page 1 when filters change
     setCurrentPage(1)
     loadFirstTimers(1)
-  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter])
+  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, selectedBranch])
 
   useEffect(() => {
     loadStats()
@@ -196,6 +206,7 @@ export default function FirstTimers() {
     setTempHowDidYouHearFilter(howDidYouHearFilter)
     setTempDateFrom(dateFromFilter)
     setTempDateTo(dateToFilter)
+    setTempBranchFilter(branchFilter)
     setShowFilterModal(true)
   }
 
@@ -209,6 +220,7 @@ export default function FirstTimers() {
     setHowDidYouHearFilter(tempHowDidYouHearFilter)
     setDateFromFilter(tempDateFrom)
     setDateToFilter(tempDateTo)
+    setBranchFilter(tempBranchFilter)
     setShowFilterModal(false)
   }
 
@@ -218,6 +230,7 @@ export default function FirstTimers() {
     setTempHowDidYouHearFilter('')
     setTempDateFrom('')
     setTempDateTo('')
+    setTempBranchFilter('')
   }
 
   const clearAppliedFilters = () => {
@@ -226,6 +239,7 @@ export default function FirstTimers() {
     setHowDidYouHearFilter('')
     setDateFromFilter('')
     setDateToFilter('')
+    setBranchFilter('')
   }
 
   // Pagination handlers
@@ -249,8 +263,8 @@ export default function FirstTimers() {
     }
   }
 
-  const hasActiveFilters = !!(statusFilter || visitorTypeFilter || howDidYouHearFilter || dateFromFilter || dateToFilter)
-  const activeFilterCount = [statusFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter].filter(Boolean).length
+  const hasActiveFilters = !!(statusFilter || visitorTypeFilter || howDidYouHearFilter || dateFromFilter || dateToFilter || branchFilter)
+  const activeFilterCount = [statusFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter].filter(Boolean).length
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this visitor?')) return
@@ -837,6 +851,14 @@ export default function FirstTimers() {
         subtitle="Refine your search results"
         activeFilterCount={activeFilterCount}
         filters={[
+          ...(showBranchFilter ? [{
+            id: 'branch',
+            label: 'Expression',
+            value: tempBranchFilter,
+            onChange: setTempBranchFilter,
+            options: branches.map(b => ({ value: b._id, label: b.name })),
+            placeholder: 'All Expressions',
+          }] : []),
           {
             id: 'status',
             label: 'Follow-up Status',

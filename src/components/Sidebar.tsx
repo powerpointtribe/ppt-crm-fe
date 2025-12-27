@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   UsersIcon,
   UserPlus,
   Menu,
@@ -32,6 +30,7 @@ import {
   Building,
   Check,
   Globe,
+  Plus,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -157,7 +156,7 @@ const menuGroups: MenuGroup[] = [
       },
       {
         icon: GitBranch,
-        label: 'Branches',
+        label: 'Expressions',
         path: '/branches',
         requiredPermission: 'branches:view',
       },
@@ -260,9 +259,8 @@ const menuGroups: MenuGroup[] = [
 
 export default function Sidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
   const {
-    sidebarCollapsed,
-    setSidebarCollapsed,
     selectedBranch,
     setSelectedBranch,
     branches,
@@ -275,6 +273,7 @@ export default function Sidebar() {
   const { member, hasPermission } = useAuth()
 
   const canViewAllBranches = hasPermission('branches:view-all')
+  const canCreateBranch = hasPermission('branches:create')
 
   // Fetch branches if user has permission
   useEffect(() => {
@@ -360,8 +359,8 @@ export default function Sidebar() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Branch Selector Component
-  const BranchSelector = ({ collapsed = false }: { collapsed?: boolean }) => {
+  // Inline Branch Dropdown Component
+  const BranchDropdown = () => {
     if (!canViewAllBranches) return null
 
     const handleSelectBranch = (branch: Branch | null) => {
@@ -369,129 +368,105 @@ export default function Sidebar() {
       setBranchDropdownOpen(false)
     }
 
-    if (collapsed) {
-      return (
-        <div className="relative group px-2 py-1">
-          <button
-            onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-            className="w-full p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors flex items-center justify-center"
-          >
-            <Building className="w-4 h-4 text-slate-400" />
-          </button>
-          {/* Tooltip */}
-          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-lg border border-slate-700">
-            {selectedBranch?.name || 'All Branches'}
-          </div>
-        </div>
-      )
-    }
-
     return (
-      <div className="px-3 py-2">
-        <div className="relative">
-          <button
-            onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
+      <div className="relative">
+        <button
+          onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
+          className={cn(
+            'flex items-center gap-1.5 px-2 py-1 rounded-md transition-all duration-200',
+            'bg-slate-800/50 hover:bg-slate-700/50',
+            'border border-slate-700/50 hover:border-slate-600'
+          )}
+        >
+          {selectedBranch ? (
+            <Building className="w-3 h-3 text-indigo-400" />
+          ) : (
+            <Globe className="w-3 h-3 text-emerald-400" />
+          )}
+          <span className="text-[11px] font-medium text-slate-300 max-w-[100px] truncate">
+            {selectedBranch?.name || 'All Expressions'}
+          </span>
+          <ChevronDown
             className={cn(
-              'w-full px-3 py-2 rounded-lg transition-all duration-200',
-              'bg-slate-800/50 hover:bg-slate-700/50',
-              'border border-slate-700/50 hover:border-slate-600',
-              'flex items-center justify-between gap-2'
+              'w-3 h-3 text-slate-400 transition-transform duration-200',
+              branchDropdownOpen && 'rotate-180'
             )}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              {selectedBranch ? (
-                <Building className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
-              ) : (
-                <Globe className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-              )}
-              <span className="text-[12px] font-medium text-white truncate">
-                {selectedBranch?.name || 'All Branches'}
-              </span>
-            </div>
-            <ChevronDown
-              className={cn(
-                'w-3.5 h-3.5 text-slate-400 transition-transform duration-200 flex-shrink-0',
-                branchDropdownOpen && 'rotate-180'
-              )}
-            />
-          </button>
+          />
+        </button>
 
-          {/* Dropdown */}
-          <AnimatePresence>
-            {branchDropdownOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.15 }}
-                className="absolute top-full left-0 right-0 mt-1 z-50"
-              >
-                <div className="bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
-                  {/* All Branches Option */}
-                  <button
-                    onClick={() => handleSelectBranch(null)}
-                    className={cn(
-                      'w-full px-3 py-2 flex items-center gap-2 text-left transition-colors',
-                      'hover:bg-slate-700/50',
-                      !selectedBranch && 'bg-indigo-600/20'
-                    )}
-                  >
-                    <Globe className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-[12px] text-white flex-1">All Branches</span>
-                    {!selectedBranch && (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    )}
-                  </button>
-
-                  {/* Divider */}
-                  {branches.length > 0 && (
-                    <div className="h-px bg-slate-700 mx-2" />
+        {/* Dropdown */}
+        <AnimatePresence>
+          {branchDropdownOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+              className="absolute top-full left-0 mt-1 z-50 min-w-[160px]"
+            >
+              <div className="bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
+                {/* All Branches Option */}
+                <button
+                  onClick={() => handleSelectBranch(null)}
+                  className={cn(
+                    'w-full px-3 py-2 flex items-center gap-2 text-left transition-colors',
+                    'hover:bg-slate-700/50',
+                    !selectedBranch && 'bg-indigo-600/20'
                   )}
-
-                  {/* Branch List */}
-                  <div className="max-h-48 overflow-y-auto">
-                    {branches.map((branch) => (
-                      <button
-                        key={branch._id}
-                        onClick={() => handleSelectBranch(branch)}
-                        className={cn(
-                          'w-full px-3 py-2 flex items-center gap-2 text-left transition-colors',
-                          'hover:bg-slate-700/50',
-                          selectedBranch?._id === branch._id && 'bg-indigo-600/20'
-                        )}
-                      >
-                        <Building className="w-3.5 h-3.5 text-indigo-400" />
-                        <span className="text-[12px] text-white flex-1 truncate">
-                          {branch.name}
-                        </span>
-                        {selectedBranch?._id === branch._id && (
-                          <Check className="w-3.5 h-3.5 text-indigo-400" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-
-                  {branches.length === 0 && (
-                    <div className="px-3 py-2 text-[11px] text-slate-500 text-center">
-                      No branches available
-                    </div>
+                >
+                  <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[11px] text-white flex-1">All Expressions</span>
+                  {!selectedBranch && (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
                   )}
+                </button>
+
+                {/* Divider */}
+                {branches.length > 0 && (
+                  <div className="h-px bg-slate-700 mx-2" />
+                )}
+
+                {/* Branch List */}
+                <div className="max-h-48 overflow-y-auto">
+                  {branches.map((branch) => (
+                    <button
+                      key={branch._id}
+                      onClick={() => handleSelectBranch(branch)}
+                      className={cn(
+                        'w-full px-3 py-2 flex items-center gap-2 text-left transition-colors',
+                        'hover:bg-slate-700/50',
+                        selectedBranch?._id === branch._id && 'bg-indigo-600/20'
+                      )}
+                    >
+                      <Building className="w-3.5 h-3.5 text-indigo-400" />
+                      <span className="text-[11px] text-white flex-1 truncate">
+                        {branch.name}
+                      </span>
+                      {selectedBranch?._id === branch._id && (
+                        <Check className="w-3.5 h-3.5 text-indigo-400" />
+                      )}
+                    </button>
+                  ))}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+
+                {branches.length === 0 && (
+                  <div className="px-3 py-2 text-[11px] text-slate-500 text-center">
+                    No expressions available
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     )
   }
 
   const NavItem = ({
     item,
-    collapsed = false,
     onNavigate,
   }: {
     item: MenuItem
-    collapsed?: boolean
     onNavigate?: () => void
   }) => {
     const isActive = isPathActive(item.path)
@@ -509,8 +484,7 @@ export default function Sidebar() {
               'flex items-center gap-3 flex-1 px-3 py-2 text-[13px] rounded-lg transition-all duration-200',
               'text-slate-400 hover:text-white hover:bg-slate-700/50',
               (isActive || hasActiveSubItem) &&
-                'bg-gradient-to-r from-indigo-600/20 to-purple-600/20 text-white border-l-2 border-indigo-500',
-              collapsed && 'justify-center px-2'
+                'bg-gradient-to-r from-indigo-600/20 to-purple-600/20 text-white border-l-2 border-indigo-500'
             )}
           >
             <item.icon
@@ -519,11 +493,9 @@ export default function Sidebar() {
                 (isActive || hasActiveSubItem) && 'text-indigo-400'
               )}
             />
-            {!collapsed && (
-              <span className="font-medium truncate">{item.label}</span>
-            )}
+            <span className="font-medium truncate">{item.label}</span>
           </Link>
-          {!collapsed && hasSubItems && (
+          {hasSubItems && (
             <button
               onClick={() => toggleDropdown(item.path)}
               className={cn(
@@ -543,7 +515,7 @@ export default function Sidebar() {
 
         {/* Sub Items */}
         <AnimatePresence>
-          {!collapsed && hasSubItems && isOpen && (
+          {hasSubItems && isOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -575,13 +547,6 @@ export default function Sidebar() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Collapsed Tooltip */}
-        {collapsed && (
-          <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-lg border border-slate-700">
-            {item.label}
-          </div>
-        )}
       </div>
     )
   }
@@ -615,9 +580,9 @@ export default function Sidebar() {
                 className="fixed left-0 top-0 h-full w-72 bg-slate-900 z-50 flex flex-col shadow-2xl"
               >
                 {/* Mobile Header */}
-                <div className="border-b border-slate-800">
-                  <div className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
+                <div className="border-b border-slate-800 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                         <span className="text-white font-bold text-sm">P</span>
                       </div>
@@ -632,9 +597,22 @@ export default function Sidebar() {
                       <X className="h-5 w-5" />
                     </button>
                   </div>
-
-                  {/* Branch Selector (Mobile) */}
-                  <BranchSelector />
+                  {/* Branch Dropdown & Add Button */}
+                  <div className="flex items-center gap-2 mt-3">
+                    <BranchDropdown />
+                    {canCreateBranch && (
+                      <button
+                        onClick={() => {
+                          navigate('/branches/new')
+                          setMobileMenuOpen(false)
+                        }}
+                        className="p-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 transition-colors"
+                        title="Add Branch"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-white" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Mobile Navigation */}
@@ -673,71 +651,48 @@ export default function Sidebar() {
 
   // Desktop Sidebar
   return (
-    <motion.div
+    <div
       className={cn(
-        'hidden md:flex fixed left-0 top-0 h-full bg-slate-900 z-40 flex-col',
+        'hidden md:flex fixed left-0 top-0 h-full w-[240px] bg-slate-900 z-40 flex-col',
         'border-r border-slate-800'
       )}
-      initial={false}
-      animate={{ width: sidebarCollapsed ? 64 : 240 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       {/* Header */}
-      <div className="border-b border-slate-800">
-        <div className="p-3">
-          <div className="flex items-center justify-between">
-            <AnimatePresence mode="wait">
-              {!sidebarCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center gap-2.5"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                    <span className="text-white font-bold text-sm">P</span>
-                  </div>
-                  <span className="font-semibold text-white text-sm">
-                    PowerPoint
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={cn(
-                'p-1.5 rounded-lg transition-colors',
-                'text-slate-500 hover:text-white hover:bg-slate-800',
-                sidebarCollapsed && 'mx-auto'
-              )}
-            >
-              {sidebarCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <ChevronLeft className="h-4 w-4" />
-              )}
-            </button>
+      <div className="border-b border-slate-800 p-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <span className="text-white font-bold text-sm">P</span>
           </div>
+          <span className="font-semibold text-white text-sm">
+            PowerPoint Tribe
+          </span>
         </div>
-
-        {/* Branch Selector */}
-        <BranchSelector collapsed={sidebarCollapsed} />
+        {/* Branch Dropdown & Add Button */}
+        <div className="flex items-center gap-2 mt-3">
+          <BranchDropdown />
+          {canCreateBranch && (
+            <button
+              onClick={() => navigate('/branches/new')}
+              className="p-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 transition-colors"
+              title="Add Branch"
+            >
+              <Plus className="w-3.5 h-3.5 text-white" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
         {filteredGroups.map((group) => (
           <div key={group.label}>
-            {!sidebarCollapsed && (
-              <div className="px-3 py-1 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
-                {group.label}
-              </div>
-            )}
-            {sidebarCollapsed && <div className="h-px bg-slate-800 mx-2 my-2" />}
+            <div className="px-3 py-1 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+              {group.label}
+            </div>
             <div className="space-y-0.5">
               {group.items.map((item) => (
                 <div key={item.path} className="relative group">
-                  <NavItem item={item} collapsed={sidebarCollapsed} />
+                  <NavItem item={item} />
                 </div>
               ))}
             </div>
@@ -746,13 +701,11 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      {!sidebarCollapsed && (
-        <div className="p-3 border-t border-slate-800">
-          <p className="text-[10px] text-slate-600 text-center">
-            v1.0.0 &middot; CMS
-          </p>
-        </div>
-      )}
-    </motion.div>
+      <div className="p-3 border-t border-slate-800">
+        <p className="text-[10px] text-slate-600 text-center">
+          v1.0.0 &middot; CMS
+        </p>
+      </div>
+    </div>
   )
 }

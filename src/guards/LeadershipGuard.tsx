@@ -21,7 +21,7 @@ interface LeadershipGuardProps {
  * - Unit Heads: members:view permission
  * - Champs: members:view permission
  * - Pastors: members:create permission
- * - Admins: roles:view permission
+ * - Admins: roles:view-roles permission
  */
 export const LeadershipGuard: React.FC<LeadershipGuardProps> = ({
   children,
@@ -40,7 +40,7 @@ export const LeadershipGuard: React.FC<LeadershipGuardProps> = ({
   if (allowUnitHeads) requiredPermissions.push('members:view')
   if (allowChamps) requiredPermissions.push('members:view')
   if (allowPastors) requiredPermissions.push('members:create')
-  if (allowAdmins) requiredPermissions.push('roles:view')
+  if (allowAdmins) requiredPermissions.push('roles:view-roles')
 
   // Remove duplicates
   const uniquePermissions = [...new Set(requiredPermissions)]

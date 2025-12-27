@@ -13,7 +13,10 @@ import {
   UserPlus,
   X,
   User,
-  Filter
+  Filter,
+  Building2,
+  Users,
+  Home
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
@@ -24,8 +27,11 @@ import { SkeletonTable } from '@/components/ui/Skeleton'
 import PageToolbar, { SearchResult } from '@/components/ui/PageToolbar'
 import FilterModal from '@/components/ui/FilterModal'
 import { Member, MemberSearchParams, membersService } from '@/services/members-unified'
-import { groupsService } from '@/services/groups'
+import { groupsService, Group } from '@/services/groups'
+import { branchesService } from '@/services/branches'
 import { formatDate } from '@/utils/formatters'
+import { useAppStore } from '@/store'
+import { useAuth } from '@/contexts/AuthContext-unified'
 
 // Filter options
 const statusOptions = [
@@ -51,6 +57,8 @@ const maritalStatusOptions = [
 
 export default function Members() {
   const navigate = useNavigate()
+  const { selectedBranch, branches } = useAppStore()
+  const { hasPermission } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -66,9 +74,61 @@ export default function Members() {
   const [unassignedCount, setUnassignedCount] = useState(0)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
-  const [districts, setDistricts] = useState<any[]>([])
+  const [districts, setDistricts] = useState<Group[]>([])
+  const [units, setUnits] = useState<Group[]>([])
+  const [allBranches, setAllBranches] = useState<any[]>([])
   const [selectedDistrict, setSelectedDistrict] = useState('')
   const [assigning, setAssigning] = useState(false)
+
+  // Location assignment modal state
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [locationMember, setLocationMember] = useState<Member | null>(null)
+  const [selectedBranchId, setSelectedBranchId] = useState('')
+  const [selectedDistrictId, setSelectedDistrictId] = useState('')
+  const [selectedUnitId, setSelectedUnitId] = useState('')
+  const [savingLocation, setSavingLocation] = useState(false)
+
+  // Bulk selection state
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set())
+  const [showBulkLocationModal, setShowBulkLocationModal] = useState(false)
+  const [bulkBranchId, setBulkBranchId] = useState('')
+  const [bulkDistrictId, setBulkDistrictId] = useState('')
+  const [bulkUnitId, setBulkUnitId] = useState('')
+  const [savingBulkLocation, setSavingBulkLocation] = useState(false)
+
+  // Permission checks
+  const canAssignDistrict = hasPermission('members:assign-district')
+  const canAssignUnit = hasPermission('members:assign-unit')
+  const canUpdateMember = hasPermission('members:update')
+  const canAssignLocation = canAssignDistrict || canAssignUnit || canUpdateMember
+
+  // Bulk selection helpers
+  const allSelected = members.length > 0 && selectedMembers.size === members.length
+  const someSelected = selectedMembers.size > 0 && selectedMembers.size < members.length
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedMembers(new Set())
+    } else {
+      setSelectedMembers(new Set(members.map(m => m._id)))
+    }
+  }
+
+  const toggleSelectMember = (memberId: string) => {
+    setSelectedMembers(prev => {
+      const next = new Set(prev)
+      if (next.has(memberId)) {
+        next.delete(memberId)
+      } else {
+        next.add(memberId)
+      }
+      return next
+    })
+  }
+
+  const clearSelection = () => {
+    setSelectedMembers(new Set())
+  }
 
   // Filter states (applied filters)
   const [showFilterModal, setShowFilterModal] = useState(false)
@@ -76,12 +136,14 @@ export default function Members() {
   const [genderFilter, setGenderFilter] = useState('')
   const [maritalStatusFilter, setMaritalStatusFilter] = useState('')
   const [districtFilter, setDistrictFilter] = useState('')
+  const [branchFilter, setBranchFilter] = useState('')
 
   // Temporary filter states (for modal - only applied when user clicks Apply)
   const [tempStatusFilter, setTempStatusFilter] = useState('')
   const [tempGenderFilter, setTempGenderFilter] = useState('')
   const [tempMaritalStatusFilter, setTempMaritalStatusFilter] = useState('')
   const [tempDistrictFilter, setTempDistrictFilter] = useState('')
+  const [tempBranchFilter, setTempBranchFilter] = useState('')
   const [tempDateFrom, setTempDateFrom] = useState('')
   const [tempDateTo, setTempDateTo] = useState('')
 
@@ -89,8 +151,11 @@ export default function Members() {
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
 
-  const hasActiveFilters = statusFilter || genderFilter || maritalStatusFilter || districtFilter || dateFromFilter || dateToFilter
-  const activeFilterCount = [statusFilter, genderFilter, maritalStatusFilter, districtFilter, dateFromFilter, dateToFilter].filter(Boolean).length
+  // Show branch filter only when viewing all expressions
+  const showBranchFilter = !selectedBranch && branches.length > 0
+
+  const hasActiveFilters = statusFilter || genderFilter || maritalStatusFilter || districtFilter || branchFilter || dateFromFilter || dateToFilter
+  const activeFilterCount = [statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter].filter(Boolean).length
 
   const openFilterModal = () => {
     // Sync temp filters with current applied filters
@@ -98,6 +163,7 @@ export default function Members() {
     setTempGenderFilter(genderFilter)
     setTempMaritalStatusFilter(maritalStatusFilter)
     setTempDistrictFilter(districtFilter)
+    setTempBranchFilter(branchFilter)
     setTempDateFrom(dateFromFilter)
     setTempDateTo(dateToFilter)
     setShowFilterModal(true)
@@ -112,6 +178,7 @@ export default function Members() {
     setGenderFilter(tempGenderFilter)
     setMaritalStatusFilter(tempMaritalStatusFilter)
     setDistrictFilter(tempDistrictFilter)
+    setBranchFilter(tempBranchFilter)
     setDateFromFilter(tempDateFrom)
     setDateToFilter(tempDateTo)
     setShowFilterModal(false)
@@ -122,6 +189,7 @@ export default function Members() {
     setTempGenderFilter('')
     setTempMaritalStatusFilter('')
     setTempDistrictFilter('')
+    setTempBranchFilter('')
     setTempDateFrom('')
     setTempDateTo('')
   }
@@ -131,25 +199,60 @@ export default function Members() {
     setGenderFilter('')
     setMaritalStatusFilter('')
     setDistrictFilter('')
+    setBranchFilter('')
     setDateFromFilter('')
     setDateToFilter('')
   }
 
   useEffect(() => {
     loadMembers()
-  }, [searchParams, activeTab, statusFilter, genderFilter, maritalStatusFilter, districtFilter, dateFromFilter, dateToFilter])
+  }, [searchParams, activeTab, statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
 
   useEffect(() => {
     loadCounts()
-    loadDistricts()
+  }, [statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
+
+  useEffect(() => {
+    loadLocationData()
   }, [])
 
-  const loadDistricts = async () => {
+  const loadLocationData = async () => {
     try {
-      const response = await groupsService.getGroups({ type: 'district', limit: 100 })
-      setDistricts(response.items)
+      // Try dedicated endpoints first, fall back to generic groups endpoint
+      let districtsData: Group[] = []
+      let unitsData: Group[] = []
+
+      try {
+        const districtsRes = await groupsService.getDistricts({ limit: 100 })
+        districtsData = districtsRes.items || []
+      } catch (e) {
+        console.log('Districts endpoint failed, trying generic groups')
+        const res = await groupsService.getGroups({ type: 'district', limit: 100 })
+        districtsData = res.items || []
+      }
+
+      try {
+        const unitsRes = await groupsService.getUnits({ limit: 100 })
+        unitsData = unitsRes.items || []
+      } catch (e) {
+        console.log('Units endpoint failed, trying generic groups')
+        const res = await groupsService.getGroups({ type: 'unit', limit: 100 })
+        unitsData = res.items || []
+      }
+
+      setDistricts(districtsData)
+      setUnits(unitsData)
+
+      // Load branches separately
+      try {
+        const branchesRes = await branchesService.getBranches()
+        setAllBranches(branchesRes || [])
+      } catch (e) {
+        console.log('Branches not available')
+        setAllBranches([])
+      }
     } catch (error) {
-      console.error('Error loading districts:', error)
+      console.error('Error loading location data:', error)
     }
   }
 
@@ -165,12 +268,15 @@ export default function Members() {
       setError(null)
       setLoading(true)
 
-      // Build params with filters
+      // Build params with filters - only include non-empty values
+      // Use selectedBranch (global) or branchFilter (from filter modal)
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
       const params: MemberSearchParams = {
         ...searchParams,
         membershipStatus: statusFilter || undefined,
-        gender: genderFilter as 'male' | 'female' | undefined,
-        maritalStatus: maritalStatusFilter as Member['maritalStatus'] | undefined,
+        gender: genderFilter ? (genderFilter as 'male' | 'female') : undefined,
+        maritalStatus: maritalStatusFilter ? (maritalStatusFilter as Member['maritalStatus']) : undefined,
+        branchId: effectiveBranchId,
         districtId: districtFilter || undefined,
         dateJoinedFrom: dateFromFilter || undefined,
         dateJoinedTo: dateToFilter || undefined,
@@ -194,13 +300,25 @@ export default function Members() {
 
   const loadCounts = async () => {
     try {
-      // Load members in batches to get accurate counts
+      // Build params with same filters as loadMembers
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
+      const filterParams: MemberSearchParams = {
+        membershipStatus: statusFilter || undefined,
+        gender: genderFilter ? (genderFilter as 'male' | 'female') : undefined,
+        maritalStatus: maritalStatusFilter ? (maritalStatusFilter as Member['maritalStatus']) : undefined,
+        branchId: effectiveBranchId,
+        districtId: districtFilter || undefined,
+        dateJoinedFrom: dateFromFilter || undefined,
+        dateJoinedTo: dateToFilter || undefined,
+      }
+
+      // Load members in batches to get accurate counts with filters applied
       let allMembers: Member[] = []
       let currentPage = 1
       let hasMore = true
 
       while (hasMore && currentPage <= 10) { // Limit to 10 pages to avoid infinite loops
-        const response = await membersService.getMembers({ page: currentPage, limit: 100 })
+        const response = await membersService.getMembers({ ...filterParams, page: currentPage, limit: 100 })
         allMembers = [...allMembers, ...response.items]
         hasMore = response.pagination.hasNext
         currentPage++
@@ -299,6 +417,217 @@ export default function Members() {
     }
   }
 
+  // Location Modal Handlers
+  const handleOpenLocationModal = (member: Member) => {
+    setLocationMember(member)
+    // Pre-fill with existing values - prioritize member.branch directly
+    const memberBranchId = typeof member.branch === 'object'
+      ? member.branch?._id
+      : member.branch || ''
+    setSelectedBranchId(memberBranchId || member.district?.branch?._id || member.unit?.branch?._id || '')
+    setSelectedDistrictId(typeof member.district === 'object' ? member.district?._id : member.district || '')
+    setSelectedUnitId(typeof member.unit === 'object' ? member.unit?._id : member.unit || '')
+    setShowLocationModal(true)
+  }
+
+  const handleCloseLocationModal = () => {
+    setShowLocationModal(false)
+    setLocationMember(null)
+    setSelectedBranchId('')
+    setSelectedDistrictId('')
+    setSelectedUnitId('')
+  }
+
+  const handleSaveLocation = async () => {
+    if (!locationMember) return
+
+    try {
+      setSavingLocation(true)
+
+      const updateData: any = {}
+      if (selectedBranchId) updateData.branch = selectedBranchId
+      if (selectedDistrictId) updateData.district = selectedDistrictId
+      if (selectedUnitId) updateData.unit = selectedUnitId
+
+      await membersService.updateMember(locationMember._id, updateData)
+
+      // Reload members and counts
+      await Promise.all([loadMembers(), loadCounts()])
+      handleCloseLocationModal()
+
+      alert(`Successfully updated location for ${locationMember.firstName} ${locationMember.lastName}!`)
+    } catch (error: any) {
+      console.error('Error updating location:', error)
+      alert('Failed to update location: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    } finally {
+      setSavingLocation(false)
+    }
+  }
+
+  // Filter districts and units - show all by default, filter only if branch/district selected
+  const getFilteredDistricts = (branchId: string) => {
+    if (!branchId) return districts
+    const filtered = districts.filter(d => {
+      const dBranch = (d as any).branch
+      // Handle both populated object and string ID
+      const dBranchId = typeof dBranch === 'object' ? dBranch?._id : dBranch
+      return dBranchId === branchId || String(dBranchId) === branchId
+    })
+    // If filtering results in empty, return all districts (branch might not be set on groups)
+    return filtered.length > 0 ? filtered : districts
+  }
+
+  const getFilteredUnits = (districtId: string, branchId: string) => {
+    let filtered = units
+
+    if (districtId) {
+      filtered = units.filter(u => {
+        const uDistrict = (u as any).district
+        const uDistrictId = typeof uDistrict === 'object' ? uDistrict?._id : uDistrict
+        return uDistrictId === districtId || String(uDistrictId) === districtId
+      })
+    } else if (branchId) {
+      filtered = units.filter(u => {
+        const uBranch = (u as any).branch
+        const uBranchId = typeof uBranch === 'object' ? uBranch?._id : uBranch
+        return uBranchId === branchId || String(uBranchId) === branchId
+      })
+    }
+
+    // If filtering results in empty, return all units
+    return filtered.length > 0 ? filtered : units
+  }
+
+  // Single member modal filtered options
+  const filteredDistricts = getFilteredDistricts(selectedBranchId)
+  const filteredUnits = getFilteredUnits(selectedDistrictId, selectedBranchId)
+
+  // Bulk modal filtered options
+  const bulkFilteredDistricts = getFilteredDistricts(bulkBranchId)
+  const bulkFilteredUnits = getFilteredUnits(bulkDistrictId, bulkBranchId)
+
+  // Bulk Location Modal Handlers
+  const handleOpenBulkLocationModal = () => {
+    setBulkBranchId('')
+    setBulkDistrictId('')
+    setBulkUnitId('')
+    setShowBulkLocationModal(true)
+  }
+
+  const handleCloseBulkLocationModal = () => {
+    setShowBulkLocationModal(false)
+    setBulkBranchId('')
+    setBulkDistrictId('')
+    setBulkUnitId('')
+  }
+
+  const handleSaveBulkLocation = async () => {
+    if (selectedMembers.size === 0) return
+
+    try {
+      setSavingBulkLocation(true)
+
+      const updateData: any = {}
+      if (bulkBranchId) updateData.branch = bulkBranchId
+      if (bulkDistrictId) updateData.district = bulkDistrictId
+      if (bulkUnitId) updateData.unit = bulkUnitId
+
+      // Update all selected members
+      const updatePromises = Array.from(selectedMembers).map(memberId =>
+        membersService.updateMember(memberId, updateData)
+      )
+
+      await Promise.all(updatePromises)
+
+      // Reload members and counts
+      await Promise.all([loadMembers(), loadCounts()])
+      handleCloseBulkLocationModal()
+      clearSelection()
+
+      alert(`Successfully updated location for ${selectedMembers.size} member(s)!`)
+    } catch (error: any) {
+      console.error('Error updating bulk location:', error)
+      alert('Failed to update locations: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    } finally {
+      setSavingBulkLocation(false)
+    }
+  }
+
+  // Export members to CSV
+  const handleExport = async () => {
+    try {
+      // Build params with same filters
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
+      const filterParams: MemberSearchParams = {
+        membershipStatus: statusFilter || undefined,
+        gender: genderFilter ? (genderFilter as 'male' | 'female') : undefined,
+        maritalStatus: maritalStatusFilter ? (maritalStatusFilter as Member['maritalStatus']) : undefined,
+        branchId: effectiveBranchId,
+        districtId: districtFilter || undefined,
+        dateJoinedFrom: dateFromFilter || undefined,
+        dateJoinedTo: dateToFilter || undefined,
+      }
+
+      // Load all filtered members
+      let allMembers: Member[] = []
+      let currentPage = 1
+      let hasMore = true
+
+      while (hasMore && currentPage <= 20) {
+        const response = await membersService.getMembers({ ...filterParams, page: currentPage, limit: 100 })
+        const filteredItems = activeTab === 'assigned'
+          ? response.items.filter(member => hasDistrict(member))
+          : response.items.filter(member => !hasDistrict(member))
+        allMembers = [...allMembers, ...filteredItems]
+        hasMore = response.pagination.hasNext
+        currentPage++
+      }
+
+      if (allMembers.length === 0) {
+        alert('No members to export')
+        return
+      }
+
+      // Create CSV content
+      const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Status', 'Branch', 'District', 'Unit', 'Date Joined']
+      const rows = allMembers.map(member => [
+        member.firstName,
+        member.lastName,
+        member.email,
+        member.phone,
+        member.gender,
+        member.membershipStatus,
+        typeof member.branch === 'object' ? member.branch?.name || '' : '',
+        member.district?.name || '',
+        typeof member.unit === 'object' ? member.unit?.name || '' : '',
+        member.dateJoined ? new Date(member.dateJoined).toLocaleDateString() : ''
+      ])
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))
+      ].join('\n')
+
+      // Download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `members-${activeTab}-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting members:', error)
+      alert('Failed to export members')
+    }
+  }
+
+  // Clear selection when members list changes
+  useEffect(() => {
+    setSelectedMembers(new Set())
+  }, [activeTab, searchParams.page])
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -378,7 +707,7 @@ export default function Members() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {}}
+                onClick={handleExport}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export
@@ -412,7 +741,7 @@ export default function Members() {
                 }
               `}
             >
-              Assigned Districts
+              Tribesmen List
               <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
                 {assignedCount}
               </span>
@@ -427,13 +756,47 @@ export default function Members() {
                 }
               `}
             >
-              Unassigned Districts
+              Pending District Assignment
               <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
                 {unassignedCount}
               </span>
             </button>
           </nav>
         </motion.div>
+
+        {/* Bulk Action Bar */}
+        <AnimatePresence>
+          {selectedMembers.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-primary-50 border border-primary-200 rounded-lg p-3 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-primary-700">
+                  {selectedMembers.size} member{selectedMembers.size !== 1 ? 's' : ''} selected
+                </span>
+                <button
+                  onClick={clearSelection}
+                  className="text-sm text-primary-600 hover:text-primary-800 underline"
+                >
+                  Clear selection
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleOpenBulkLocationModal}
+                  className="flex items-center gap-1.5"
+                >
+                  <MapPin className="h-4 w-4" />
+                  Assign Location
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Members Table */}
         <motion.div
@@ -460,6 +823,19 @@ export default function Members() {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
+                      {canAssignLocation && (
+                        <th className="px-4 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someSelected
+                            }}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </th>
+                      )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Member
                       </th>
@@ -470,7 +846,7 @@ export default function Members() {
                         Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        District
+                        Location
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Joined
@@ -487,8 +863,18 @@ export default function Members() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="hover:bg-muted/50 transition-colors"
+                      className={`hover:bg-muted/50 transition-colors ${selectedMembers.has(member._id) ? 'bg-primary-50' : ''}`}
                     >
+                      {canAssignLocation && (
+                        <td className="px-4 py-4 w-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedMembers.has(member._id)}
+                            onChange={() => toggleSelectMember(member._id)}
+                            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-foreground">
@@ -515,9 +901,30 @@ export default function Members() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {member.district?.name || 'Not assigned'}
+                        <div className="space-y-0.5">
+                          {/* Branch - Top level, darkest */}
+                          <div className="flex items-center text-sm font-medium text-gray-800">
+                            <Building2 className="h-3 w-3 mr-1.5 flex-shrink-0 text-primary-600" />
+                            <span className="truncate max-w-[120px]">
+                              {typeof member.branch === 'object' ? member.branch?.name : 'No branch'}
+                            </span>
+                          </div>
+                          {/* District - Mid level */}
+                          <div className="flex items-center text-xs text-gray-500">
+                            <Users className="h-3 w-3 mr-1.5 flex-shrink-0 text-gray-400" />
+                            <span className="truncate max-w-[120px]">
+                              {member.district?.name || 'No district'}
+                            </span>
+                          </div>
+                          {/* Unit - Bottom level, lightest */}
+                          {member.unit && (
+                            <div className="flex items-center text-xs text-gray-400">
+                              <Home className="h-3 w-3 mr-1.5 flex-shrink-0 text-gray-300" />
+                              <span className="truncate max-w-[120px]">
+                                {typeof member.unit === 'object' ? member.unit.name : 'Assigned'}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -527,22 +934,24 @@ export default function Members() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                          {activeTab === 'unassigned' && (
+                        <div className="flex items-center justify-end gap-1">
+                          {canAssignLocation && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleOpenAssignModal(member)}
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                              title="Assign to District"
+                              onClick={() => handleOpenLocationModal(member)}
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              title="Assign Location"
                             >
-                              <UserPlus className="h-4 w-4" />
+                              <MapPin className="h-4 w-4" />
                             </Button>
                           )}
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => navigate(`/members/${member._id}`)}
+                            className="h-8 w-8 p-0"
+                            title="View"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -550,6 +959,8 @@ export default function Members() {
                             variant="ghost"
                             size="sm"
                             onClick={() => navigate(`/members/${member._id}/edit`)}
+                            className="h-8 w-8 p-0"
+                            title="Edit"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -688,6 +1099,15 @@ export default function Members() {
         subtitle="Refine your search results"
         activeFilterCount={activeFilterCount}
         filters={[
+          // Branch filter - only shown when viewing all expressions
+          ...(showBranchFilter ? [{
+            id: 'branch',
+            label: 'Expression',
+            value: tempBranchFilter,
+            onChange: setTempBranchFilter,
+            options: branches.map(b => ({ value: b._id, label: b.name })),
+            placeholder: 'All Expressions',
+          }] : []),
           {
             id: 'status',
             label: 'Membership Status',
@@ -730,6 +1150,335 @@ export default function Members() {
           onToChange: setTempDateTo,
         }}
       />
+
+      {/* Assign Location Modal */}
+      <AnimatePresence>
+        {showLocationModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="relative bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <MapPin className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-white">Assign Location</h3>
+                    <p className="text-blue-100 text-sm">
+                      {locationMember?.firstName} {locationMember?.lastName}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCloseLocationModal}
+                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                  >
+                    <X className="h-5 w-5 text-white" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                {/* Current Location Info */}
+                {(locationMember?.district || locationMember?.unit) && (
+                  <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                    <p className="text-gray-500 text-xs uppercase tracking-wide mb-2">Current Location</p>
+                    <div className="space-y-1">
+                      {locationMember?.district && (
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          <span>District: {typeof locationMember.district === 'object' ? locationMember.district.name : 'Assigned'}</span>
+                        </div>
+                      )}
+                      {locationMember?.unit && (
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <Home className="w-4 h-4 text-gray-400" />
+                          <span>Unit: {typeof locationMember.unit === 'object' ? locationMember.unit.name : 'Assigned'}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Branch Select */}
+                {allBranches.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-gray-400" />
+                        Branch
+                      </div>
+                    </label>
+                    <select
+                      value={selectedBranchId}
+                      onChange={(e) => {
+                        setSelectedBranchId(e.target.value)
+                        setSelectedDistrictId('')
+                        setSelectedUnitId('')
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                      disabled={savingLocation}
+                    >
+                      <option value="">Select a branch...</option>
+                      {allBranches.map((branch) => (
+                        <option key={branch._id} value={branch._id}>
+                          {branch.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* District Select */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gray-400" />
+                      District
+                    </div>
+                  </label>
+                  <select
+                    value={selectedDistrictId}
+                    onChange={(e) => {
+                      setSelectedDistrictId(e.target.value)
+                      setSelectedUnitId('')
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                    disabled={savingLocation}
+                  >
+                    <option value="">Select a district...</option>
+                    {(filteredDistricts.length > 0 ? filteredDistricts : districts).map((district) => (
+                      <option key={district._id} value={district._id}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                  {districts.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">No districts available</p>
+                  )}
+                </div>
+
+                {/* Unit Select */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Home className="w-4 h-4 text-gray-400" />
+                      Unit
+                    </div>
+                  </label>
+                  <select
+                    value={selectedUnitId}
+                    onChange={(e) => setSelectedUnitId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                    disabled={savingLocation}
+                  >
+                    <option value="">Select a unit...</option>
+                    {(filteredUnits.length > 0 ? filteredUnits : units).map((unit) => (
+                      <option key={unit._id} value={unit._id}>
+                        {unit.name}
+                      </option>
+                    ))}
+                  </select>
+                  {units.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">No units available</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+                <Button
+                  variant="outline"
+                  onClick={handleCloseLocationModal}
+                  disabled={savingLocation}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveLocation}
+                  disabled={(!selectedBranchId && !selectedDistrictId && !selectedUnitId) || savingLocation}
+                  className="flex items-center gap-2"
+                >
+                  {savingLocation ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="h-4 w-4" />
+                      Save Location
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Assign Location Modal */}
+      <AnimatePresence>
+        {showBulkLocationModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="relative bg-gradient-to-r from-green-500 to-green-600 px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-white">Bulk Assign Location</h3>
+                    <p className="text-green-100 text-sm">
+                      {selectedMembers.size} member{selectedMembers.size !== 1 ? 's' : ''} selected
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCloseBulkLocationModal}
+                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                  >
+                    <X className="h-5 w-5 text-white" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                  <p>This will update the location for all {selectedMembers.size} selected member{selectedMembers.size !== 1 ? 's' : ''}.</p>
+                </div>
+
+                {/* Branch Select */}
+                {allBranches.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-gray-400" />
+                        Branch
+                      </div>
+                    </label>
+                    <select
+                      value={bulkBranchId}
+                      onChange={(e) => {
+                        setBulkBranchId(e.target.value)
+                        setBulkDistrictId('')
+                        setBulkUnitId('')
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm"
+                      disabled={savingBulkLocation}
+                    >
+                      <option value="">Select a branch...</option>
+                      {allBranches.map((branch) => (
+                        <option key={branch._id} value={branch._id}>
+                          {branch.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* District Select */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gray-400" />
+                      District
+                    </div>
+                  </label>
+                  <select
+                    value={bulkDistrictId}
+                    onChange={(e) => {
+                      setBulkDistrictId(e.target.value)
+                      setBulkUnitId('')
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm"
+                    disabled={savingBulkLocation}
+                  >
+                    <option value="">Select a district...</option>
+                    {(bulkFilteredDistricts.length > 0 ? bulkFilteredDistricts : districts).map((district) => (
+                      <option key={district._id} value={district._id}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                  {districts.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">No districts available</p>
+                  )}
+                </div>
+
+                {/* Unit Select */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Home className="w-4 h-4 text-gray-400" />
+                      Unit
+                    </div>
+                  </label>
+                  <select
+                    value={bulkUnitId}
+                    onChange={(e) => setBulkUnitId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm"
+                    disabled={savingBulkLocation}
+                  >
+                    <option value="">Select a unit...</option>
+                    {(bulkFilteredUnits.length > 0 ? bulkFilteredUnits : units).map((unit) => (
+                      <option key={unit._id} value={unit._id}>
+                        {unit.name}
+                      </option>
+                    ))}
+                  </select>
+                  {units.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">No units available</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+                <Button
+                  variant="outline"
+                  onClick={handleCloseBulkLocationModal}
+                  disabled={savingBulkLocation}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveBulkLocation}
+                  disabled={(!bulkBranchId && !bulkDistrictId && !bulkUnitId) || savingBulkLocation}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  {savingBulkLocation ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Updating {selectedMembers.size}...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="h-4 w-4" />
+                      Update {selectedMembers.size} Member{selectedMembers.size !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </Layout>
   )
 }

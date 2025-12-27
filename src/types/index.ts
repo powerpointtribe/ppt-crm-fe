@@ -41,6 +41,10 @@ export interface Member {
   confirmationDate?: string
 
   // Church structure
+  branch?: {
+    _id: string
+    name: string
+  } | string
   district?: any
   unit?: any
   additionalGroups?: string[]

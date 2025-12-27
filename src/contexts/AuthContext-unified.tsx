@@ -374,8 +374,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Computed properties derived from PERMISSIONS (strict permissions-based)
   const isGIA = member?.unitType === 'gia' || false;
 
-  // Admin check: has roles:view permission (indicates admin-level access)
-  const isAdmin = hasPermission('roles:view') || hasPermission('roles:create');
+  // Admin check: has roles:view-roles permission (indicates admin-level access)
+  const isAdmin = hasPermission('roles:view-roles') || hasPermission('roles:create-role');
 
   // Pastor check: can manage members and first-timers
   const isPastor = hasPermission('members:create') && hasPermission('first-timers:view');

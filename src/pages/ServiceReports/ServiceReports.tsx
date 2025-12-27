@@ -42,9 +42,11 @@ import {
   SERVICE_TAG_LABELS
 } from '@/services/service-reports'
 import { formatDate } from '@/utils/formatters'
+import { useAppStore } from '@/store'
 
 export default function ServiceReports() {
   const navigate = useNavigate()
+  const { selectedBranch, branches } = useAppStore()
   const [reports, setReports] = useState<ServiceReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -65,18 +67,28 @@ export default function ServiceReports() {
   const [serviceTagFilter, setServiceTagFilter] = useState('')
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
+  const [branchFilter, setBranchFilter] = useState('')
 
   // Temp filter states for modal
   const [tempServiceTagFilter, setTempServiceTagFilter] = useState('')
   const [tempDateFrom, setTempDateFrom] = useState('')
   const [tempDateTo, setTempDateTo] = useState('')
+  const [tempBranchFilter, setTempBranchFilter] = useState('')
 
-  const memoizedSearchParams = useMemo(() => ({
-    ...searchParams,
-    serviceTag: serviceTagFilter || undefined,
-    dateFrom: dateFromFilter || undefined,
-    dateTo: dateToFilter || undefined,
-  }), [
+  // Show branch filter when viewing "All Expressions"
+  const showBranchFilter = !selectedBranch && branches.length > 0
+
+  const memoizedSearchParams = useMemo(() => {
+    // Use selectedBranch if set, otherwise use the filter dropdown
+    const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
+    return {
+      ...searchParams,
+      serviceTag: serviceTagFilter || undefined,
+      dateFrom: dateFromFilter || undefined,
+      dateTo: dateToFilter || undefined,
+      branchId: effectiveBranchId,
+    }
+  }, [
     searchParams.page,
     searchParams.limit,
     searchParams.search,
@@ -85,6 +97,8 @@ export default function ServiceReports() {
     serviceTagFilter,
     dateFromFilter,
     dateToFilter,
+    branchFilter,
+    selectedBranch,
     searchParams.reportedBy,
     searchParams.serviceName,
     searchParams.minAttendance,
@@ -150,6 +164,7 @@ export default function ServiceReports() {
     setTempServiceTagFilter(serviceTagFilter)
     setTempDateFrom(dateFromFilter)
     setTempDateTo(dateToFilter)
+    setTempBranchFilter(branchFilter)
     setShowFilterModal(true)
   }
 
@@ -161,6 +176,7 @@ export default function ServiceReports() {
     setServiceTagFilter(tempServiceTagFilter)
     setDateFromFilter(tempDateFrom)
     setDateToFilter(tempDateTo)
+    setBranchFilter(tempBranchFilter)
     setSearchParams(prev => ({ ...prev, page: 1 }))
     setShowFilterModal(false)
   }
@@ -169,16 +185,18 @@ export default function ServiceReports() {
     setTempServiceTagFilter('')
     setTempDateFrom('')
     setTempDateTo('')
+    setTempBranchFilter('')
   }
 
   const clearAppliedFilters = () => {
     setServiceTagFilter('')
     setDateFromFilter('')
     setDateToFilter('')
+    setBranchFilter('')
   }
 
-  const hasActiveFilters = !!(serviceTagFilter || dateFromFilter || dateToFilter)
-  const activeFilterCount = [serviceTagFilter, dateFromFilter, dateToFilter].filter(Boolean).length
+  const hasActiveFilters = !!(serviceTagFilter || dateFromFilter || dateToFilter || branchFilter)
+  const activeFilterCount = [serviceTagFilter, dateFromFilter, dateToFilter, branchFilter].filter(Boolean).length
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this service report?')) {
@@ -617,6 +635,14 @@ export default function ServiceReports() {
         subtitle="Refine your search results"
         activeFilterCount={activeFilterCount}
         filters={[
+          ...(showBranchFilter ? [{
+            id: 'branch',
+            label: 'Expression',
+            value: tempBranchFilter,
+            onChange: setTempBranchFilter,
+            options: branches.map(b => ({ value: b._id, label: b.name })),
+            placeholder: 'All Expressions',
+          }] : []),
           {
             id: 'serviceTag',
             label: 'Service Type',

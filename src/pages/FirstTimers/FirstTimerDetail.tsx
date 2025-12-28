@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Edit, Phone, Mail, Calendar, MapPin,
   Users, Clock, CheckCircle, AlertCircle, UserPlus, Plus,
-  User, MessageSquare, Star, Heart, Copy, Check
+  User, MessageSquare, Star, Heart, Copy, Check, Archive, ArchiveRestore, X
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -14,6 +14,7 @@ import FollowUpForm from '@/components/forms/FollowUpForm'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
 import { FirstTimer, firstTimersService, FollowUpRecord } from '@/services/first-timers'
+import { Group, groupsService } from '@/services/groups'
 import { formatDate } from '@/utils/formatters'
 import { cn } from '@/utils/cn'
 
@@ -30,6 +31,18 @@ export default function FirstTimerDetail() {
   const [submittingFollowUp, setSubmittingFollowUp] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [showArchiveModal, setShowArchiveModal] = useState(false)
+  const [archiveReason, setArchiveReason] = useState('')
+  const [archiveLoading, setArchiveLoading] = useState(false)
+  const [selectedFollowUp, setSelectedFollowUp] = useState<FollowUpRecord | null>(null)
+  const [showIntegrateModal, setShowIntegrateModal] = useState(false)
+  const [districts, setDistricts] = useState<Group[]>([])
+  const [units, setUnits] = useState<Group[]>([])
+  const [selectedDistrict, setSelectedDistrict] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState('')
+  const [integrateLoading, setIntegrateLoading] = useState(false)
+  const [loadingGroups, setLoadingGroups] = useState(false)
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -77,13 +90,23 @@ export default function FirstTimerDetail() {
     }
   }
 
-  const handleConvertToMember = async () => {
+  const handleReadyForIntegration = async () => {
     try {
-      await firstTimersService.convertToMember(id!)
+      await firstTimersService.markReadyForIntegration(id!)
       await loadFirstTimer()
-      toast.success('Converted to Member')
-    } catch (error) {
-      toast.error('Conversion Failed')
+      toast.success('Ready for Integration', 'First-timer has been marked as ready for integration. Notifications have been sent.')
+    } catch (error: any) {
+      toast.error('Failed', error.message || 'Failed to mark as ready for integration')
+    }
+  }
+
+  const handleUnmarkReadyForIntegration = async () => {
+    try {
+      await firstTimersService.unmarkReadyForIntegration(id!)
+      await loadFirstTimer()
+      toast.success('Unmarked', 'First-timer is no longer marked as ready for integration')
+    } catch (error: any) {
+      toast.error('Failed', error.message || 'Failed to unmark ready for integration')
     }
   }
 
@@ -93,8 +116,83 @@ export default function FirstTimerDetail() {
     setTimeout(() => setCopiedField(null), 2000)
   }
 
+  const handleArchive = async () => {
+    try {
+      setArchiveLoading(true)
+      await firstTimersService.archiveFirstTimer(id!, archiveReason || undefined)
+      toast.success('Archived', 'First-timer has been archived successfully')
+      setShowArchiveModal(false)
+      setArchiveReason('')
+      await loadFirstTimer()
+    } catch (error: any) {
+      toast.error('Archive Failed', error.message || 'Failed to archive first-timer')
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const handleUnarchive = async () => {
+    try {
+      setArchiveLoading(true)
+      await firstTimersService.unarchiveFirstTimer(id!)
+      toast.success('Restored', 'First-timer has been restored successfully')
+      await loadFirstTimer()
+    } catch (error: any) {
+      toast.error('Restore Failed', error.message || 'Failed to restore first-timer')
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const openIntegrateModal = async () => {
+    setShowIntegrateModal(true)
+    setLoadingGroups(true)
+    try {
+      const [districtsRes, unitsRes] = await Promise.all([
+        groupsService.getDistricts({ limit: 100 }),
+        groupsService.getUnits({ limit: 100 }),
+      ])
+      setDistricts(districtsRes.items || [])
+      setUnits(unitsRes.items || [])
+    } catch (error) {
+      toast.error('Failed to load groups')
+    } finally {
+      setLoadingGroups(false)
+    }
+  }
+
+  const handleIntegrate = async () => {
+    if (!selectedDistrict) {
+      toast.error('Please select a district')
+      return
+    }
+    try {
+      setIntegrateLoading(true)
+      await firstTimersService.integrateFirstTimer(
+        id!,
+        selectedDistrict,
+        selectedUnit || undefined
+      )
+      toast.success('Integration Complete', 'First-timer has been successfully integrated as a member')
+      setShowIntegrateModal(false)
+      setSelectedDistrict('')
+      setSelectedUnit('')
+      await loadFirstTimer()
+    } catch (error: any) {
+      toast.error('Integration Failed', error.message || 'Failed to integrate first-timer')
+    } finally {
+      setIntegrateLoading(false)
+    }
+  }
+
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
+      NEW: 'New',
+      ENGAGED: 'Engaged',
+      READY_FOR_INTEGRATION: 'Ready for Integration',
+      ARCHIVED: 'Archived',
+      CLOSED: 'Closed',
+      // Legacy status values
       not_contacted: 'Not Contacted',
       contacted: 'Contacted',
       scheduled_visit: 'Visit Scheduled',
@@ -102,9 +200,6 @@ export default function FirstTimerDetail() {
       joined_group: 'Joined Group',
       converted: 'Converted',
       lost_contact: 'Lost Contact',
-      NEW: 'New',
-      ENGAGED: 'Engaged',
-      CLOSED: 'Closed',
     }
     return labels[status] || status
   }
@@ -144,6 +239,33 @@ export default function FirstTimerDetail() {
       follow_up_needed: 'Follow-up Needed',
     }
     return labels[outcome] || outcome
+  }
+
+  const formatPhoneForWhatsApp = (phone: string) => {
+    // Remove all non-digits
+    let cleaned = phone.replace(/\D/g, '')
+    // If starts with 0, remove it and prepend 234 (Nigeria country code)
+    if (cleaned.startsWith('0')) {
+      cleaned = '234' + cleaned.substring(1)
+    }
+    // If doesn't start with 234, prepend it
+    if (!cleaned.startsWith('234')) {
+      cleaned = '234' + cleaned
+    }
+    return cleaned
+  }
+
+  const getReminderStyle = (reminderDate: string) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const reminder = new Date(reminderDate)
+    reminder.setHours(0, 0, 0, 0)
+    const diffDays = Math.ceil((reminder.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 0) return 'text-red-600 font-medium' // Overdue
+    if (diffDays === 0) return 'text-orange-600 font-medium' // Due today
+    if (diffDays <= 2) return 'text-amber-600' // Due soon
+    return 'text-gray-600' // Future
   }
 
   if (loading) {
@@ -193,27 +315,45 @@ export default function FirstTimerDetail() {
 
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-full bg-gray-900 flex items-center justify-center text-white text-xl font-semibold">
+              {firstTimer.profilePhotoUrl ? (
+                <button
+                  onClick={() => setShowPhotoModal(true)}
+                  className="relative group"
+                >
+                  <img
+                    src={firstTimer.profilePhotoUrl}
+                    alt={`${firstTimer.firstName} ${firstTimer.lastName}`}
+                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm cursor-pointer transition-transform group-hover:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.parentElement!.style.display = 'none'
+                      e.currentTarget.parentElement!.nextElementSibling?.classList.remove('hidden')
+                    }}
+                  />
+                  <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/10 transition-colors" />
+                </button>
+              ) : null}
+              <div className={cn(
+                "w-20 h-20 rounded-full bg-gray-900 flex items-center justify-center text-white text-2xl font-semibold",
+                firstTimer.profilePhotoUrl ? "hidden" : ""
+              )}>
                 {firstTimer.firstName[0]}{firstTimer.lastName[0]}
               </div>
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900">
                   {firstTimer.firstName} {firstTimer.lastName}
                 </h1>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className="text-sm text-gray-500">
-                    Visited {formatDate(firstTimer.dateOfVisit)}
-                  </span>
-                  <span className="text-gray-300">·</span>
-                  <span className="text-sm text-gray-500">{daysSinceVisit} days ago</span>
+                <div className="mt-1">
+                  <p className="text-xs text-gray-500">
+                    Visited {formatDate(firstTimer.dateOfVisit)} · {daysSinceVisit} days ago
+                  </p>
                   {firstTimer.converted && (
-                    <>
-                      <span className="text-gray-300">·</span>
-                      <span className="inline-flex items-center gap-1 text-sm text-green-600 font-medium">
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Member
-                      </span>
-                    </>
+                    <p className="text-xs text-green-600 mt-0.5">Converted to member</p>
+                  )}
+                  {firstTimer.isArchived && (
+                    <p className="text-xs text-orange-600 mt-0.5">Archived</p>
+                  )}
+                  {firstTimer.readyForIntegration && !firstTimer.converted && (
+                    <p className="text-xs text-green-600 mt-0.5">Ready for integration</p>
                   )}
                 </div>
               </div>
@@ -228,6 +368,38 @@ export default function FirstTimerDetail() {
                 <Edit className="h-4 w-4 mr-1.5" />
                 Edit
               </Button>
+              {firstTimer.isArchived ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleUnarchive}
+                  disabled={archiveLoading}
+                  className="text-green-600 border-green-200 hover:bg-green-50"
+                >
+                  <ArchiveRestore className="h-4 w-4 mr-1.5" />
+                  {archiveLoading ? 'Restoring...' : 'Restore'}
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowArchiveModal(true)}
+                  className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                >
+                  <Archive className="h-4 w-4 mr-1.5" />
+                  Archive
+                </Button>
+              )}
+              {firstTimer.readyForIntegration && firstTimer.status !== 'CLOSED' && (
+                <Button
+                  size="sm"
+                  onClick={openIntegrateModal}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <UserPlus className="h-4 w-4 mr-1.5" />
+                  Integrate
+                </Button>
+              )}
               <Button
                 size="sm"
                 onClick={() => setShowFollowUpForm(true)}
@@ -260,22 +432,12 @@ export default function FirstTimerDetail() {
           )}
 
           <button
-            onClick={() => window.open(`https://wa.me/${firstTimer.phone.replace(/\D/g, '')}`, '_blank')}
+            onClick={() => window.open(`https://wa.me/${formatPhoneForWhatsApp(firstTimer.phone)}`, '_blank')}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <MessageSquare className="h-4 w-4" />
             WhatsApp
           </button>
-
-          {!firstTimer.converted && (
-            <button
-              onClick={handleConvertToMember}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <UserPlus className="h-4 w-4" />
-              Convert to Member
-            </button>
-          )}
         </div>
 
         {/* Tabs */}
@@ -464,40 +626,59 @@ export default function FirstTimerDetail() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    {sortedFollowUps.map((followUp, index) => (
-                      <div
-                        key={index}
-                        className="flex gap-4 py-4 border-b border-gray-100 last:border-0"
-                      >
-                        <div className="w-24 flex-shrink-0">
-                          <p className="text-sm text-gray-900">{formatDate(followUp.date)}</p>
-                          <p className="text-xs text-gray-500">{getMethodLabel(followUp.method)}</p>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={cn(
-                              "px-2 py-0.5 rounded text-xs font-medium",
-                              getOutcomeStyle(followUp.outcome)
-                            )}>
-                              {getOutcomeLabel(followUp.outcome)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700">{followUp.notes}</p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            by {typeof followUp.contactedBy === 'string'
-                              ? followUp.contactedBy
-                              : `${followUp.contactedBy.firstName} ${followUp.contactedBy.lastName}`}
-                            {followUp.nextFollowUpDate && (
-                              <span className="ml-3">
-                                Next: {formatDate(followUp.nextFollowUpDate)}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Outcome</th>
+                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">By</th>
+                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Reminder</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {sortedFollowUps.map((followUp, index) => (
+                          <tr
+                            key={index}
+                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                            onClick={() => setSelectedFollowUp(followUp)}
+                          >
+                            <td className="py-3 px-2 text-sm text-gray-900 whitespace-nowrap">
+                              {formatDate(followUp.date)}
+                            </td>
+                            <td className="py-3 px-2 text-sm text-gray-600 whitespace-nowrap">
+                              {getMethodLabel(followUp.method)}
+                            </td>
+                            <td className="py-3 px-2 whitespace-nowrap">
+                              <span className={cn(
+                                "px-2 py-0.5 rounded text-xs font-medium",
+                                getOutcomeStyle(followUp.outcome)
+                              )}>
+                                {getOutcomeLabel(followUp.outcome)}
                               </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                            </td>
+                            <td className="py-3 px-2 text-sm text-gray-600 max-w-[180px]">
+                              <p className="truncate">
+                                {followUp.notes || '—'}
+                              </p>
+                            </td>
+                            <td className="py-3 px-2 text-sm text-gray-600 whitespace-nowrap">
+                              {typeof followUp.contactedBy === 'string'
+                                ? followUp.contactedBy
+                                : `${followUp.contactedBy.firstName} ${followUp.contactedBy.lastName}`}
+                            </td>
+                            <td className={cn(
+                              "py-3 px-2 text-sm whitespace-nowrap",
+                              followUp.nextFollowUpDate ? getReminderStyle(followUp.nextFollowUpDate) : 'text-gray-400'
+                            )}>
+                              {followUp.nextFollowUpDate ? formatDate(followUp.nextFollowUpDate) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -661,6 +842,317 @@ export default function FirstTimerDetail() {
 
       {/* Toast Container */}
       <ToastContainer toasts={toast.toasts} />
+
+      {/* Follow-up Detail Modal */}
+      <AnimatePresence>
+        {selectedFollowUp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+            onClick={() => setSelectedFollowUp(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-900">Follow-up Details</h3>
+                <button
+                  onClick={() => setSelectedFollowUp(null)}
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Date</span>
+                  <span className="text-xs font-medium text-gray-900">{formatDate(selectedFollowUp.date)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Method</span>
+                  <span className="text-xs font-medium text-gray-900">{getMethodLabel(selectedFollowUp.method)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Outcome</span>
+                  <span className={cn(
+                    "px-1.5 py-0.5 rounded text-xs font-medium",
+                    getOutcomeStyle(selectedFollowUp.outcome)
+                  )}>
+                    {getOutcomeLabel(selectedFollowUp.outcome)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Contacted By</span>
+                  <span className="text-xs font-medium text-gray-900">
+                    {typeof selectedFollowUp.contactedBy === 'string'
+                      ? selectedFollowUp.contactedBy
+                      : `${selectedFollowUp.contactedBy.firstName} ${selectedFollowUp.contactedBy.lastName}`}
+                  </span>
+                </div>
+                {selectedFollowUp.nextFollowUpDate && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Reminder</span>
+                    <span className={cn(
+                      "text-xs font-medium",
+                      getReminderStyle(selectedFollowUp.nextFollowUpDate)
+                    )}>
+                      {formatDate(selectedFollowUp.nextFollowUpDate)}
+                    </span>
+                  </div>
+                )}
+                {selectedFollowUp.notes && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <span className="text-xs text-gray-500 block mb-1">Notes</span>
+                    <p className="text-xs text-gray-700 whitespace-pre-wrap">{selectedFollowUp.notes}</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Archive Modal */}
+      <AnimatePresence>
+        {showArchiveModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 overflow-y-auto"
+          >
+            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
+                setShowArchiveModal(false)
+                setArchiveReason('')
+              }} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+              >
+                <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                  <div className="sm:flex sm:items-start">
+                    <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 sm:mx-0 sm:h-10 sm:w-10">
+                      <Archive className="h-6 w-6 text-orange-600" />
+                    </div>
+                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                      <h3 className="text-base font-semibold leading-6 text-gray-900">
+                        Archive First Timer
+                      </h3>
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-500">
+                          Are you sure you want to archive {firstTimer?.firstName} {firstTimer?.lastName}? They will be moved to the archived list and can be restored later.
+                        </p>
+                        <div className="mt-4">
+                          <label htmlFor="archiveReason" className="block text-sm font-medium text-gray-700">
+                            Reason (optional)
+                          </label>
+                          <textarea
+                            id="archiveReason"
+                            rows={3}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            placeholder="Enter reason for archiving..."
+                            value={archiveReason}
+                            onChange={(e) => setArchiveReason(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                  <Button
+                    onClick={handleArchive}
+                    disabled={archiveLoading}
+                    className="inline-flex w-full justify-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 sm:ml-3 sm:w-auto"
+                  >
+                    {archiveLoading ? 'Archiving...' : 'Archive'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowArchiveModal(false)
+                      setArchiveReason('')
+                    }}
+                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Photo Modal */}
+      <AnimatePresence>
+        {showPhotoModal && firstTimer?.profilePhotoUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowPhotoModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className="relative max-w-2xl max-h-[80vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowPhotoModal(false)}
+                className="absolute -top-10 right-0 p-2 text-white/80 hover:text-white transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+              <img
+                src={firstTimer.profilePhotoUrl}
+                alt={`${firstTimer.firstName} ${firstTimer.lastName}`}
+                className="max-w-full max-h-[80vh] rounded-lg shadow-2xl object-contain"
+              />
+              <p className="text-center text-white/80 text-sm mt-3">
+                {firstTimer.firstName} {firstTimer.lastName}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Integrate Modal */}
+      <AnimatePresence>
+        {showIntegrateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+            onClick={() => {
+              setShowIntegrateModal(false)
+              setSelectedDistrict('')
+              setSelectedUnit('')
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <UserPlus className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Integrate as Member</h3>
+                    <p className="text-xs text-gray-500">Assign to district and unit</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowIntegrateModal(false)
+                    setSelectedDistrict('')
+                    setSelectedUnit('')
+                  }}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {loadingGroups ? (
+                  <div className="flex items-center justify-center py-8">
+                    <LoadingSpinner size="md" />
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        District <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedDistrict}
+                        onChange={(e) => setSelectedDistrict(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="">Select a district</option>
+                        {districts.map((district) => (
+                          <option key={district._id} value={district._id}>
+                            {district.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Unit <span className="text-gray-400">(optional)</span>
+                      </label>
+                      <select
+                        value={selectedUnit}
+                        onChange={(e) => setSelectedUnit(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="">Select a unit</option>
+                        {units.map((unit) => (
+                          <option key={unit._id} value={unit._id}>
+                            {unit.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-600">
+                        This will create a member record for <strong>{firstTimer?.firstName} {firstTimer?.lastName}</strong> and assign them to the selected district{selectedUnit ? ' and unit' : ''}.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 bg-gray-50">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setShowIntegrateModal(false)
+                    setSelectedDistrict('')
+                    setSelectedUnit('')
+                  }}
+                  disabled={integrateLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleIntegrate}
+                  disabled={!selectedDistrict || integrateLoading || loadingGroups}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {integrateLoading ? 'Integrating...' : 'Integrate'}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   )
 }

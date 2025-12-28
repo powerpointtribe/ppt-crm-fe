@@ -29,12 +29,12 @@ interface FollowUpFormProps {
 }
 
 const contactMethods = [
-  { value: 'phone', label: 'Phone Call' },
+  { value: 'phone', label: 'Phone' },
   { value: 'email', label: 'Email' },
   { value: 'sms', label: 'SMS' },
   { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'visit', label: 'Home Visit' },
-  { value: 'video_call', label: 'Video Call' }
+  { value: 'visit', label: 'Visit' },
+  { value: 'video_call', label: 'Video' }
 ]
 
 const outcomes = [
@@ -43,7 +43,7 @@ const outcomes = [
   { value: 'no_answer', label: 'No Answer' },
   { value: 'busy', label: 'Busy' },
   { value: 'not_interested', label: 'Not Interested' },
-  { value: 'follow_up_needed', label: 'Follow-up Needed' }
+  { value: 'follow_up_needed', label: 'Follow-up' }
 ]
 
 export default function FollowUpForm({
@@ -71,7 +71,6 @@ export default function FollowUpForm({
 
   const watchedMethod = watch('method')
   const watchedOutcome = watch('outcome')
-  const showNextDate = watchedOutcome === 'follow_up_needed' || watchedOutcome === 'no_answer' || watchedOutcome === 'busy'
 
   const handleFormSubmit = async (data: FollowUpFormData) => {
     try {
@@ -94,57 +93,68 @@ export default function FollowUpForm({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 10 }}
         transition={{ duration: 0.15 }}
-        className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden"
+        className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">Add Follow-up</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Add Follow-up</h2>
           <button
             type="button"
             onClick={onCancel}
-            className="p-2 -mr-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-1.5 -mr-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6 space-y-6">
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Date
-            </label>
-            <input
-              type="date"
-              {...register('date')}
-              className={cn(
-                "w-full px-3 py-2 text-sm border rounded-lg transition-colors",
-                "focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent",
-                errors.date ? "border-red-300" : "border-gray-200"
-              )}
-            />
-            {errors.date && (
-              <p className="text-sm text-red-600 mt-1">{errors.date.message}</p>
-            )}
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="p-4 space-y-4">
+          {/* Date Row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Date
+              </label>
+              <input
+                type="date"
+                {...register('date')}
+                className={cn(
+                  "w-full px-2.5 py-1.5 text-sm border rounded-lg transition-colors",
+                  "focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent",
+                  errors.date ? "border-red-300" : "border-gray-200"
+                )}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Notify Me On <span className="text-gray-400">(optional)</span>
+              </label>
+              <input
+                type="date"
+                {...register('nextFollowUpDate')}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                title="You'll receive an email reminder on this date"
+              />
+            </div>
           </div>
 
           {/* Contact Method */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Contact Method
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Method
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-6 gap-1.5">
               {contactMethods.map((method) => (
                 <button
                   key={method.value}
                   type="button"
                   onClick={() => setValue('method', method.value as any)}
                   className={cn(
-                    "px-3 py-2 text-sm font-medium rounded-lg border transition-colors",
+                    "px-1 py-1.5 text-xs font-medium rounded-md border transition-colors",
                     watchedMethod === method.value
                       ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   )}
                 >
                   {method.label}
@@ -152,47 +162,26 @@ export default function FollowUpForm({
               ))}
             </div>
             {errors.method && (
-              <p className="text-sm text-red-600 mt-2">{errors.method.message}</p>
-            )}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Notes
-            </label>
-            <textarea
-              {...register('notes')}
-              rows={3}
-              placeholder="What happened during the follow-up?"
-              className={cn(
-                "w-full px-3 py-2 text-sm border rounded-lg resize-none transition-colors",
-                "focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent",
-                "placeholder:text-gray-400",
-                errors.notes ? "border-red-300" : "border-gray-200"
-              )}
-            />
-            {errors.notes && (
-              <p className="text-sm text-red-600 mt-1">{errors.notes.message}</p>
+              <p className="text-xs text-red-600 mt-1">{errors.method.message}</p>
             )}
           </div>
 
           {/* Outcome */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
               Outcome
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               {outcomes.map((outcome) => (
                 <button
                   key={outcome.value}
                   type="button"
                   onClick={() => setValue('outcome', outcome.value as any)}
                   className={cn(
-                    "px-3 py-2 text-sm font-medium rounded-lg border transition-colors text-left",
+                    "px-2 py-1.5 text-xs font-medium rounded-md border transition-colors",
                     watchedOutcome === outcome.value
                       ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   )}
                 >
                   {outcome.label}
@@ -200,36 +189,37 @@ export default function FollowUpForm({
               ))}
             </div>
             {errors.outcome && (
-              <p className="text-sm text-red-600 mt-2">{errors.outcome.message}</p>
+              <p className="text-xs text-red-600 mt-1">{errors.outcome.message}</p>
             )}
           </div>
 
-          {/* Next Follow-up Date */}
-          {showNextDate && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Next Follow-up Date
-              </label>
-              <input
-                type="date"
-                {...register('nextFollowUpDate')}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                When should you follow up again?
-              </p>
-            </motion.div>
-          )}
+          {/* Notes */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Notes
+            </label>
+            <textarea
+              {...register('notes')}
+              rows={2}
+              placeholder="Brief summary of the follow-up..."
+              className={cn(
+                "w-full px-2.5 py-1.5 text-xs border rounded-lg resize-none transition-colors",
+                "focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent",
+                "placeholder:text-gray-400",
+                errors.notes ? "border-red-300" : "border-gray-200"
+              )}
+            />
+            {errors.notes && (
+              <p className="text-xs text-red-600 mt-1">{errors.notes.message}</p>
+            )}
+          </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-1">
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               onClick={onCancel}
               disabled={loading}
             >
@@ -237,10 +227,11 @@ export default function FollowUpForm({
             </Button>
             <Button
               type="submit"
+              size="sm"
               loading={loading}
               disabled={loading}
             >
-              {loading ? 'Saving...' : 'Save Follow-up'}
+              {loading ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </form>

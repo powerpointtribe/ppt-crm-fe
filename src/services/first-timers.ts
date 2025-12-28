@@ -90,9 +90,9 @@ export interface FirstTimer {
     relationship: string
     phone: string
   }
-  // Engagement status for first-timers (NEW, ENGAGED, CLOSED)
+  // Engagement status for first-timers
   // This is different from membershipStatus used in Members module
-  status: 'NEW' | 'ENGAGED' | 'CLOSED'
+  status: 'NEW' | 'ENGAGED' | 'READY_FOR_INTEGRATION' | 'ARCHIVED' | 'CLOSED'
   assignedTo?: string
   followUpPerson?: string
   giaLeader?: string
@@ -125,9 +125,34 @@ export interface FirstTimer {
     slug?: string
   }
 
+  // Archive fields
+  isArchived: boolean
+  archivedAt?: string
+  archiveReason?: string
+  exemptFromAutoArchive: boolean
+
+  // Ready for Integration fields
+  readyForIntegration: boolean
+  readyForIntegrationDate?: string
+  markedReadyBy?: string | {
+    _id: string
+    firstName: string
+    lastName: string
+  }
+
+  // Profile photo
+  profilePhotoUrl?: string
+
   isActive: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface ArchiveStats {
+  totalArchived: number
+  archivedThisMonth: number
+  exemptFromArchive: number
+  eligibleForArchive: number
 }
 
 export interface CreateFirstTimerData {
@@ -159,6 +184,8 @@ export interface UpdateFirstTimerData extends Partial<CreateFirstTimerData> {
   notes?: string
 }
 
+export type DateRangeFilter = '7days' | '30days' | '3months' | 'all'
+
 export interface FirstTimerSearchParams {
   page?: number
   limit?: number
@@ -174,6 +201,8 @@ export interface FirstTimerSearchParams {
   branchId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+  excludeReadyForIntegration?: boolean
+  dateRange?: DateRangeFilter
 }
 
 export interface PaginatedResponse<T> {
@@ -415,5 +444,81 @@ export const firstTimersService = {
   }> => {
     const response = await apiService.get<ApiResponse<any>>('/first-timers/call-reports/search', { params })
     return transformSingleResponse(response) as any
+  },
+
+  // Archive Management
+  getArchivedFirstTimers: async (params?: FirstTimerSearchParams): Promise<PaginatedResponse<FirstTimer>> => {
+    // Clean params by removing undefined/null values and ensuring page/limit have defaults
+    const cleanParams = params ? Object.fromEntries(
+      Object.entries({
+        ...params,
+        page: params.page || 1,
+        limit: params.limit || 10,
+      }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ) : { page: 1, limit: 10 }
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/archived', { params: cleanParams })
+    return transformPaginatedResponse<FirstTimer>(response)
+  },
+
+  getArchiveStats: async (): Promise<ArchiveStats> => {
+    const response = await apiService.get<ApiResponse<ArchiveStats>>('/first-timers/archive/stats')
+    return transformSingleResponse<ArchiveStats>(response) as ArchiveStats
+  },
+
+  archiveFirstTimer: async (id: string, reason?: string): Promise<FirstTimer> => {
+    const response = await apiService.post<ApiResponse<FirstTimer>>(`/first-timers/${id}/archive`, { reason })
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  unarchiveFirstTimer: async (id: string): Promise<FirstTimer> => {
+    const response = await apiService.post<ApiResponse<FirstTimer>>(`/first-timers/${id}/unarchive`)
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  setExemptFromAutoArchive: async (id: string, exempt: boolean): Promise<FirstTimer> => {
+    const response = await apiService.patch<ApiResponse<FirstTimer>>(`/first-timers/${id}/exempt-from-archive`, { exempt })
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  runAutoArchive: async (): Promise<{ archivedCount: number; archivedIds: string[] }> => {
+    const response = await apiService.post<ApiResponse<any>>('/first-timers/archive/run-auto-archive')
+    return transformSingleResponse(response) as { archivedCount: number; archivedIds: string[] }
+  },
+
+  // Ready for Integration
+  getReadyForIntegration: async (params?: FirstTimerSearchParams): Promise<PaginatedResponse<FirstTimer>> => {
+    const cleanParams = params ? Object.fromEntries(
+      Object.entries({
+        ...params,
+        page: params.page || 1,
+        limit: params.limit || 10,
+      }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ) : { page: 1, limit: 10 }
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/ready-for-integration', { params: cleanParams })
+    return transformPaginatedResponse<FirstTimer>(response)
+  },
+
+  getReadyForIntegrationCount: async (): Promise<number> => {
+    const response = await apiService.get<ApiResponse<{ count: number }>>('/first-timers/ready-for-integration/count')
+    const data = transformSingleResponse(response) as { count: number }
+    return data?.count || 0
+  },
+
+  markReadyForIntegration: async (id: string): Promise<FirstTimer> => {
+    const response = await apiService.post<ApiResponse<FirstTimer>>(`/first-timers/${id}/ready-for-integration`)
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  unmarkReadyForIntegration: async (id: string): Promise<FirstTimer> => {
+    const response = await apiService.post<ApiResponse<FirstTimer>>(`/first-timers/${id}/unmark-ready-for-integration`)
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  integrateFirstTimer: async (id: string, districtId: string, unitId?: string): Promise<{ firstTimer: FirstTimer; memberId: string }> => {
+    const response = await apiService.post<ApiResponse<{ firstTimer: FirstTimer; memberId: string }>>(`/first-timers/${id}/integrate`, {
+      districtId,
+      unitId,
+    })
+    return transformSingleResponse<{ firstTimer: FirstTimer; memberId: string }>(response) as { firstTimer: FirstTimer; memberId: string }
   },
 }

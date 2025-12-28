@@ -5,7 +5,7 @@ import {
   Plus, Phone, Mail, Calendar, User,
   MoreHorizontal, Eye, Edit, Trash2, UserPlus,
   Users, Clock, CheckCircle, TrendingUp, UserCheck,
-  X, Filter
+  X, Filter, Archive, ArchiveRestore, UserCog
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -16,8 +16,9 @@ import FilterModal from '@/components/ui/FilterModal'
 import AssignmentModal from '@/components/ui/AssignmentModal'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
-import { FirstTimer, FirstTimerSearchParams, firstTimersService } from '@/services/first-timers'
+import { FirstTimer, FirstTimerSearchParams, firstTimersService, ArchiveStats, DateRangeFilter } from '@/services/first-timers'
 import { Member, membersService } from '@/services/members'
+import { Group, groupsService } from '@/services/groups'
 import { formatDate } from '@/utils/formatters'
 import { useAppStore } from '@/store'
 
@@ -25,9 +26,30 @@ export default function FirstTimers() {
   const navigate = useNavigate()
   const toast = useToast()
   const { selectedBranch, branches } = useAppStore()
+  const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'archived'>('all')
+  const [dateRange, setDateRange] = useState<DateRangeFilter>('3months')
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
+  const [archiveStats, setArchiveStats] = useState<ArchiveStats | null>(null)
+  const [archiveModalOpen, setArchiveModalOpen] = useState<string | null>(null)
+  const [archiveReason, setArchiveReason] = useState('')
+  const [archiveLoading, setArchiveLoading] = useState(false)
+
+  // Bulk archive modal state
+  const [showBulkArchiveModal, setShowBulkArchiveModal] = useState(false)
+  const [activeFirstTimersForArchive, setActiveFirstTimersForArchive] = useState<FirstTimer[]>([])
+  const [activeFirstTimersLoading, setActiveFirstTimersLoading] = useState(false)
+  const [selectedForArchive, setSelectedForArchive] = useState<string[]>([])
+  const [bulkArchiveReason, setBulkArchiveReason] = useState('')
+  const [archiveSearchTerm, setArchiveSearchTerm] = useState('')
+  const [showBulkIntegrateModal, setShowBulkIntegrateModal] = useState(false)
+  const [integrateLoading, setIntegrateLoading] = useState(false)
+  const [districts, setDistricts] = useState<Group[]>([])
+  const [units, setUnits] = useState<Group[]>([])
+  const [selectedDistrict, setSelectedDistrict] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState('')
+  const [loadingGroups, setLoadingGroups] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [assignedFilter, setAssignedFilter] = useState('')
@@ -53,6 +75,8 @@ export default function FirstTimers() {
   const [statsLoading, setStatsLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [showBulkAssignModal, setShowBulkAssignModal] = useState(false)
+  const [showBulkActionsMenu, setShowBulkActionsMenu] = useState(false)
+  const [bulkActionLoading, setBulkActionLoading] = useState(false)
   const [assignmentLoading, setAssignmentLoading] = useState(false)
   const [members, setMembers] = useState<Member[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
@@ -62,7 +86,7 @@ export default function FirstTimers() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState<any>(null)
 
-  const loadFirstTimers = useCallback(async (page: number = currentPage) => {
+  const loadFirstTimers = useCallback(async (page: number = currentPage, tab: 'all' | 'ready' | 'archived' = activeTab) => {
     try {
       setLoading(true)
       setError(null)
@@ -72,15 +96,27 @@ export default function FirstTimers() {
         page,
         limit: 10,
         search: searchTerm,
-        status: statusFilter || undefined,
+        status: statusFilter as FirstTimer['status'] || undefined,
         assignedTo: assignedFilter || undefined,
         visitorType: visitorTypeFilter || undefined,
         howDidYouHear: howDidYouHearFilter || undefined,
         visitDateFrom: dateFromFilter || undefined,
         visitDateTo: dateToFilter || undefined,
-        branchId: effectiveBranchId
+        branchId: effectiveBranchId,
+        dateRange: dateRange,
       }
-      const response = await firstTimersService.getFirstTimers(params)
+
+      // Use different API based on active tab
+      let response
+      if (tab === 'archived') {
+        response = await firstTimersService.getArchivedFirstTimers(params)
+      } else if (tab === 'ready') {
+        response = await firstTimersService.getReadyForIntegration(params)
+      } else {
+        // "All Visitors" tab - show all first timers (filter by status if selected)
+        response = await firstTimersService.getFirstTimers(params)
+      }
+
       setFirstTimers(response.items || [])
       setPagination(response.pagination)
       setCurrentPage(page)
@@ -94,7 +130,7 @@ export default function FirstTimers() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, currentPage, selectedBranch, branchFilter])
+  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, currentPage, selectedBranch, branchFilter, activeTab, dateRange])
 
   const loadStats = useCallback(async () => {
     try {
@@ -110,15 +146,26 @@ export default function FirstTimers() {
     }
   }, [])
 
+  const loadArchiveStats = useCallback(async () => {
+    try {
+      const archiveStatsData = await firstTimersService.getArchiveStats()
+      setArchiveStats(archiveStatsData)
+    } catch (error) {
+      console.error('Error loading archive stats:', error)
+      setArchiveStats(null)
+    }
+  }, [])
+
   useEffect(() => {
-    // Reset to page 1 when filters change
+    // Reset to page 1 when filters or tab change
     setCurrentPage(1)
-    loadFirstTimers(1)
-  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, selectedBranch])
+    loadFirstTimers(1, activeTab)
+  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, selectedBranch, activeTab])
 
   useEffect(() => {
     loadStats()
-  }, [loadStats])
+    loadArchiveStats()
+  }, [loadStats, loadArchiveStats])
 
   const loadMembers = useCallback(async () => {
     try {
@@ -137,6 +184,21 @@ export default function FirstTimers() {
       loadMembers()
     }
   }, [showBulkAssignModal, loadMembers])
+
+  // Close bulk actions menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showBulkActionsMenu) {
+        const target = event.target as HTMLElement
+        if (!target.closest('[data-bulk-actions-menu]')) {
+          setShowBulkActionsMenu(false)
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showBulkActionsMenu])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -282,6 +344,12 @@ export default function FirstTimers() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'NEW': return 'bg-blue-100 text-blue-800'
+      case 'ENGAGED': return 'bg-yellow-100 text-yellow-800'
+      case 'READY_FOR_INTEGRATION': return 'bg-green-100 text-green-800'
+      case 'ARCHIVED': return 'bg-orange-100 text-orange-800'
+      case 'CLOSED': return 'bg-purple-100 text-purple-800'
+      // Legacy status values
       case 'not_contacted': return 'bg-red-100 text-red-800'
       case 'contacted': return 'bg-blue-100 text-blue-800'
       case 'visited': return 'bg-green-100 text-green-800'
@@ -293,6 +361,12 @@ export default function FirstTimers() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case 'NEW': return 'New'
+      case 'ENGAGED': return 'Engaged'
+      case 'READY_FOR_INTEGRATION': return 'Ready for Integration'
+      case 'ARCHIVED': return 'Archived'
+      case 'CLOSED': return 'Closed'
+      // Legacy status values
       case 'not_contacted': return 'Not Contacted'
       case 'contacted': return 'Contacted'
       case 'visited': return 'Visited'
@@ -357,6 +431,314 @@ export default function FirstTimers() {
     }
   }
 
+  const handleArchive = async (id: string, reason?: string) => {
+    try {
+      setArchiveLoading(true)
+      await firstTimersService.archiveFirstTimer(id, reason)
+      toast.success('Archived', 'First-timer has been archived successfully')
+      setArchiveModalOpen(null)
+      setArchiveReason('')
+      setActionMenuOpen(null)
+      await loadFirstTimers()
+      await loadStats()
+      await loadArchiveStats()
+    } catch (error: any) {
+      console.error('Archive error:', error)
+      toast.error('Archive Failed', error.message || 'Failed to archive first-timer')
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const handleUnarchive = async (id: string) => {
+    try {
+      setArchiveLoading(true)
+      await firstTimersService.unarchiveFirstTimer(id)
+      toast.success('Restored', 'First-timer has been restored successfully')
+      setActionMenuOpen(null)
+      await loadFirstTimers()
+      await loadStats()
+      await loadArchiveStats()
+    } catch (error: any) {
+      console.error('Unarchive error:', error)
+      toast.error('Restore Failed', error.message || 'Failed to restore first-timer')
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const handleTabChange = (tab: 'all' | 'ready' | 'archived') => {
+    setActiveTab(tab)
+    setSelectedIds([])
+    setSearchTerm('')
+    setShowBulkActionsMenu(false)
+    clearAppliedFilters()
+  }
+
+  const handleDateRangeChange = (range: DateRangeFilter) => {
+    setDateRange(range)
+    setCurrentPage(1)
+  }
+
+  // Reload when dateRange changes
+  useEffect(() => {
+    loadFirstTimers(1, activeTab)
+  }, [dateRange])
+
+  // Load active first timers for bulk archive modal
+  const loadActiveFirstTimersForArchive = async () => {
+    try {
+      setActiveFirstTimersLoading(true)
+      const response = await firstTimersService.getFirstTimers({ page: 1, limit: 100 })
+      setActiveFirstTimersForArchive(response.items || [])
+    } catch (error: any) {
+      console.error('Error loading active first timers:', error)
+      toast.error('Failed to load', 'Could not load active first timers')
+    } finally {
+      setActiveFirstTimersLoading(false)
+    }
+  }
+
+  const openBulkArchiveModal = async () => {
+    setShowBulkArchiveModal(true)
+    setSelectedForArchive([])
+    setBulkArchiveReason('')
+    setArchiveSearchTerm('')
+    await loadActiveFirstTimersForArchive()
+  }
+
+  const handleBulkArchive = async () => {
+    if (selectedForArchive.length === 0) {
+      toast.error('No selection', 'Please select at least one first-timer to archive')
+      return
+    }
+
+    try {
+      setArchiveLoading(true)
+      // Archive each selected first timer
+      for (const id of selectedForArchive) {
+        await firstTimersService.archiveFirstTimer(id, bulkArchiveReason || undefined)
+      }
+      toast.success('Archived', `${selectedForArchive.length} first-timer(s) archived successfully`)
+      setShowBulkArchiveModal(false)
+      setSelectedForArchive([])
+      setBulkArchiveReason('')
+      await loadFirstTimers()
+      await loadStats()
+      await loadArchiveStats()
+    } catch (error: any) {
+      console.error('Bulk archive error:', error)
+      toast.error('Archive Failed', error.message || 'Failed to archive first-timers')
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const handleBulkUnarchive = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('No selection', 'Please select at least one first-timer to restore')
+      return
+    }
+
+    try {
+      setArchiveLoading(true)
+      // Unarchive each selected first timer
+      for (const id of selectedIds) {
+        await firstTimersService.unarchiveFirstTimer(id)
+      }
+      toast.success('Restored', `${selectedIds.length} first-timer(s) restored successfully`)
+      setSelectedIds([])
+      await loadFirstTimers()
+      await loadStats()
+      await loadArchiveStats()
+    } catch (error: any) {
+      console.error('Bulk unarchive error:', error)
+      toast.error('Restore Failed', error.message || 'Failed to restore first-timers')
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const handleBulkReadyForIntegration = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('No selection', 'Please select at least one first-timer')
+      return
+    }
+
+    try {
+      setBulkActionLoading(true)
+      setShowBulkActionsMenu(false)
+      let successCount = 0
+      let skipCount = 0
+
+      for (const id of selectedIds) {
+        try {
+          await firstTimersService.markReadyForIntegration(id)
+          successCount++
+        } catch (error: any) {
+          // Skip if already marked
+          if (error.message?.includes('already marked')) {
+            skipCount++
+          } else {
+            throw error
+          }
+        }
+      }
+
+      let message = `${successCount} first-timer(s) marked as ready for integration`
+      if (skipCount > 0) {
+        message += ` (${skipCount} already marked)`
+      }
+      toast.success('Ready for Integration', message)
+      setSelectedIds([])
+      await loadFirstTimers()
+      await loadStats()
+    } catch (error: any) {
+      console.error('Bulk ready for integration error:', error)
+      toast.error('Action Failed', error.message || 'Failed to mark first-timers as ready for integration')
+    } finally {
+      setBulkActionLoading(false)
+    }
+  }
+
+  const handleBulkArchiveSelected = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('No selection', 'Please select at least one first-timer to archive')
+      return
+    }
+
+    try {
+      setBulkActionLoading(true)
+      setShowBulkActionsMenu(false)
+      for (const id of selectedIds) {
+        await firstTimersService.archiveFirstTimer(id)
+      }
+      toast.success('Archived', `${selectedIds.length} first-timer(s) archived successfully`)
+      setSelectedIds([])
+      await loadFirstTimers()
+      await loadStats()
+      await loadArchiveStats()
+    } catch (error: any) {
+      console.error('Bulk archive error:', error)
+      toast.error('Archive Failed', error.message || 'Failed to archive first-timers')
+    } finally {
+      setBulkActionLoading(false)
+    }
+  }
+
+  const handleBulkUnmarkReady = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('No selection', 'Please select at least one first-timer')
+      return
+    }
+
+    try {
+      setBulkActionLoading(true)
+      setShowBulkActionsMenu(false)
+      for (const id of selectedIds) {
+        await firstTimersService.unmarkReadyForIntegration(id)
+      }
+      toast.success('Unmarked', `${selectedIds.length} first-timer(s) unmarked from ready for integration`)
+      setSelectedIds([])
+      await loadFirstTimers()
+      await loadStats()
+    } catch (error: any) {
+      console.error('Bulk unmark ready error:', error)
+      toast.error('Action Failed', error.message || 'Failed to unmark first-timers')
+    } finally {
+      setBulkActionLoading(false)
+    }
+  }
+
+  const openBulkIntegrateModal = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('No selection', 'Please select at least one first-timer to integrate')
+      return
+    }
+    setShowBulkActionsMenu(false)
+    setShowBulkIntegrateModal(true)
+    setLoadingGroups(true)
+    try {
+      const [districtsRes, unitsRes] = await Promise.all([
+        groupsService.getDistricts({ limit: 100 }),
+        groupsService.getUnits({ limit: 100 }),
+      ])
+      setDistricts(districtsRes.items || [])
+      setUnits(unitsRes.items || [])
+    } catch (error) {
+      toast.error('Failed to load groups')
+    } finally {
+      setLoadingGroups(false)
+    }
+  }
+
+  const handleBulkIntegrate = async () => {
+    if (!selectedDistrict) {
+      toast.error('Please select a district')
+      return
+    }
+
+    try {
+      setIntegrateLoading(true)
+      let successCount = 0
+      let failCount = 0
+
+      for (const id of selectedIds) {
+        try {
+          await firstTimersService.integrateFirstTimer(id, selectedDistrict, selectedUnit || undefined)
+          successCount++
+        } catch (error: any) {
+          console.error(`Failed to integrate ${id}:`, error)
+          failCount++
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success('Integration Complete', `${successCount} first-timer(s) integrated successfully${failCount > 0 ? ` (${failCount} failed)` : ''}`)
+      } else {
+        toast.error('Integration Failed', 'No first-timers were integrated')
+      }
+
+      setShowBulkIntegrateModal(false)
+      setSelectedDistrict('')
+      setSelectedUnit('')
+      setSelectedIds([])
+      await loadFirstTimers()
+      await loadStats()
+    } catch (error: any) {
+      console.error('Bulk integrate error:', error)
+      toast.error('Integration Failed', error.message || 'Failed to integrate first-timers')
+    } finally {
+      setIntegrateLoading(false)
+    }
+  }
+
+  const handleSingleIntegrate = async (id: string) => {
+    setSelectedIds([id])
+    setActionMenuOpen(null)
+    await openBulkIntegrateModal()
+  }
+
+  const toggleSelectForArchive = (id: string) => {
+    setSelectedForArchive(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const toggleSelectAllForArchive = () => {
+    const filteredFirstTimers = activeFirstTimersForArchive.filter(ft =>
+      !archiveSearchTerm ||
+      `${ft.firstName} ${ft.lastName}`.toLowerCase().includes(archiveSearchTerm.toLowerCase()) ||
+      ft.phone?.includes(archiveSearchTerm) ||
+      ft.email?.toLowerCase().includes(archiveSearchTerm.toLowerCase())
+    )
+    if (selectedForArchive.length === filteredFirstTimers.length) {
+      setSelectedForArchive([])
+    } else {
+      setSelectedForArchive(filteredFirstTimers.map(ft => ft._id))
+    }
+  }
+
   if (loading && firstTimers.length === 0) {
     return (
       <Layout title="First Timers">
@@ -380,18 +762,17 @@ export default function FirstTimers() {
   }
 
   const statusOptions = [
-    { value: 'new', label: 'New' },
-    { value: 'not_contacted', label: 'Not Contacted' },
-    { value: 'contacted', label: 'Contacted' },
-    { value: 'visited', label: 'Visited' },
-    { value: 'converted', label: 'Converted' },
-    { value: 'lost_contact', label: 'Lost Contact' },
+    { value: 'NEW', label: 'New' },
+    { value: 'ENGAGED', label: 'Engaged' },
+    { value: 'READY_FOR_INTEGRATION', label: 'Ready for Integration' },
+    { value: 'ARCHIVED', label: 'Archived' },
+    { value: 'CLOSED', label: 'Closed (Converted)' },
   ]
 
   return (
     <Layout title="First Timers" subtitle="Manage visitors and follow-ups">
       <div className="space-y-6">
-        {/* Overview Stats */}
+        {/* Overview Stats - show on all tabs */}
         {(stats || statsLoading) && (
           <div className="relative">
             {statsLoading && (
@@ -399,77 +780,152 @@ export default function FirstTimers() {
                 <LoadingSpinner size="md" />
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Visitors</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats?.total || 0}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="bg-white rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Visitors</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats?.total || 0}</p>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Users className="h-5 w-5 text-blue-600" />
+                  </div>
                 </div>
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Users className="h-5 w-5 text-blue-600" />
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Need Follow-up</p>
-                  <p className="text-2xl font-bold text-orange-600">{stats?.needingFollowUp || 0}</p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="bg-white rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Ready for Integration</p>
+                    <p className="text-2xl font-bold text-green-600">{stats?.readyForIntegration || 0}</p>
+                  </div>
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <UserCog className="h-5 w-5 text-green-600" />
+                  </div>
                 </div>
-                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-orange-600" />
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Converted</p>
-                  <p className="text-2xl font-bold text-green-600">{stats?.converted || 0}</p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="bg-white rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
+                    <p className="text-2xl font-bold text-purple-600">{stats?.conversionRate || 0}%</p>
+                  </div>
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-purple-600" />
+                  </div>
                 </div>
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">This Month</p>
-                  <p className="text-2xl font-bold text-purple-600">{stats?.thisMonth || 0}</p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="bg-white rounded-lg border border-gray-200 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Archived</p>
+                    <p className="text-2xl font-bold text-orange-600">{stats?.totalArchived || 0}</p>
+                  </div>
+                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <Archive className="h-5 w-5 text-orange-600" />
+                  </div>
                 </div>
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5 text-purple-600" />
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
             </div>
           </div>
         )}
+
+        {/* Date Range Selector and Tabs */}
+        <div className="flex items-center justify-between border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => handleTabChange('all')}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeTab === 'all'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              All Visitors
+              {stats && (
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'all' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {stats.total ?? 0}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange('ready')}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeTab === 'ready'
+                  ? 'border-green-500 text-green-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <UserCog className="h-4 w-4" />
+              Ready for Integration
+              {stats && (
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'ready' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {stats.readyForIntegration || 0}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange('archived')}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeTab === 'archived'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Archive className="h-4 w-4" />
+              Archived
+              {stats && (
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'archived' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {stats.totalArchived || 0}
+                </span>
+              )}
+            </button>
+          </nav>
+
+          {/* Date Range Selector */}
+          <div className="flex items-center gap-2 pb-3">
+            <span className="text-sm text-gray-500">Showing:</span>
+            <select
+              value={dateRange}
+              onChange={(e) => handleDateRangeChange(e.target.value as DateRangeFilter)}
+              className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="7days">Last 7 days</option>
+              <option value="30days">Last 30 days</option>
+              <option value="3months">Last 3 months</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
+        </div>
 
         {/* Page Toolbar with Search, Filters, and Actions */}
         <PageToolbar
@@ -510,23 +966,34 @@ export default function FirstTimers() {
             </div>
           }
           primaryActions={
-            <>
+            activeTab === 'all' ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/my-assigned-first-timers')}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  My Assignments
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/first-timers/new')}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Visitor
+                </Button>
+              </>
+            ) : activeTab === 'archived' ? (
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() => navigate('/my-assigned-first-timers')}
+                onClick={openBulkArchiveModal}
+                className="bg-orange-600 hover:bg-orange-700"
               >
-                <UserCheck className="h-4 w-4 mr-2" />
-                My Assignments
+                <Archive className="h-4 w-4 mr-2" />
+                Archive Visitors
               </Button>
-              <Button
-                size="sm"
-                onClick={() => navigate('/first-timers/new')}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Visitor
-              </Button>
-            </>
+            ) : null
           }
         />
 
@@ -537,15 +1004,41 @@ export default function FirstTimers() {
           </div>
         ) : firstTimers.length === 0 ? (
           <div className="text-center py-16">
-            <UserPlus className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-gray-900 mb-2">No visitors found</h3>
-            <p className="text-gray-500 mb-6">
-              {searchTerm || statusFilter ? 'Try adjusting your search or filters' : 'Add your first visitor to get started'}
-            </p>
-            <Button onClick={() => navigate('/first-timers/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Visitor
-            </Button>
+            {activeTab === 'archived' ? (
+              <>
+                <Archive className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-gray-900 mb-2">No archived visitors</h3>
+                <p className="text-gray-500 mb-6">
+                  {searchTerm ? 'Try adjusting your search' : 'Archived first-timers will appear here'}
+                </p>
+                <Button variant="secondary" onClick={() => handleTabChange('all')}>
+                  View All Visitors
+                </Button>
+              </>
+            ) : activeTab === 'ready' ? (
+              <>
+                <UserCog className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-gray-900 mb-2">No visitors ready for integration</h3>
+                <p className="text-gray-500 mb-6">
+                  {searchTerm ? 'Try adjusting your search' : 'First-timers marked as ready for integration will appear here'}
+                </p>
+                <Button variant="secondary" onClick={() => handleTabChange('all')}>
+                  View All Visitors
+                </Button>
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-gray-900 mb-2">No visitors found</h3>
+                <p className="text-gray-500 mb-6">
+                  {searchTerm || statusFilter ? 'Try adjusting your search or filters' : 'Add your first visitor to get started'}
+                </p>
+                <Button onClick={() => navigate('/first-timers/new')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Visitor
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -554,31 +1047,118 @@ export default function FirstTimers() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4"
+                className={`${activeTab === 'all' ? 'bg-blue-50 border-blue-200' : activeTab === 'ready' ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} border rounded-lg p-4 mb-4`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <span className="text-sm font-medium text-blue-900">
+                    <span className={`text-sm font-medium ${activeTab === 'all' ? 'text-blue-900' : activeTab === 'ready' ? 'text-green-900' : 'text-orange-900'}`}>
                       {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''} selected
                     </span>
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => setSelectedIds([])}
-                      className="text-blue-700 hover:text-blue-800"
+                      className={activeTab === 'all' ? 'text-blue-700 hover:text-blue-800' : activeTab === 'ready' ? 'text-green-700 hover:text-green-800' : 'text-orange-700 hover:text-orange-800'}
                     >
                       Clear selection
                     </Button>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button
-                      onClick={() => setShowBulkAssignModal(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                      size="sm"
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Assign for Follow-up
-                    </Button>
+                    {activeTab === 'archived' ? (
+                      <Button
+                        onClick={handleBulkUnarchive}
+                        disabled={archiveLoading}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        size="sm"
+                      >
+                        <ArchiveRestore className="h-4 w-4 mr-2" />
+                        {archiveLoading ? 'Restoring...' : 'Restore Selected'}
+                      </Button>
+                    ) : (
+                      <div className="relative" data-bulk-actions-menu>
+                        <Button
+                          onClick={() => setShowBulkActionsMenu(!showBulkActionsMenu)}
+                          disabled={bulkActionLoading}
+                          className={`${activeTab === 'all' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+                          size="sm"
+                        >
+                          {bulkActionLoading ? (
+                            <>
+                              <LoadingSpinner size="sm" className="mr-2" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <MoreHorizontal className="h-4 w-4 mr-2" />
+                              Bulk Actions
+                            </>
+                          )}
+                        </Button>
+
+                        {showBulkActionsMenu && (
+                          <div className="absolute right-0 bottom-full mb-1 w-48 bg-white rounded-md shadow-lg border z-20">
+                            <div className="py-1">
+                              {activeTab === 'all' && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setShowBulkActionsMenu(false)
+                                      setShowBulkAssignModal(true)
+                                    }}
+                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <UserPlus className="h-3.5 w-3.5 mr-2 text-blue-600" />
+                                    Assign for Follow-up
+                                  </button>
+                                  <button
+                                    onClick={handleBulkReadyForIntegration}
+                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <CheckCircle className="h-3.5 w-3.5 mr-2 text-green-600" />
+                                    Ready for Integration
+                                  </button>
+                                  <button
+                                    onClick={handleBulkArchiveSelected}
+                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <Archive className="h-3.5 w-3.5 mr-2 text-orange-600" />
+                                    Archive Selected
+                                  </button>
+                                </>
+                              )}
+                              {activeTab === 'ready' && (
+                                <>
+                                  <button
+                                    onClick={openBulkIntegrateModal}
+                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <UserPlus className="h-3.5 w-3.5 mr-2 text-green-600" />
+                                    Integrate Selected
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setShowBulkActionsMenu(false)
+                                      setShowBulkAssignModal(true)
+                                    }}
+                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <UserCheck className="h-3.5 w-3.5 mr-2 text-blue-600" />
+                                    Assign for Follow-up
+                                  </button>
+                                  <button
+                                    onClick={handleBulkUnmarkReady}
+                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <X className="h-3.5 w-3.5 mr-2 text-gray-600" />
+                                    Unmark Ready
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -612,9 +1192,10 @@ export default function FirstTimers() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2, delay: index * 0.02 }}
-                      className="hover:bg-gray-50 transition-colors duration-150"
+                      className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => navigate(`/first-timers/${visitor._id}`)}
                     >
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(visitor._id)}
@@ -676,7 +1257,7 @@ export default function FirstTimers() {
                           <span className="text-sm text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-center">
                           <div className="relative">
                             <Button
@@ -689,7 +1270,7 @@ export default function FirstTimers() {
                             </Button>
 
                             {actionMenuOpen === visitor._id && (
-                              <div className="absolute right-0 mt-1 w-40 bg-white rounded-md shadow-lg border z-10">
+                              <div className="absolute right-0 bottom-full mb-1 w-44 bg-white rounded-md shadow-lg border z-10">
                                 <div className="py-1">
                                   <button
                                     onClick={() => {
@@ -711,6 +1292,34 @@ export default function FirstTimers() {
                                     <Edit className="h-3 w-3 mr-2" />
                                     Edit
                                   </button>
+                                  {activeTab === 'all' && (
+                                    <button
+                                      onClick={() => setArchiveModalOpen(visitor._id)}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-orange-600 hover:bg-orange-50"
+                                    >
+                                      <Archive className="h-3 w-3 mr-2" />
+                                      Archive
+                                    </button>
+                                  )}
+                                  {activeTab === 'ready' && (
+                                    <button
+                                      onClick={() => handleSingleIntegrate(visitor._id)}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-green-600 hover:bg-green-50"
+                                    >
+                                      <UserPlus className="h-3 w-3 mr-2" />
+                                      Integrate
+                                    </button>
+                                  )}
+                                  {activeTab === 'archived' && (
+                                    <button
+                                      onClick={() => handleUnarchive(visitor._id)}
+                                      disabled={archiveLoading}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-green-600 hover:bg-green-50 disabled:opacity-50"
+                                    >
+                                      <ArchiveRestore className="h-3 w-3 mr-2" />
+                                      Restore
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => handleDelete(visitor._id)}
                                     className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -902,6 +1511,321 @@ export default function FirstTimers() {
           onToChange: setTempDateTo,
         }}
       />
+
+      {/* Archive Modal */}
+      {archiveModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
+              setArchiveModalOpen(null)
+              setArchiveReason('')
+            }} />
+            <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+              <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <Archive className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                    <h3 className="text-base font-semibold leading-6 text-gray-900">
+                      Archive First Timer
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">
+                        Are you sure you want to archive this first-timer? They will be moved to the archived list and can be restored later.
+                      </p>
+                      <div className="mt-4">
+                        <label htmlFor="archiveReason" className="block text-sm font-medium text-gray-700">
+                          Reason (optional)
+                        </label>
+                        <textarea
+                          id="archiveReason"
+                          rows={3}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                          placeholder="Enter reason for archiving..."
+                          value={archiveReason}
+                          onChange={(e) => setArchiveReason(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                <Button
+                  onClick={() => handleArchive(archiveModalOpen, archiveReason)}
+                  disabled={archiveLoading}
+                  className="inline-flex w-full justify-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 sm:ml-3 sm:w-auto"
+                >
+                  {archiveLoading ? 'Archiving...' : 'Archive'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setArchiveModalOpen(null)
+                    setArchiveReason('')
+                  }}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Integrate Modal */}
+      {showBulkIntegrateModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
+              setShowBulkIntegrateModal(false)
+              setSelectedDistrict('')
+              setSelectedUnit('')
+            }} />
+            <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+              <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <UserPlus className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                    <h3 className="text-base font-semibold leading-6 text-gray-900">
+                      Integrate {selectedIds.length} First-Timer{selectedIds.length !== 1 ? 's' : ''}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Assign to a district to create member records
+                    </p>
+                  </div>
+                </div>
+
+                {loadingGroups ? (
+                  <div className="flex items-center justify-center py-8">
+                    <LoadingSpinner size="md" />
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        District <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedDistrict}
+                        onChange={(e) => setSelectedDistrict(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="">Select a district</option>
+                        {districts.map((district) => (
+                          <option key={district._id} value={district._id}>
+                            {district.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Unit <span className="text-gray-400">(optional)</span>
+                      </label>
+                      <select
+                        value={selectedUnit}
+                        onChange={(e) => setSelectedUnit(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="">Select a unit</option>
+                        {units.map((unit) => (
+                          <option key={unit._id} value={unit._id}>
+                            {unit.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-600">
+                        This will create member records for the selected first-timers and assign them to the chosen district{selectedUnit ? ' and unit' : ''}.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                <button
+                  onClick={handleBulkIntegrate}
+                  disabled={integrateLoading || !selectedDistrict || loadingGroups}
+                  className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml-3 sm:w-auto disabled:opacity-50"
+                >
+                  {integrateLoading ? 'Integrating...' : `Integrate ${selectedIds.length} Visitor${selectedIds.length !== 1 ? 's' : ''}`}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowBulkIntegrateModal(false)
+                    setSelectedDistrict('')
+                    setSelectedUnit('')
+                  }}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Archive Modal */}
+      {showBulkArchiveModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
+              setShowBulkArchiveModal(false)
+              setSelectedForArchive([])
+              setBulkArchiveReason('')
+              setArchiveSearchTerm('')
+            }} />
+            <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl max-h-[90vh] flex flex-col">
+              <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4 flex-shrink-0">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <Archive className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                    <h3 className="text-base font-semibold leading-6 text-gray-900">
+                      Archive Visitors
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Select first-timers to move to the archive
+                    </p>
+                  </div>
+                </div>
+
+                {/* Search */}
+                <div className="mt-4">
+                  <input
+                    type="text"
+                    placeholder="Search by name, phone, or email..."
+                    value={archiveSearchTerm}
+                    onChange={(e) => setArchiveSearchTerm(e.target.value)}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+                  />
+                </div>
+
+                {/* Select all */}
+                {activeFirstTimersForArchive.length > 0 && (
+                  <div className="mt-3 flex items-center justify-between">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedForArchive.length === activeFirstTimersForArchive.filter(ft =>
+                          !archiveSearchTerm ||
+                          `${ft.firstName} ${ft.lastName}`.toLowerCase().includes(archiveSearchTerm.toLowerCase()) ||
+                          ft.phone?.includes(archiveSearchTerm) ||
+                          ft.email?.toLowerCase().includes(archiveSearchTerm.toLowerCase())
+                        ).length && selectedForArchive.length > 0}
+                        onChange={toggleSelectAllForArchive}
+                        className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Select all</span>
+                    </label>
+                    <span className="text-sm text-gray-500">
+                      {selectedForArchive.length} selected
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* First Timers List */}
+              <div className="px-4 sm:px-6 overflow-y-auto flex-1 max-h-[40vh]">
+                {activeFirstTimersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <LoadingSpinner size="md" />
+                  </div>
+                ) : activeFirstTimersForArchive.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No active first-timers found
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {activeFirstTimersForArchive
+                      .filter(ft =>
+                        !archiveSearchTerm ||
+                        `${ft.firstName} ${ft.lastName}`.toLowerCase().includes(archiveSearchTerm.toLowerCase()) ||
+                        ft.phone?.includes(archiveSearchTerm) ||
+                        ft.email?.toLowerCase().includes(archiveSearchTerm.toLowerCase())
+                      )
+                      .map(ft => (
+                        <label
+                          key={ft._id}
+                          className="flex items-center py-3 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedForArchive.includes(ft._id)}
+                            onChange={() => toggleSelectForArchive(ft._id)}
+                            className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                          />
+                          <div className="ml-3 flex-1">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {ft.firstName} {ft.lastName}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {ft.phone || ft.email || 'No contact info'}
+                                </p>
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {formatDate(ft.dateOfVisit)}
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Reason Input */}
+              <div className="px-4 sm:px-6 py-4 border-t border-gray-200 flex-shrink-0">
+                <label htmlFor="bulkArchiveReason" className="block text-sm font-medium text-gray-700">
+                  Archive Reason (optional)
+                </label>
+                <textarea
+                  id="bulkArchiveReason"
+                  rows={2}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+                  placeholder="Enter reason for archiving..."
+                  value={bulkArchiveReason}
+                  onChange={(e) => setBulkArchiveReason(e.target.value)}
+                />
+              </div>
+
+              <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 flex-shrink-0">
+                <Button
+                  onClick={handleBulkArchive}
+                  disabled={archiveLoading || selectedForArchive.length === 0}
+                  className="inline-flex w-full justify-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 sm:ml-3 sm:w-auto disabled:opacity-50"
+                >
+                  {archiveLoading ? 'Archiving...' : `Archive ${selectedForArchive.length} Visitor${selectedForArchive.length !== 1 ? 's' : ''}`}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowBulkArchiveModal(false)
+                    setSelectedForArchive([])
+                    setBulkArchiveReason('')
+                    setArchiveSearchTerm('')
+                  }}
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

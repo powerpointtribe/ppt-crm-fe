@@ -317,8 +317,15 @@ export const firstTimersService = {
   },
 
   // Public registration
-  createPublicFirstTimer: async (data: Partial<CreateFirstTimerData>): Promise<any> => {
-    const response = await apiService.post<ApiResponse<any>>('/first-timers/public', data)
+  createPublicFirstTimer: async (data: Partial<CreateFirstTimerData> & { branchSlug?: string }): Promise<any> => {
+    const { branchSlug, ...firstTimerData } = data
+
+    // Use branch-specific endpoint if branchSlug is provided
+    const endpoint = branchSlug
+      ? `/first-timers/public/branches/${branchSlug}`
+      : '/first-timers/public'
+
+    const response = await apiService.post<ApiResponse<any>>(endpoint, firstTimerData)
     return response.data?.data || response.data
   },
 

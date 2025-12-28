@@ -650,11 +650,14 @@ export default function FirstTimers() {
     }
   }
 
-  const openBulkIntegrateModal = async () => {
-    if (selectedIds.length === 0) {
+  const [integrateIds, setIntegrateIds] = useState<string[]>([])
+
+  const openIntegrateModal = async (ids: string[]) => {
+    if (ids.length === 0) {
       toast.error('No selection', 'Please select at least one first-timer to integrate')
       return
     }
+    setIntegrateIds(ids)
     setShowBulkActionsMenu(false)
     setShowBulkIntegrateModal(true)
     setLoadingGroups(true)
@@ -672,7 +675,7 @@ export default function FirstTimers() {
     }
   }
 
-  const handleBulkIntegrate = async () => {
+  const handleIntegrate = async () => {
     if (!selectedDistrict) {
       toast.error('Please select a district')
       return
@@ -683,7 +686,7 @@ export default function FirstTimers() {
       let successCount = 0
       let failCount = 0
 
-      for (const id of selectedIds) {
+      for (const id of integrateIds) {
         try {
           await firstTimersService.integrateFirstTimer(id, selectedDistrict, selectedUnit || undefined)
           successCount++
@@ -702,21 +705,21 @@ export default function FirstTimers() {
       setShowBulkIntegrateModal(false)
       setSelectedDistrict('')
       setSelectedUnit('')
+      setIntegrateIds([])
       setSelectedIds([])
       await loadFirstTimers()
       await loadStats()
     } catch (error: any) {
-      console.error('Bulk integrate error:', error)
+      console.error('Integrate error:', error)
       toast.error('Integration Failed', error.message || 'Failed to integrate first-timers')
     } finally {
       setIntegrateLoading(false)
     }
   }
 
-  const handleSingleIntegrate = async (id: string) => {
-    setSelectedIds([id])
+  const handleSingleIntegrate = (id: string) => {
     setActionMenuOpen(null)
-    await openBulkIntegrateModal()
+    openIntegrateModal([id])
   }
 
   const toggleSelectForArchive = (id: string) => {
@@ -1129,7 +1132,7 @@ export default function FirstTimers() {
                               {activeTab === 'ready' && (
                                 <>
                                   <button
-                                    onClick={openBulkIntegrateModal}
+                                    onClick={() => openIntegrateModal(selectedIds)}
                                     className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
                                   >
                                     <UserPlus className="h-3.5 w-3.5 mr-2 text-green-600" />
@@ -1583,6 +1586,7 @@ export default function FirstTimers() {
               setShowBulkIntegrateModal(false)
               setSelectedDistrict('')
               setSelectedUnit('')
+              setIntegrateIds([])
             }} />
             <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
               <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
@@ -1592,7 +1596,7 @@ export default function FirstTimers() {
                   </div>
                   <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
                     <h3 className="text-base font-semibold leading-6 text-gray-900">
-                      Integrate {selectedIds.length} First-Timer{selectedIds.length !== 1 ? 's' : ''}
+                      Integrate {integrateIds.length} First-Timer{integrateIds.length !== 1 ? 's' : ''}
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">
                       Assign to a district to create member records
@@ -1652,17 +1656,18 @@ export default function FirstTimers() {
               </div>
               <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
                 <button
-                  onClick={handleBulkIntegrate}
+                  onClick={handleIntegrate}
                   disabled={integrateLoading || !selectedDistrict || loadingGroups}
                   className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml-3 sm:w-auto disabled:opacity-50"
                 >
-                  {integrateLoading ? 'Integrating...' : `Integrate ${selectedIds.length} Visitor${selectedIds.length !== 1 ? 's' : ''}`}
+                  {integrateLoading ? 'Integrating...' : `Integrate ${integrateIds.length} Visitor${integrateIds.length !== 1 ? 's' : ''}`}
                 </button>
                 <button
                   onClick={() => {
                     setShowBulkIntegrateModal(false)
                     setSelectedDistrict('')
                     setSelectedUnit('')
+                    setIntegrateIds([])
                   }}
                   className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
                 >

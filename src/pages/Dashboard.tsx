@@ -164,7 +164,7 @@ export default function Dashboard() {
       const [dashboardData, serviceStats, recentAuditLogs] = await Promise.all([
         dashboardService.getStats(range.startDate, range.endDate, effectiveBranchId),
         serviceReportsService.getServiceReportStats({ dateFrom: range.startDate, dateTo: range.endDate, branchId: effectiveBranchId }).catch(() => null),
-        auditService.getRecentActivity(10, range.startDate, range.endDate).catch(() => [])
+        auditService.getRecentActivity(5, range.startDate, range.endDate).catch(() => [])
       ])
 
       console.log('Dashboard data received:', dashboardData)
@@ -625,13 +625,6 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                {auditLogs.length > 0 && (
-                  <div className="mt-6 pt-4 border-t border-border">
-                    <Button variant="ghost" size="sm" className="w-full text-sm" onClick={() => navigate('/audit/logs')}>
-                      View Full Audit Trail
-                    </Button>
-                  </div>
-                )}
               </div>
             </Card>
           </motion.div>

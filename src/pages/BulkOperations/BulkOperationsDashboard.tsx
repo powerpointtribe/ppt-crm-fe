@@ -79,6 +79,11 @@ export default function BulkOperationsDashboard() {
     entityType: 'members',
     entityName: ''
   })
+
+  // Pagination for recent operations
+  const [recentOpsPage, setRecentOpsPage] = useState(1)
+  const recentOpsLimit = 10
+
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -480,7 +485,9 @@ export default function BulkOperationsDashboard() {
                 </div>
 
                 <div className="space-y-4">
-                  {(stats?.recentActivity || []).map((activity, index) => {
+                  {(stats?.recentActivity || [])
+                    .slice((recentOpsPage - 1) * recentOpsLimit, recentOpsPage * recentOpsLimit)
+                    .map((activity, index) => {
                     const getOperationIcon = (type: string) => {
                       switch (type) {
                         case 'upload': return Upload
@@ -547,16 +554,39 @@ export default function BulkOperationsDashboard() {
                   })}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-sm"
-                    onClick={() => setActiveView('history')}
-                  >
-                    View All Operations
-                  </Button>
-                </div>
+                {/* Pagination */}
+                {(stats?.recentActivity || []).length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {Math.min((recentOpsPage - 1) * recentOpsLimit + 1, (stats?.recentActivity || []).length)} to{' '}
+                        {Math.min(recentOpsPage * recentOpsLimit, (stats?.recentActivity || []).length)} of{' '}
+                        {(stats?.recentActivity || []).length} operations
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setRecentOpsPage(prev => Math.max(prev - 1, 1))}
+                          disabled={recentOpsPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground px-2">
+                          Page {recentOpsPage} of {Math.ceil((stats?.recentActivity || []).length / recentOpsLimit) || 1}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setRecentOpsPage(prev => Math.min(prev + 1, Math.ceil((stats?.recentActivity || []).length / recentOpsLimit)))}
+                          disabled={recentOpsPage >= Math.ceil((stats?.recentActivity || []).length / recentOpsLimit)}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           </motion.div>

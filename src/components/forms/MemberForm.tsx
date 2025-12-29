@@ -261,15 +261,25 @@ export default function MemberForm({
         return undefined
       }
 
+      // Helper to validate Nigerian phone number
+      const isValidNigerianPhone = (phone: string | undefined): boolean => {
+        if (!phone) return false
+        return /^(\+234|0)[789][01]\d{8}$/.test(phone)
+      }
+
       // Build transformed data - only include fields with valid values
       const transformedData: any = {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
-        phone: data.phone,
         gender: data.gender,
         maritalStatus: data.maritalStatus,
         membershipStatus: data.membershipStatus,
+      }
+
+      // Only include phone if it's a valid Nigerian number format
+      if (isValidNigerianPhone(data.phone)) {
+        transformedData.phone = data.phone
       }
 
       // Handle dates

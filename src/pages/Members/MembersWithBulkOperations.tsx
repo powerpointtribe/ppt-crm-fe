@@ -620,7 +620,7 @@ export default function MembersWithBulkOperations() {
         </Card>
 
         {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
+        {pagination && pagination.total > 0 && (
           <div className="flex justify-center">
             <div className="flex gap-2">
               <Button

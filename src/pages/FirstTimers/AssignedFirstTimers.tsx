@@ -365,7 +365,7 @@ export default function AssignedFirstTimers() {
             </div>
 
             {/* Pagination Controls */}
-            {pagination && pagination.totalPages > 1 && (
+            {pagination && pagination.total > 0 && (
               <div className="bg-white rounded-lg border border-gray-200 px-4 py-3 flex items-center justify-between sm:px-6 mt-6">
                 <div className="flex-1 flex justify-between sm:hidden">
                   {/* Mobile pagination */}

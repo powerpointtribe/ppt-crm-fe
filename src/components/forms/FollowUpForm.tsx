@@ -9,14 +9,24 @@ import { cn } from '@/utils/cn'
 
 const followUpSchema = z.object({
   date: z.string().min(1, 'Date is required'),
-  method: z.enum(['phone', 'email', 'sms', 'whatsapp', 'visit', 'video_call'], {
+  method: z.enum(['phone', 'email', 'sms', 'whatsapp', 'visit', 'video_call', 'in_visit'], {
     required_error: 'Select a contact method'
   }),
   notes: z.string().min(1, 'Notes are required'),
   outcome: z.enum(['successful', 'no_answer', 'busy', 'not_interested', 'interested', 'follow_up_needed'], {
     required_error: 'Select an outcome'
   }),
-  nextFollowUpDate: z.string().optional()
+  nextFollowUpDate: z.string().optional(),
+  visitNumber: z.number().min(2).max(4).optional()
+}).refine((data) => {
+  // If method is in_visit, visitNumber is required
+  if (data.method === 'in_visit' && !data.visitNumber) {
+    return false
+  }
+  return true
+}, {
+  message: 'Please select the visit number',
+  path: ['visitNumber']
 })
 
 type FollowUpFormData = z.infer<typeof followUpSchema>
@@ -34,7 +44,8 @@ const contactMethods = [
   { value: 'sms', label: 'SMS' },
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'visit', label: 'Visit' },
-  { value: 'video_call', label: 'Video' }
+  { value: 'video_call', label: 'Video' },
+  { value: 'in_visit', label: 'In-Visit' }
 ]
 
 const outcomes = [
@@ -44,6 +55,12 @@ const outcomes = [
   { value: 'busy', label: 'Busy' },
   { value: 'not_interested', label: 'Not Interested' },
   { value: 'follow_up_needed', label: 'Follow-up' }
+]
+
+const visitNumbers = [
+  { value: 2, label: '2nd Visit' },
+  { value: 3, label: '3rd Visit' },
+  { value: 4, label: '4th Visit' }
 ]
 
 export default function FollowUpForm({
@@ -65,18 +82,28 @@ export default function FollowUpForm({
       method: initialData?.method,
       notes: initialData?.notes || '',
       outcome: initialData?.outcome,
-      nextFollowUpDate: initialData?.nextFollowUpDate || ''
+      nextFollowUpDate: initialData?.nextFollowUpDate || '',
+      visitNumber: initialData?.visitNumber
     }
   })
 
   const watchedMethod = watch('method')
   const watchedOutcome = watch('outcome')
+  const watchedVisitNumber = watch('visitNumber')
 
   const handleFormSubmit = async (data: FollowUpFormData) => {
     try {
       await onSubmit(data)
     } catch (error) {
       console.error('Follow-up form submission error:', error)
+    }
+  }
+
+  const handleMethodChange = (methodValue: string) => {
+    setValue('method', methodValue as any)
+    // Clear visitNumber if method is not in_visit
+    if (methodValue !== 'in_visit') {
+      setValue('visitNumber', undefined)
     }
   }
 
@@ -130,11 +157,11 @@ export default function FollowUpForm({
                 Notify Me On <span className="text-gray-400">(optional)</span>
               </label>
               <input
-                type="date"
+                type="datetime-local"
                 {...register('nextFollowUpDate')}
-                min={new Date().toISOString().split('T')[0]}
+                min={new Date().toISOString().slice(0, 16)}
                 className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                title="You'll receive an email reminder on this date"
+                title="You'll receive an email reminder at this date and time"
               />
             </div>
           </div>
@@ -144,16 +171,18 @@ export default function FollowUpForm({
             <label className="block text-xs font-medium text-gray-700 mb-1.5">
               Method
             </label>
-            <div className="grid grid-cols-6 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               {contactMethods.map((method) => (
                 <button
                   key={method.value}
                   type="button"
-                  onClick={() => setValue('method', method.value as any)}
+                  onClick={() => handleMethodChange(method.value)}
                   className={cn(
-                    "px-1 py-1.5 text-xs font-medium rounded-md border transition-colors",
+                    "px-2 py-2 text-xs font-medium rounded-lg border transition-colors",
                     watchedMethod === method.value
-                      ? "bg-gray-900 text-white border-gray-900"
+                      ? method.value === 'in_visit'
+                        ? "bg-purple-600 text-white border-purple-600"
+                        : "bg-gray-900 text-white border-gray-900"
                       : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   )}
                 >
@@ -165,6 +194,40 @@ export default function FollowUpForm({
               <p className="text-xs text-red-600 mt-1">{errors.method.message}</p>
             )}
           </div>
+
+          {/* Visit Number - Only shown when method is in_visit */}
+          {watchedMethod === 'in_visit' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Which Visit?
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {visitNumbers.map((visit) => (
+                  <button
+                    key={visit.value}
+                    type="button"
+                    onClick={() => setValue('visitNumber', visit.value)}
+                    className={cn(
+                      "px-3 py-2 text-sm font-medium rounded-lg border transition-colors",
+                      watchedVisitNumber === visit.value
+                        ? "bg-purple-600 text-white border-purple-600"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50"
+                    )}
+                  >
+                    {visit.label}
+                  </button>
+                ))}
+              </div>
+              {errors.visitNumber && (
+                <p className="text-xs text-red-600 mt-1">{errors.visitNumber.message}</p>
+              )}
+            </motion.div>
+          )}
 
           {/* Outcome */}
           <div>

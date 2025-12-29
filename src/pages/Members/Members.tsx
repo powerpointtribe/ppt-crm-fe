@@ -16,7 +16,13 @@ import {
   Filter,
   Building2,
   Users,
-  Home
+  Home,
+  Cake,
+  BarChart3,
+  TrendingUp,
+  UserCheck,
+  UserX,
+  Heart
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
@@ -63,15 +69,19 @@ export default function Members() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState<'assigned' | 'unassigned'>('assigned')
+  const [activeTab, setActiveTab] = useState<'assigned' | 'birthdays' | 'analytics'>('assigned')
+  const [birthdayTimeFilter, setBirthdayTimeFilter] = useState<'past' | 'today' | 'future'>('today')
   const [searchParams, setSearchParams] = useState<MemberSearchParams>({
     page: 1,
-    limit: 20,
+    limit: 10,
     search: ''
   })
   const [pagination, setPagination] = useState<any>(null)
   const [assignedCount, setAssignedCount] = useState(0)
-  const [unassignedCount, setUnassignedCount] = useState(0)
+  const [birthdayCount, setBirthdayCount] = useState(0)
+  const [allFilteredMembers, setAllFilteredMembers] = useState<Member[]>([])
+  const [analyticsStats, setAnalyticsStats] = useState<any>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [districts, setDistricts] = useState<Group[]>([])
@@ -206,7 +216,7 @@ export default function Members() {
 
   useEffect(() => {
     loadMembers()
-  }, [searchParams, activeTab, statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
+  }, [searchParams, activeTab, birthdayTimeFilter, statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
 
   useEffect(() => {
     loadCounts()
@@ -263,6 +273,86 @@ export default function Members() {
     return member.district._id && member.district._id.length > 0
   }
 
+  // Check if member has birthday this month
+  const hasBirthdayThisMonth = (member: Member) => {
+    if (!member.dateOfBirth) return false
+    const currentMonth = new Date().getMonth() + 1 // 1-12
+
+    // Handle different date formats: "YYYY-MM-DD", "MM-DD", or ISO string
+    let birthMonth: number
+    const dob = member.dateOfBirth
+
+    if (dob.includes('T')) {
+      // ISO date string
+      birthMonth = new Date(dob).getMonth() + 1
+    } else if (dob.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // YYYY-MM-DD format
+      birthMonth = parseInt(dob.split('-')[1], 10)
+    } else if (dob.match(/^\d{2}-\d{2}$/)) {
+      // MM-DD format
+      birthMonth = parseInt(dob.split('-')[0], 10)
+    } else {
+      // Try to parse as date
+      const parsed = new Date(dob)
+      if (!isNaN(parsed.getTime())) {
+        birthMonth = parsed.getMonth() + 1
+      } else {
+        return false
+      }
+    }
+
+    return birthMonth === currentMonth
+  }
+
+  // Get the birth day of the month for a member
+  const getBirthDay = (member: Member): number | null => {
+    if (!member.dateOfBirth) return null
+    const dob = member.dateOfBirth
+
+    if (dob.includes('T')) {
+      // ISO date string
+      return new Date(dob).getDate()
+    } else if (dob.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // YYYY-MM-DD format
+      return parseInt(dob.split('-')[2], 10)
+    } else if (dob.match(/^\d{2}-\d{2}$/)) {
+      // MM-DD format
+      return parseInt(dob.split('-')[1], 10)
+    } else {
+      // Try to parse as date
+      const parsed = new Date(dob)
+      if (!isNaN(parsed.getTime())) {
+        return parsed.getDate()
+      }
+      return null
+    }
+  }
+
+  // Filter birthday members by past/today/future
+  const filterBirthdaysByTime = (members: Member[], filter: 'past' | 'today' | 'future'): Member[] => {
+    const today = new Date().getDate()
+
+    return members.filter(member => {
+      const birthDay = getBirthDay(member)
+      if (birthDay === null) return false
+
+      switch (filter) {
+        case 'past':
+          return birthDay < today
+        case 'today':
+          return birthDay === today
+        case 'future':
+          return birthDay > today
+        default:
+          return true
+      }
+    }).sort((a, b) => {
+      const dayA = getBirthDay(a) || 0
+      const dayB = getBirthDay(b) || 0
+      return dayA - dayB // Sort ascending by day
+    })
+  }
+
   const loadMembers = async () => {
     try {
       setError(null)
@@ -270,37 +360,6 @@ export default function Members() {
 
       // Build params with filters - only include non-empty values
       // Use selectedBranch (global) or branchFilter (from filter modal)
-      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
-      const params: MemberSearchParams = {
-        ...searchParams,
-        membershipStatus: statusFilter || undefined,
-        gender: genderFilter ? (genderFilter as 'male' | 'female') : undefined,
-        maritalStatus: maritalStatusFilter ? (maritalStatusFilter as Member['maritalStatus']) : undefined,
-        branchId: effectiveBranchId,
-        districtId: districtFilter || undefined,
-        dateJoinedFrom: dateFromFilter || undefined,
-        dateJoinedTo: dateToFilter || undefined,
-      }
-      const response = await membersService.getMembers(params)
-
-      // Filter members based on active tab
-      const filteredMembers = activeTab === 'assigned'
-        ? response.items.filter(member => hasDistrict(member))
-        : response.items.filter(member => !hasDistrict(member))
-
-      setMembers(filteredMembers)
-      setPagination(response.pagination)
-    } catch (error: any) {
-      console.error('Error loading members:', error)
-      setError(error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadCounts = async () => {
-    try {
-      // Build params with same filters as loadMembers
       const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
       const filterParams: MemberSearchParams = {
         membershipStatus: statusFilter || undefined,
@@ -310,27 +369,72 @@ export default function Members() {
         districtId: districtFilter || undefined,
         dateJoinedFrom: dateFromFilter || undefined,
         dateJoinedTo: dateToFilter || undefined,
+        search: searchParams.search || undefined,
       }
 
-      // Load members in batches to get accurate counts with filters applied
+      // Load all members to enable proper client-side filtering and pagination
       let allMembers: Member[] = []
       let currentPage = 1
       let hasMore = true
 
-      while (hasMore && currentPage <= 10) { // Limit to 10 pages to avoid infinite loops
+      while (hasMore && currentPage <= 20) { // Limit to 20 pages max
         const response = await membersService.getMembers({ ...filterParams, page: currentPage, limit: 100 })
         allMembers = [...allMembers, ...response.items]
         hasMore = response.pagination.hasNext
         currentPage++
       }
 
+      // Filter members based on active tab
+      let tabFilteredMembers: Member[]
+      if (activeTab === 'assigned') {
+        tabFilteredMembers = allMembers.filter(member => hasDistrict(member))
+      } else {
+        // First filter to get all birthdays this month
+        const birthdayMembers = allMembers.filter(member => hasBirthdayThisMonth(member))
+        // Then filter by past/today/future
+        tabFilteredMembers = filterBirthdaysByTime(birthdayMembers, birthdayTimeFilter)
+      }
+
+      // Store all filtered members for reference
+      setAllFilteredMembers(tabFilteredMembers)
+
+      // Apply client-side pagination
+      const page = searchParams.page || 1
+      const limit = searchParams.limit || 10
+      const startIndex = (page - 1) * limit
+      const endIndex = startIndex + limit
+      const paginatedMembers = tabFilteredMembers.slice(startIndex, endIndex)
+
+      // Calculate pagination info
+      const total = tabFilteredMembers.length
+      const totalPages = Math.ceil(total / limit)
+
+      setMembers(paginatedMembers)
+      setPagination({
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      })
+
+      // Update counts
       const assigned = allMembers.filter(member => hasDistrict(member)).length
-      const unassigned = allMembers.filter(member => !hasDistrict(member)).length
+      const birthdays = allMembers.filter(member => hasBirthdayThisMonth(member)).length
       setAssignedCount(assigned)
-      setUnassignedCount(unassigned)
-    } catch (error) {
-      console.error('Error loading counts:', error)
+      setBirthdayCount(birthdays)
+    } catch (error: any) {
+      console.error('Error loading members:', error)
+      setError(error)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  // Counts are now calculated in loadMembers, this function is kept for backwards compatibility
+  const loadCounts = async () => {
+    // Counts are updated in loadMembers
   }
 
   const handleSearch = (e: React.FormEvent) => {
@@ -342,9 +446,29 @@ export default function Members() {
     setSearchParams(prev => ({ ...prev, page }))
   }
 
-  const handleTabChange = (tab: 'assigned' | 'unassigned') => {
+  const handleTabChange = (tab: 'assigned' | 'birthdays' | 'analytics') => {
     setActiveTab(tab)
     setSearchParams(prev => ({ ...prev, page: 1 }))
+    if (tab === 'analytics' && !analyticsStats) {
+      loadAnalytics()
+    }
+  }
+
+  const loadAnalytics = async () => {
+    try {
+      setAnalyticsLoading(true)
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
+      const stats = await membersService.getMemberStats(
+        effectiveBranchId,
+        dateFromFilter || undefined,
+        dateToFilter || undefined
+      )
+      setAnalyticsStats(stats)
+    } catch (error) {
+      console.error('Error loading analytics:', error)
+    } finally {
+      setAnalyticsLoading(false)
+    }
   }
 
   // Fetch search results for autocomplete
@@ -447,7 +571,6 @@ export default function Members() {
       const updateData: any = {}
       if (selectedBranchId) updateData.branch = selectedBranchId
       if (selectedDistrictId) updateData.district = selectedDistrictId
-      if (selectedUnitId) updateData.unit = selectedUnitId
 
       await membersService.updateMember(locationMember._id, updateData)
 
@@ -530,7 +653,6 @@ export default function Members() {
       const updateData: any = {}
       if (bulkBranchId) updateData.branch = bulkBranchId
       if (bulkDistrictId) updateData.district = bulkDistrictId
-      if (bulkUnitId) updateData.unit = bulkUnitId
 
       // Update all selected members
       const updatePromises = Array.from(selectedMembers).map(memberId =>
@@ -577,7 +699,7 @@ export default function Members() {
         const response = await membersService.getMembers({ ...filterParams, page: currentPage, limit: 100 })
         const filteredItems = activeTab === 'assigned'
           ? response.items.filter(member => hasDistrict(member))
-          : response.items.filter(member => !hasDistrict(member))
+          : response.items.filter(member => hasBirthdayThisMonth(member))
         allMembers = [...allMembers, ...filteredItems]
         hasMore = response.pagination.hasNext
         currentPage++
@@ -589,19 +711,35 @@ export default function Members() {
       }
 
       // Create CSV content
-      const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Status', 'Branch', 'District', 'Unit', 'Date Joined']
-      const rows = allMembers.map(member => [
-        member.firstName,
-        member.lastName,
-        member.email,
-        member.phone,
-        member.gender,
-        member.membershipStatus,
-        typeof member.branch === 'object' ? member.branch?.name || '' : '',
-        member.district?.name || '',
-        typeof member.unit === 'object' ? member.unit?.name || '' : '',
-        member.dateJoined ? new Date(member.dateJoined).toLocaleDateString() : ''
-      ])
+      const headers = activeTab === 'birthdays'
+        ? ['First Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 'Gender', 'Status', 'Branch', 'District', 'Unit']
+        : ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Status', 'Branch', 'District', 'Unit', 'Date Joined']
+      const rows = allMembers.map(member => activeTab === 'birthdays'
+        ? [
+            member.firstName,
+            member.lastName,
+            member.email,
+            member.phone,
+            member.dateOfBirth || '',
+            member.gender,
+            member.membershipStatus,
+            typeof member.branch === 'object' ? member.branch?.name || '' : '',
+            member.district?.name || '',
+            typeof member.unit === 'object' ? member.unit?.name || '' : '',
+          ]
+        : [
+            member.firstName,
+            member.lastName,
+            member.email,
+            member.phone,
+            member.gender,
+            member.membershipStatus,
+            typeof member.branch === 'object' ? member.branch?.name || '' : '',
+            member.district?.name || '',
+            typeof member.unit === 'object' ? member.unit?.name || '' : '',
+            member.dateJoined ? new Date(member.dateJoined).toLocaleDateString() : ''
+          ]
+      )
 
       const csvContent = [
         headers.join(','),
@@ -734,7 +872,7 @@ export default function Members() {
             <button
               onClick={() => handleTabChange('assigned')}
               className={`
-                py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                py-2.5 px-1 border-b-2 font-medium text-sm transition-colors
                 ${activeTab === 'assigned'
                   ? 'border-primary-600 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -747,26 +885,98 @@ export default function Members() {
               </span>
             </button>
             <button
-              onClick={() => handleTabChange('unassigned')}
+              onClick={() => handleTabChange('birthdays')}
               className={`
-                py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                ${activeTab === 'unassigned'
+                py-2.5 px-1 border-b-2 font-medium text-sm transition-colors flex items-center
+                ${activeTab === 'birthdays'
                   ? 'border-primary-600 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }
               `}
             >
-              Pending District Assignment
+              <Cake className="h-4 w-4 mr-1.5" />
+              Birthdays This Month
               <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
-                {unassignedCount}
+                {birthdayCount}
               </span>
+            </button>
+            <button
+              onClick={() => handleTabChange('analytics')}
+              className={`
+                py-2.5 px-1 border-b-2 font-medium text-sm transition-colors flex items-center
+                ${activeTab === 'analytics'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              <BarChart3 className="h-4 w-4 mr-1.5" />
+              Analytics
             </button>
           </nav>
         </motion.div>
 
+        {/* Birthday Time Filter Toggle - Only show on birthdays tab */}
+        {activeTab === 'birthdays' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2"
+          >
+            <span className="text-sm text-gray-600 mr-2">Show:</span>
+            <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+              <button
+                onClick={() => {
+                  setBirthdayTimeFilter('past')
+                  setSearchParams(prev => ({ ...prev, page: 1 }))
+                }}
+                className={`
+                  px-4 py-1.5 text-sm font-medium rounded-md transition-all
+                  ${birthdayTimeFilter === 'past'
+                    ? 'bg-white text-primary-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                Past
+              </button>
+              <button
+                onClick={() => {
+                  setBirthdayTimeFilter('today')
+                  setSearchParams(prev => ({ ...prev, page: 1 }))
+                }}
+                className={`
+                  px-4 py-1.5 text-sm font-medium rounded-md transition-all
+                  ${birthdayTimeFilter === 'today'
+                    ? 'bg-white text-primary-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => {
+                  setBirthdayTimeFilter('future')
+                  setSearchParams(prev => ({ ...prev, page: 1 }))
+                }}
+                className={`
+                  px-4 py-1.5 text-sm font-medium rounded-md transition-all
+                  ${birthdayTimeFilter === 'future'
+                    ? 'bg-white text-primary-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                Upcoming
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Bulk Action Bar */}
         <AnimatePresence>
-          {selectedMembers.size > 0 && (
+          {selectedMembers.size > 0 && activeTab !== 'analytics' && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -798,7 +1008,307 @@ export default function Members() {
           )}
         </AnimatePresence>
 
+        {/* Analytics Tab Content */}
+        {activeTab === 'analytics' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="space-y-6"
+          >
+            {analyticsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            ) : analyticsStats ? (
+              <>
+                {/* Overview Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {[
+                    {
+                      title: 'Total Members',
+                      value: analyticsStats.total || 0,
+                      icon: Users,
+                      color: 'text-blue-600',
+                      bgColor: 'bg-blue-50',
+                      description: 'All active members'
+                    },
+                    {
+                      title: 'Active Members',
+                      value: analyticsStats.byStatus?.find((s: any) => s._id === 'MEMBER')?.count || 0,
+                      icon: UserCheck,
+                      color: 'text-green-600',
+                      bgColor: 'bg-green-50',
+                      description: 'Members with active status'
+                    },
+                    {
+                      title: 'Unit Assignment',
+                      value: `${analyticsStats.unitAssignmentRate || 0}%`,
+                      icon: MapPin,
+                      color: 'text-purple-600',
+                      bgColor: 'bg-purple-50',
+                      description: 'Members assigned to units'
+                    },
+                    {
+                      title: 'Unassigned',
+                      value: analyticsStats.membersWithoutUnits || 0,
+                      icon: UserX,
+                      color: 'text-orange-600',
+                      bgColor: 'bg-orange-50',
+                      description: 'Members without units'
+                    }
+                  ].map((stat, index) => (
+                    <motion.div
+                      key={stat.title}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                      className="bg-white rounded-lg border border-gray-200 p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                          <p className="text-2xl font-bold text-gray-900 mt-1">
+                            {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+                        </div>
+                        <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                          <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Gender Distribution */}
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Gender Distribution</h3>
+                      <p className="text-sm text-muted-foreground">Member breakdown by gender</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {analyticsStats.byGender?.map((item: any, index: number) => (
+                      <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-600 capitalize">{item._id || 'Unknown'}</p>
+                            <p className="text-2xl font-bold text-gray-900 mt-1">{item.count.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {analyticsStats.total > 0 ? Math.round((item.count / analyticsStats.total) * 100) : 0}% of total
+                            </p>
+                          </div>
+                          <div className={`w-12 h-12 ${item._id === 'male' ? 'bg-blue-100' : 'bg-pink-100'} rounded-lg flex items-center justify-center`}>
+                            <User className={`h-6 w-6 ${item._id === 'male' ? 'text-blue-600' : 'text-pink-600'}`} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Additional Analytics */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Members by District */}
+                  <Card className="p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                      <MapPin className="h-5 w-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold text-foreground">Members by District</h3>
+                    </div>
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {analyticsStats.byDistrict && analyticsStats.byDistrict.length > 0 ? (
+                        analyticsStats.byDistrict.slice(0, 10).map((item: any, index: number) => {
+                          const percentage = analyticsStats.total > 0 ? Math.round((item.count / analyticsStats.total) * 100) : 0
+                          return (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">{item._id}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                    <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${percentage}%` }} />
+                                  </div>
+                                  <span className="text-xs text-gray-600 min-w-[3rem] text-right">{percentage}%</span>
+                                </div>
+                              </div>
+                              <div className="ml-4 text-right">
+                                <p className="text-lg font-bold text-gray-900">{item.count.toLocaleString()}</p>
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <MapPin className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p>No district data available</p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Leadership Roles */}
+                  <Card className="p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Users className="h-5 w-5 text-purple-600" />
+                      <h3 className="text-lg font-semibold text-foreground">Leadership Roles</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {analyticsStats.byLeadership && analyticsStats.byLeadership.length > 0 ? (
+                        analyticsStats.byLeadership.map((item: any, index: number) => {
+                          const leadershipLabels: Record<string, string> = {
+                            'DC': "David's Company",
+                            'LXL': 'League of Xtraordinary Leaders',
+                            'DIRECTOR': 'Director',
+                            'PASTOR': 'Pastor',
+                            'CAMPUS_PASTOR': 'Campus Pastor',
+                            'SENIOR_PASTOR': 'Senior Pastor'
+                          }
+                          const leadershipColors: Record<string, string> = {
+                            'SENIOR_PASTOR': 'bg-amber-100 text-amber-600',
+                            'CAMPUS_PASTOR': 'bg-orange-100 text-orange-600',
+                            'PASTOR': 'bg-red-100 text-red-600',
+                            'DIRECTOR': 'bg-purple-100 text-purple-600',
+                            'LXL': 'bg-blue-100 text-blue-600',
+                            'DC': 'bg-green-100 text-green-600'
+                          }
+                          const label = leadershipLabels[item._id] || item._id
+                          const colorClass = leadershipColors[item._id] || 'bg-gray-100 text-gray-600'
+                          return (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 ${colorClass.split(' ')[0]} rounded-lg flex items-center justify-center`}>
+                                  <Heart className={`h-5 w-5 ${colorClass.split(' ')[1]}`} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{label}</p>
+                                  <p className="text-xs text-gray-500">{item.count} {item.count === 1 ? 'member' : 'members'}</p>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className="font-bold">{item.count}</Badge>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <Heart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p>No leadership data available</p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Age Distribution */}
+                  <Card className="p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Calendar className="h-5 w-5 text-purple-600" />
+                      <h3 className="text-lg font-semibold text-foreground">Age Distribution</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {analyticsStats.byAge && analyticsStats.byAge.length > 0 ? (
+                        analyticsStats.byAge.map((item: any, index: number) => {
+                          const ageLabel = item._id === 'Unknown' ? 'Unknown' :
+                            item._id === 0 ? 'Under 18' :
+                            item._id === 18 ? '18-29' :
+                            item._id === 30 ? '30-44' :
+                            item._id === 45 ? '45-59' :
+                            item._id === 60 ? '60+' : `${item._id}+`
+                          const percentage = analyticsStats.total > 0 ? Math.round((item.count / analyticsStats.total) * 100) : 0
+                          return (
+                            <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-medium text-gray-900">{ageLabel}</p>
+                                <p className="text-lg font-bold text-gray-900">{item.count.toLocaleString()}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                  <div className="bg-purple-600 h-2 rounded-full transition-all" style={{ width: `${percentage}%` }} />
+                                </div>
+                                <span className="text-xs text-gray-600 min-w-[3rem] text-right">{percentage}%</span>
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p>No age data available</p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Membership Status */}
+                  <Card className="p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      <h3 className="text-lg font-semibold text-foreground">Membership Status</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {analyticsStats.byStatus && analyticsStats.byStatus.length > 0 ? (
+                        analyticsStats.byStatus.map((item: any, index: number) => {
+                          const statusLabels: Record<string, string> = {
+                            'MEMBER': 'Member',
+                            'DC': "David's Company",
+                            'LXL': 'League of Xtraordinary Leaders',
+                            'DIRECTOR': 'Director',
+                            'PASTOR': 'Pastor',
+                            'CAMPUS_PASTOR': 'Campus Pastor',
+                            'SENIOR_PASTOR': 'Senior Pastor',
+                            'LEFT': 'Left',
+                            'RELOCATED': 'Relocated'
+                          }
+                          const statusColors: Record<string, string> = {
+                            'MEMBER': 'bg-green-100 text-green-600',
+                            'DC': 'bg-blue-100 text-blue-600',
+                            'LXL': 'bg-indigo-100 text-indigo-600',
+                            'DIRECTOR': 'bg-purple-100 text-purple-600',
+                            'PASTOR': 'bg-red-100 text-red-600',
+                            'CAMPUS_PASTOR': 'bg-orange-100 text-orange-600',
+                            'SENIOR_PASTOR': 'bg-amber-100 text-amber-600',
+                            'LEFT': 'bg-gray-100 text-gray-600',
+                            'RELOCATED': 'bg-yellow-100 text-yellow-600'
+                          }
+                          const label = statusLabels[item._id] || item._id || 'Unknown'
+                          const colorClass = statusColors[item._id] || 'bg-gray-100 text-gray-600'
+                          const percentage = analyticsStats.total > 0 ? Math.round((item.count / analyticsStats.total) * 100) : 0
+                          return (
+                            <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Badge className={colorClass}>{label}</Badge>
+                                  <span className="text-xs text-gray-500">{percentage}%</span>
+                                </div>
+                                <p className="text-lg font-bold text-gray-900">{item.count.toLocaleString()}</p>
+                              </div>
+                              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div className="bg-green-600 h-2 rounded-full transition-all" style={{ width: `${percentage}%` }} />
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <TrendingUp className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                          <p>No status data available</p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No analytics data</h3>
+                <p className="text-muted-foreground">Unable to load analytics data.</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* Members Table */}
+        {activeTab !== 'analytics' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -807,19 +1317,33 @@ export default function Members() {
           <Card>
             {members.length === 0 ? (
               <div className="text-center py-12">
-                <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                {activeTab === 'birthdays' ? (
+                  <Cake className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                ) : (
+                  <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                )}
                 <h3 className="text-lg font-semibold text-foreground mb-2">
-                  {activeTab === 'assigned' ? 'No members with assigned districts' : 'No members without districts'}
+                  {activeTab === 'assigned'
+                    ? 'No members with assigned districts'
+                    : birthdayTimeFilter === 'today'
+                      ? 'No birthdays today'
+                      : birthdayTimeFilter === 'past'
+                        ? 'No past birthdays this month'
+                        : 'No upcoming birthdays this month'}
                 </h3>
                 <p className="text-muted-foreground">
                   {activeTab === 'assigned'
                     ? 'All members have been assigned to districts or no members exist yet.'
-                    : 'All members have districts assigned or no members exist yet.'
+                    : birthdayTimeFilter === 'today'
+                      ? 'No members have birthdays today.'
+                      : birthdayTimeFilter === 'past'
+                        ? 'No past birthdays have been recorded this month.'
+                        : 'No upcoming birthdays remaining this month.'
                   }
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
@@ -863,10 +1387,11 @@ export default function Members() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className={`hover:bg-muted/50 transition-colors ${selectedMembers.has(member._id) ? 'bg-primary-50' : ''}`}
+                      className={`hover:bg-muted/50 transition-colors cursor-pointer ${selectedMembers.has(member._id) ? 'bg-primary-50' : ''}`}
+                      onClick={() => navigate(`/members/${member._id}`)}
                     >
                       {canAssignLocation && (
-                        <td className="px-4 py-4 w-10">
+                        <td className="px-4 py-4 w-10" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={selectedMembers.has(member._id)}
@@ -933,7 +1458,7 @@ export default function Members() {
                           {formatDate(member.dateJoined)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           {canAssignLocation && (
                             <Button
@@ -946,15 +1471,6 @@ export default function Members() {
                               <MapPin className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/members/${member._id}`)}
-                            className="h-8 w-8 p-0"
-                            title="View"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -974,7 +1490,7 @@ export default function Members() {
             )}
 
             {/* Pagination */}
-            {members.length > 0 && pagination && pagination.totalPages > 1 && (
+            {members.length > 0 && pagination && (
               <div className="px-6 py-4 border-t border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
@@ -991,6 +1507,9 @@ export default function Members() {
                     >
                       Previous
                     </Button>
+                    <span className="text-sm text-muted-foreground flex items-center px-2">
+                      Page {pagination.page} of {pagination.totalPages}
+                    </span>
                     <Button
                       variant="outline"
                       size="sm"
@@ -1005,6 +1524,7 @@ export default function Members() {
             )}
           </Card>
         </motion.div>
+        )}
       </div>
 
       {/* Assign District Modal */}
@@ -1187,22 +1707,14 @@ export default function Members() {
               {/* Modal Body */}
               <div className="p-6 space-y-4">
                 {/* Current Location Info */}
-                {(locationMember?.district || locationMember?.unit) && (
+                {locationMember?.district && (
                   <div className="bg-gray-50 rounded-lg p-3 text-sm">
                     <p className="text-gray-500 text-xs uppercase tracking-wide mb-2">Current Location</p>
                     <div className="space-y-1">
-                      {locationMember?.district && (
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <Users className="w-4 h-4 text-gray-400" />
-                          <span>District: {typeof locationMember.district === 'object' ? locationMember.district.name : 'Assigned'}</span>
-                        </div>
-                      )}
-                      {locationMember?.unit && (
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <Home className="w-4 h-4 text-gray-400" />
-                          <span>Unit: {typeof locationMember.unit === 'object' ? locationMember.unit.name : 'Assigned'}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <Users className="w-4 h-4 text-gray-400" />
+                        <span>District: {typeof locationMember.district === 'object' ? locationMember.district.name : 'Assigned'}</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1221,7 +1733,6 @@ export default function Members() {
                       onChange={(e) => {
                         setSelectedBranchId(e.target.value)
                         setSelectedDistrictId('')
-                        setSelectedUnitId('')
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
                       disabled={savingLocation}
@@ -1246,10 +1757,7 @@ export default function Members() {
                   </label>
                   <select
                     value={selectedDistrictId}
-                    onChange={(e) => {
-                      setSelectedDistrictId(e.target.value)
-                      setSelectedUnitId('')
-                    }}
+                    onChange={(e) => setSelectedDistrictId(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
                     disabled={savingLocation}
                   >
@@ -1265,31 +1773,6 @@ export default function Members() {
                   )}
                 </div>
 
-                {/* Unit Select */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <Home className="w-4 h-4 text-gray-400" />
-                      Unit
-                    </div>
-                  </label>
-                  <select
-                    value={selectedUnitId}
-                    onChange={(e) => setSelectedUnitId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
-                    disabled={savingLocation}
-                  >
-                    <option value="">Select a unit...</option>
-                    {(filteredUnits.length > 0 ? filteredUnits : units).map((unit) => (
-                      <option key={unit._id} value={unit._id}>
-                        {unit.name}
-                      </option>
-                    ))}
-                  </select>
-                  {units.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">No units available</p>
-                  )}
-                </div>
               </div>
 
               {/* Modal Footer */}
@@ -1303,7 +1786,7 @@ export default function Members() {
                 </Button>
                 <Button
                   onClick={handleSaveLocation}
-                  disabled={(!selectedBranchId && !selectedDistrictId && !selectedUnitId) || savingLocation}
+                  disabled={(!selectedBranchId && !selectedDistrictId) || savingLocation}
                   className="flex items-center gap-2"
                 >
                   {savingLocation ? (
@@ -1377,7 +1860,6 @@ export default function Members() {
                       onChange={(e) => {
                         setBulkBranchId(e.target.value)
                         setBulkDistrictId('')
-                        setBulkUnitId('')
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm"
                       disabled={savingBulkLocation}
@@ -1402,10 +1884,7 @@ export default function Members() {
                   </label>
                   <select
                     value={bulkDistrictId}
-                    onChange={(e) => {
-                      setBulkDistrictId(e.target.value)
-                      setBulkUnitId('')
-                    }}
+                    onChange={(e) => setBulkDistrictId(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm"
                     disabled={savingBulkLocation}
                   >
@@ -1421,31 +1900,6 @@ export default function Members() {
                   )}
                 </div>
 
-                {/* Unit Select */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <Home className="w-4 h-4 text-gray-400" />
-                      Unit
-                    </div>
-                  </label>
-                  <select
-                    value={bulkUnitId}
-                    onChange={(e) => setBulkUnitId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm"
-                    disabled={savingBulkLocation}
-                  >
-                    <option value="">Select a unit...</option>
-                    {(bulkFilteredUnits.length > 0 ? bulkFilteredUnits : units).map((unit) => (
-                      <option key={unit._id} value={unit._id}>
-                        {unit.name}
-                      </option>
-                    ))}
-                  </select>
-                  {units.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">No units available</p>
-                  )}
-                </div>
               </div>
 
               {/* Modal Footer */}
@@ -1459,7 +1913,7 @@ export default function Members() {
                 </Button>
                 <Button
                   onClick={handleSaveBulkLocation}
-                  disabled={(!bulkBranchId && !bulkDistrictId && !bulkUnitId) || savingBulkLocation}
+                  disabled={(!bulkBranchId && !bulkDistrictId) || savingBulkLocation}
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
                 >
                   {savingBulkLocation ? (

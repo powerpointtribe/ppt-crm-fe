@@ -4,7 +4,7 @@ import { transformPaginatedResponse, transformSingleResponse } from '@/utils/api
 
 export interface FollowUpRecord {
   date: string
-  method: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit' | 'video_call'
+  method: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit' | 'video_call' | 'in_visit'
   notes: string
   outcome: 'successful' | 'no_answer' | 'busy' | 'not_interested' | 'interested' | 'follow_up_needed'
   contactedBy: string | {
@@ -14,6 +14,7 @@ export interface FollowUpRecord {
     email?: string
   }
   nextFollowUpDate?: string
+  visitNumber?: number
 }
 
 export interface CallReport {
@@ -113,6 +114,9 @@ export interface FirstTimer {
   // Call reports tracking
   callReportsCount: number
 
+  // Total church visits count
+  totalVisits: number
+
   // Member conversion
   memberRecord?: string
   memberCreatedAt?: string
@@ -142,6 +146,10 @@ export interface FirstTimer {
 
   // Profile photo
   profilePhotoUrl?: string
+
+  // Closure fields
+  closedAt?: string
+  closureReason?: string
 
   isActive: boolean
   createdAt: string
@@ -229,7 +237,15 @@ export interface BulkStatusUpdateData {
 
 export const firstTimersService = {
   getFirstTimers: async (params?: FirstTimerSearchParams): Promise<PaginatedResponse<FirstTimer>> => {
-    const response = await apiService.get<ApiResponse<any>>('/first-timers', { params })
+    // Clean params by removing undefined/null values and ensuring page/limit have defaults
+    const cleanParams = params ? Object.fromEntries(
+      Object.entries({
+        ...params,
+        page: params.page || 1,
+        limit: params.limit || 10,
+      }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    ) : { page: 1, limit: 10 }
+    const response = await apiService.get<ApiResponse<any>>('/first-timers', { params: cleanParams })
     return transformPaginatedResponse<FirstTimer>(response)
   },
 
@@ -404,15 +420,6 @@ export const firstTimersService = {
     return transformSingleResponse<FirstTimer>(response) as FirstTimer
   },
 
-  // Close First Timer
-  closeFirstTimer: async (firstTimerId: string, reason: 'unwilling' | 'became_member', memberRecordId?: string): Promise<FirstTimer> => {
-    const response = await apiService.post<ApiResponse<FirstTimer>>(`/first-timers/${firstTimerId}/close`, {
-      reason,
-      memberRecordId
-    })
-    return transformSingleResponse<FirstTimer>(response) as FirstTimer
-  },
-
   // Call Reports Analytics
   getGlobalCallReportsAnalytics: async (): Promise<any> => {
     const response = await apiService.get<ApiResponse<any>>('/first-timers/call-reports/analytics/global')
@@ -518,6 +525,11 @@ export const firstTimersService = {
 
   unmarkReadyForIntegration: async (id: string): Promise<FirstTimer> => {
     const response = await apiService.post<ApiResponse<FirstTimer>>(`/first-timers/${id}/unmark-ready-for-integration`)
+    return transformSingleResponse<FirstTimer>(response) as FirstTimer
+  },
+
+  closeFirstTimer: async (id: string, reason?: string): Promise<FirstTimer> => {
+    const response = await apiService.post<ApiResponse<FirstTimer>>(`/first-timers/${id}/close`, { reason })
     return transformSingleResponse<FirstTimer>(response) as FirstTimer
   },
 

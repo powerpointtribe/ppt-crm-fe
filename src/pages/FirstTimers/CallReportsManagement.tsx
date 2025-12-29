@@ -435,7 +435,7 @@ export default function CallReportsManagement() {
               </div>
 
               {/* Pagination */}
-              {searchResults.pagination.totalPages > 1 && (
+              {searchResults.pagination && searchResults.total > 0 && (
                 <div className="flex items-center justify-between mt-6 pt-6 border-t">
                   <div className="text-sm text-gray-600">
                     Showing {((searchResults.pagination.page - 1) * searchResults.pagination.limit) + 1} to{' '}

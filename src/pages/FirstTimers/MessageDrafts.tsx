@@ -390,7 +390,7 @@ export default function MessageDrafts() {
           )}
 
           {/* Pagination */}
-          {pagination && pagination.totalPages > 1 && (
+          {pagination && pagination.total > 0 && (
             <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200 sm:px-6 rounded-lg shadow">
               <div className="flex-1 flex justify-between sm:hidden">
                 <button

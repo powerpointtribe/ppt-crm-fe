@@ -39,6 +39,10 @@ export default function RolesListPage() {
   const [tempStatusFilter, setTempStatusFilter] = useState('')
   const [tempTypeFilter, setTempTypeFilter] = useState('')
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
   const hasActiveFilters = statusFilter || typeFilter
   const activeFilterCount = [statusFilter, typeFilter].filter(Boolean).length
 
@@ -138,6 +142,17 @@ export default function RolesListPage() {
     return true
   })
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredRoles.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedRoles = filteredRoles.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filters or search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, typeFilter])
+
   if (loading) {
     return (
       <Layout title="Roles" subtitle="Manage roles and permissions">
@@ -227,7 +242,7 @@ export default function RolesListPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredRoles.map((role, index) => (
+                    {paginatedRoles.map((role, index) => (
                       <motion.tr
                         key={role._id}
                         initial={{ opacity: 0 }}
@@ -316,26 +331,59 @@ export default function RolesListPage() {
           </Card>
         </motion.div>
 
-        {/* Summary Footer */}
+        {/* Summary Footer with Pagination */}
         {filteredRoles.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="flex items-center justify-between text-sm text-gray-500 px-1"
+            className="flex flex-col gap-4"
           >
-            <span>
-              Showing {filteredRoles.length} role{filteredRoles.length !== 1 ? 's' : ''}
-            </span>
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                {filteredRoles.filter(r => r.isSystemRole).length} System
+            {/* Pagination Controls */}
+            {filteredRoles.length > itemsPerPage && (
+              <div className="flex items-center justify-between px-1">
+                <div className="text-sm text-gray-500">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredRoles.length)} of {filteredRoles.length} roles
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-gray-500 px-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Summary Stats */}
+            <div className="flex items-center justify-between text-sm text-gray-500 px-1">
+              <span>
+                Total: {filteredRoles.length} role{filteredRoles.length !== 1 ? 's' : ''}
               </span>
-              <span className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-primary-500"></div>
-                {filteredRoles.filter(r => !r.isSystemRole).length} Custom
-              </span>
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                  {filteredRoles.filter(r => r.isSystemRole).length} System
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-primary-500"></div>
+                  {filteredRoles.filter(r => !r.isSystemRole).length} Custom
+                </span>
+              </div>
             </div>
           </motion.div>
         )}

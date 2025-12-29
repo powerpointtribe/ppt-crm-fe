@@ -31,7 +31,7 @@ export default function Groups() {
   const [searchTerm, setSearchTerm] = useState(urlSearchParams.get('search') || '')
   const [searchParams, setSearchParams] = useState<GroupSearchParams>({
     page: parseInt(urlSearchParams.get('page') || '1'),
-    limit: parseInt(urlSearchParams.get('limit') || '20'),
+    limit: parseInt(urlSearchParams.get('limit') || '10'),
     search: urlSearchParams.get('search') || '',
     type: (urlSearchParams.get('type') as GroupSearchParams['type']) || undefined
   })
@@ -98,7 +98,7 @@ export default function Groups() {
   useEffect(() => {
     const newParams: GroupSearchParams = {
       page: parseInt(urlSearchParams.get('page') || '1'),
-      limit: parseInt(urlSearchParams.get('limit') || '20'),
+      limit: parseInt(urlSearchParams.get('limit') || '10'),
       search: urlSearchParams.get('search') || '',
       type: (urlSearchParams.get('type') as GroupSearchParams['type']) || undefined
     }
@@ -892,7 +892,7 @@ export default function Groups() {
         </Card>
 
         {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
+        {pagination && pagination.total > 0 && (
           <div className="flex justify-center">
             <div className="flex gap-2">
               <Button

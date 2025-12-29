@@ -109,14 +109,28 @@ export const callReportsService = {
   },
 
   // Get global analytics
-  async getGlobalAnalytics() {
-    const response = await apiService.get<ApiResponse<GlobalAnalytics>>('/first-timers/call-reports/analytics/global')
+  async getGlobalAnalytics(params?: { fromDate?: string; toDate?: string }) {
+    const searchParams = new URLSearchParams()
+    if (params?.fromDate) searchParams.append('fromDate', params.fromDate)
+    if (params?.toDate) searchParams.append('toDate', params.toDate)
+    const queryString = searchParams.toString()
+    const url = queryString
+      ? `/first-timers/call-reports/analytics/global?${queryString}`
+      : '/first-timers/call-reports/analytics/global'
+    const response = await apiService.get<ApiResponse<GlobalAnalytics>>(url)
     return transformSingleResponse<GlobalAnalytics>(response)
   },
 
   // Get team performance analytics
-  async getTeamPerformance() {
-    const response = await apiService.get<ApiResponse<TeamPerformance[]>>('/first-timers/call-reports/analytics/team-performance')
+  async getTeamPerformance(params?: { fromDate?: string; toDate?: string }) {
+    const searchParams = new URLSearchParams()
+    if (params?.fromDate) searchParams.append('fromDate', params.fromDate)
+    if (params?.toDate) searchParams.append('toDate', params.toDate)
+    const queryString = searchParams.toString()
+    const url = queryString
+      ? `/first-timers/call-reports/analytics/team-performance?${queryString}`
+      : '/first-timers/call-reports/analytics/team-performance'
+    const response = await apiService.get<ApiResponse<TeamPerformance[]>>(url)
     return transformSingleResponse<TeamPerformance[]>(response)
   },
 

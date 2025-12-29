@@ -26,7 +26,7 @@ export default function FirstTimers() {
   const navigate = useNavigate()
   const toast = useToast()
   const { selectedBranch, branches } = useAppStore()
-  const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'archived'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'closed' | 'archived'>('all')
   const [dateRange, setDateRange] = useState<DateRangeFilter>('3months')
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
   const [loading, setLoading] = useState(true)
@@ -86,7 +86,7 @@ export default function FirstTimers() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState<any>(null)
 
-  const loadFirstTimers = useCallback(async (page: number = currentPage, tab: 'all' | 'ready' | 'archived' = activeTab) => {
+  const loadFirstTimers = useCallback(async (page: number = currentPage, tab: 'all' | 'ready' | 'closed' | 'archived' = activeTab) => {
     try {
       setLoading(true)
       setError(null)
@@ -112,6 +112,9 @@ export default function FirstTimers() {
         response = await firstTimersService.getArchivedFirstTimers(params)
       } else if (tab === 'ready') {
         response = await firstTimersService.getReadyForIntegration(params)
+      } else if (tab === 'closed') {
+        // Closed tab - show first timers with CLOSED status
+        response = await firstTimersService.getFirstTimers({ ...params, status: 'CLOSED' })
       } else {
         // "All Visitors" tab - show all first timers (filter by status if selected)
         response = await firstTimersService.getFirstTimers(params)
@@ -467,7 +470,7 @@ export default function FirstTimers() {
     }
   }
 
-  const handleTabChange = (tab: 'all' | 'ready' | 'archived') => {
+  const handleTabChange = (tab: 'all' | 'ready' | 'closed' | 'archived') => {
     setActiveTab(tab)
     setSelectedIds([])
     setSearchTerm('')
@@ -912,6 +915,24 @@ export default function FirstTimers() {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => handleTabChange('closed')}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeTab === 'closed'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <CheckCircle className="h-4 w-4" />
+              Closed
+              {stats && (
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === 'closed' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {stats.totalClosed || 0}
+                </span>
+              )}
+            </button>
           </nav>
 
           {/* Date Range Selector */}
@@ -1029,6 +1050,17 @@ export default function FirstTimers() {
                   View All Visitors
                 </Button>
               </>
+            ) : activeTab === 'closed' ? (
+              <>
+                <CheckCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-gray-900 mb-2">No closed visitors</h3>
+                <p className="text-gray-500 mb-6">
+                  {searchTerm ? 'Try adjusting your search' : 'Closed first-timers (converted to members or marked inactive) will appear here'}
+                </p>
+                <Button variant="secondary" onClick={() => handleTabChange('all')}>
+                  View All Visitors
+                </Button>
+              </>
             ) : (
               <>
                 <UserPlus className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -1050,18 +1082,18 @@ export default function FirstTimers() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`${activeTab === 'all' ? 'bg-blue-50 border-blue-200' : activeTab === 'ready' ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} border rounded-lg p-4 mb-4`}
+                className={`${activeTab === 'all' ? 'bg-blue-50 border-blue-200' : activeTab === 'ready' ? 'bg-green-50 border-green-200' : activeTab === 'closed' ? 'bg-purple-50 border-purple-200' : 'bg-orange-50 border-orange-200'} border rounded-lg p-4 mb-4`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <span className={`text-sm font-medium ${activeTab === 'all' ? 'text-blue-900' : activeTab === 'ready' ? 'text-green-900' : 'text-orange-900'}`}>
+                    <span className={`text-sm font-medium ${activeTab === 'all' ? 'text-blue-900' : activeTab === 'ready' ? 'text-green-900' : activeTab === 'closed' ? 'text-purple-900' : 'text-orange-900'}`}>
                       {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''} selected
                     </span>
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => setSelectedIds([])}
-                      className={activeTab === 'all' ? 'text-blue-700 hover:text-blue-800' : activeTab === 'ready' ? 'text-green-700 hover:text-green-800' : 'text-orange-700 hover:text-orange-800'}
+                      className={activeTab === 'all' ? 'text-blue-700 hover:text-blue-800' : activeTab === 'ready' ? 'text-green-700 hover:text-green-800' : activeTab === 'closed' ? 'text-purple-700 hover:text-purple-800' : 'text-orange-700 hover:text-orange-800'}
                     >
                       Clear selection
                     </Button>
@@ -1077,6 +1109,10 @@ export default function FirstTimers() {
                         <ArchiveRestore className="h-4 w-4 mr-2" />
                         {archiveLoading ? 'Restoring...' : 'Restore Selected'}
                       </Button>
+                    ) : activeTab === 'closed' ? (
+                      <span className="text-sm text-purple-600">
+                        Closed visitors are read-only
+                      </span>
                     ) : (
                       <div className="relative" data-bulk-actions-menu>
                         <Button
@@ -1241,9 +1277,20 @@ export default function FirstTimers() {
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(visitor.status)}`}>
-                          {getStatusLabel(visitor.status)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(visitor.status)}`}>
+                            {getStatusLabel(visitor.status)}
+                          </span>
+                          {visitor.status === 'CLOSED' && (
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                              visitor.converted || visitor.memberRecord
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {visitor.converted || visitor.memberRecord ? 'Member' : 'Inactive'}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-4">
                         {visitor.assignedTo ? (
@@ -1343,7 +1390,7 @@ export default function FirstTimers() {
             </div>
 
             {/* Pagination Controls */}
-            {pagination && pagination.totalPages > 1 && (
+            {pagination && pagination.total > 0 && (
               <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between sm:px-6">
                 <div className="flex-1 flex justify-between sm:hidden">
                   {/* Mobile pagination */}

@@ -82,12 +82,6 @@ const menuGroups: MenuGroup[] = [
         hasDropdown: true,
         subItems: [
           {
-            icon: BarChart3,
-            label: 'Analytics',
-            path: '/members/analytics',
-            requiredPermission: 'members:view-stats',
-          },
-          {
             icon: FileText,
             label: 'Reports',
             path: '/members/reports',

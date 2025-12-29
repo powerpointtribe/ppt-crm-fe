@@ -32,6 +32,8 @@ export default function Branches() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const canCreateBranch = hasPermission('branches:create');
   const canUpdateBranch = hasPermission('branches:update');
@@ -78,6 +80,17 @@ export default function Branches() {
 
   const activeBranches = filteredBranches.filter((b) => b.isActive);
   const inactiveBranches = filteredBranches.filter((b) => !b.isActive);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredBranches.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBranches = filteredBranches.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   if (loading) {
     return (
@@ -187,7 +200,7 @@ export default function Branches() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredBranches.map((branch, index) => (
+            {paginatedBranches.map((branch, index) => (
               <motion.div
                 key={branch._id}
                 initial={{ opacity: 0, y: 20 }}
@@ -300,6 +313,36 @@ export default function Branches() {
                 </Card>
               </motion.div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {filteredBranches.length > itemsPerPage && (
+          <div className="flex items-center justify-between mt-6 px-2">
+            <div className="text-sm text-muted-foreground">
+              Showing {startIndex + 1} to {Math.min(endIndex, filteredBranches.length)} of {filteredBranches.length} campuses
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>

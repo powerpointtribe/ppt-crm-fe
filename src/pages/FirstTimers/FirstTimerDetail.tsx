@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Edit, Phone, Mail, Calendar, MapPin,
   Users, Clock, CheckCircle, AlertCircle, UserPlus, Plus,
-  User, MessageSquare, Star, Heart, Copy, Check, Archive, ArchiveRestore, X
+  User, MessageSquare, Star, Heart, Copy, Check, Archive, ArchiveRestore, X, XCircle
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -43,6 +43,9 @@ export default function FirstTimerDetail() {
   const [integrateLoading, setIntegrateLoading] = useState(false)
   const [loadingGroups, setLoadingGroups] = useState(false)
   const [showPhotoModal, setShowPhotoModal] = useState(false)
+  const [showCloseModal, setShowCloseModal] = useState(false)
+  const [closeReason, setCloseReason] = useState('')
+  const [closeLoading, setCloseLoading] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -91,6 +94,14 @@ export default function FirstTimerDetail() {
   }
 
   const handleReadyForIntegration = async () => {
+    if (!firstTimer?.assignedTo) {
+      toast.error('Cannot Mark Ready', 'First-timer must be assigned to someone before marking as ready for integration')
+      return
+    }
+    if (!firstTimer?.followUps || firstTimer.followUps.length === 0) {
+      toast.error('Cannot Mark Ready', 'At least one follow-up record is required before marking as ready for integration')
+      return
+    }
     try {
       await firstTimersService.markReadyForIntegration(id!)
       await loadFirstTimer()
@@ -141,6 +152,29 @@ export default function FirstTimerDetail() {
       toast.error('Restore Failed', error.message || 'Failed to restore first-timer')
     } finally {
       setArchiveLoading(false)
+    }
+  }
+
+  const handleClose = async () => {
+    if (!firstTimer?.assignedTo) {
+      toast.error('Cannot Close', 'First-timer must be assigned to someone before closing')
+      return
+    }
+    if (!firstTimer?.followUps || firstTimer.followUps.length === 0) {
+      toast.error('Cannot Close', 'At least one follow-up record is required before closing')
+      return
+    }
+    try {
+      setCloseLoading(true)
+      await firstTimersService.closeFirstTimer(id!, closeReason || undefined)
+      toast.success('Closed', 'First-timer has been closed successfully')
+      setShowCloseModal(false)
+      setCloseReason('')
+      await loadFirstTimer()
+    } catch (error: any) {
+      toast.error('Close Failed', error.message || 'Failed to close first-timer')
+    } finally {
+      setCloseLoading(false)
     }
   }
 
@@ -219,8 +253,14 @@ export default function FirstTimerDetail() {
       whatsapp: 'WhatsApp',
       visit: 'Home Visit',
       video_call: 'Video Call',
+      in_visit: 'In-Visit',
     }
     return labels[method] || method
+  }
+
+  const getVisitBadge = (visitNumber: number) => {
+    const suffix = visitNumber === 2 ? 'nd' : visitNumber === 3 ? 'rd' : 'th'
+    return `${visitNumber}${suffix} Visit`
   }
 
   const getOutcomeStyle = (outcome: string) => {
@@ -342,71 +382,128 @@ export default function FirstTimerDetail() {
                 <h1 className="text-2xl font-semibold text-gray-900">
                   {firstTimer.firstName} {firstTimer.lastName}
                 </h1>
-                <div className="mt-1">
-                  <p className="text-xs text-gray-500">
-                    Visited {formatDate(firstTimer.dateOfVisit)} · {daysSinceVisit} days ago
-                  </p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className={cn(
+                    "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                    firstTimer.status === 'ENGAGED' && "bg-blue-100 text-blue-700",
+                    firstTimer.status === 'NEW' && "bg-gray-100 text-gray-700",
+                    firstTimer.status === 'READY_FOR_INTEGRATION' && "bg-green-100 text-green-700",
+                    firstTimer.status === 'CLOSED' && "bg-purple-100 text-purple-700",
+                    firstTimer.status === 'ARCHIVED' && "bg-orange-100 text-orange-700",
+                    !['ENGAGED', 'NEW', 'READY_FOR_INTEGRATION', 'CLOSED', 'ARCHIVED'].includes(firstTimer.status) && "bg-gray-100 text-gray-600"
+                  )}>
+                    {getStatusLabel(firstTimer.status)}
+                  </span>
                   {firstTimer.converted && (
-                    <p className="text-xs text-green-600 mt-0.5">Converted to member</p>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      Member
+                    </span>
                   )}
-                  {firstTimer.isArchived && (
-                    <p className="text-xs text-orange-600 mt-0.5">Archived</p>
+                  {firstTimer.isArchived && !firstTimer.status?.includes('ARCHIVED') && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                      Archived
+                    </span>
                   )}
-                  {firstTimer.readyForIntegration && !firstTimer.converted && (
-                    <p className="text-xs text-green-600 mt-0.5">Ready for integration</p>
+                  {firstTimer.readyForIntegration && !firstTimer.converted && firstTimer.status !== 'READY_FOR_INTEGRATION' && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      Ready
+                    </span>
                   )}
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Visited {formatDate(firstTimer.dateOfVisit)} · {daysSinceVisit} days ago
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => navigate(`/first-timers/${id}/edit`)}
-              >
-                <Edit className="h-4 w-4 mr-1.5" />
-                Edit
-              </Button>
-              {firstTimer.isArchived ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleUnarchive}
-                  disabled={archiveLoading}
-                  className="text-green-600 border-green-200 hover:bg-green-50"
-                >
-                  <ArchiveRestore className="h-4 w-4 mr-1.5" />
-                  {archiveLoading ? 'Restoring...' : 'Restore'}
-                </Button>
+              {firstTimer.status === 'CLOSED' ? (
+                <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
+                  firstTimer.converted || firstTimer.memberRecord
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                  Closed - {firstTimer.converted || firstTimer.memberRecord ? 'Member' : 'Inactive'}
+                </span>
               ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowArchiveModal(true)}
-                  className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                >
-                  <Archive className="h-4 w-4 mr-1.5" />
-                  Archive
-                </Button>
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate(`/first-timers/${id}/edit`)}
+                  >
+                    <Edit className="h-4 w-4 mr-1.5" />
+                    Edit
+                  </Button>
+                  {firstTimer.isArchived ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleUnarchive}
+                      disabled={archiveLoading}
+                      className="text-green-600 border-green-200 hover:bg-green-50"
+                    >
+                      <ArchiveRestore className="h-4 w-4 mr-1.5" />
+                      {archiveLoading ? 'Restoring...' : 'Restore'}
+                    </Button>
+                  ) : !firstTimer.readyForIntegration && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowArchiveModal(true)}
+                      className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                    >
+                      <Archive className="h-4 w-4 mr-1.5" />
+                      Archive
+                    </Button>
+                  )}
+                  {firstTimer.readyForIntegration && (
+                    <Button
+                      size="sm"
+                      onClick={openIntegrateModal}
+                      disabled={!firstTimer.assignedTo || !firstTimer.followUps || firstTimer.followUps.length === 0}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={
+                        !firstTimer.assignedTo
+                          ? 'First-timer must be assigned to someone'
+                          : !firstTimer.followUps || firstTimer.followUps.length === 0
+                            ? 'At least one follow-up record is required'
+                            : ''
+                      }
+                    >
+                      <UserPlus className="h-4 w-4 mr-1.5" />
+                      Integrate
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => setShowFollowUpForm(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Add Follow-up
+                  </Button>
+                  {(firstTimer.status === 'ENGAGED' || firstTimer.status === 'ARCHIVED' || firstTimer.isArchived) && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowCloseModal(true)}
+                      disabled={!firstTimer.assignedTo || !firstTimer.followUps || firstTimer.followUps.length === 0}
+                      className="text-purple-600 border-purple-200 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={
+                        !firstTimer.assignedTo
+                          ? 'First-timer must be assigned to someone'
+                          : !firstTimer.followUps || firstTimer.followUps.length === 0
+                            ? 'At least one follow-up record is required'
+                            : ''
+                      }
+                    >
+                      <XCircle className="h-4 w-4 mr-1.5" />
+                      Close
+                    </Button>
+                  )}
+                </>
               )}
-              {firstTimer.readyForIntegration && firstTimer.status !== 'CLOSED' && (
-                <Button
-                  size="sm"
-                  onClick={openIntegrateModal}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <UserPlus className="h-4 w-4 mr-1.5" />
-                  Integrate
-                </Button>
-              )}
-              <Button
-                size="sm"
-                onClick={() => setShowFollowUpForm(true)}
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Add Follow-up
-              </Button>
             </div>
           </div>
         </div>
@@ -564,19 +661,31 @@ export default function FirstTimerDetail() {
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-4">Status</h3>
                   <div className="flex items-center gap-4">
-                    <select
-                      value={firstTimer.status}
-                      onChange={(e) => handleStatusUpdate(e.target.value)}
-                      className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    >
-                      <option value="not_contacted">Not Contacted</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="scheduled_visit">Visit Scheduled</option>
-                      <option value="visited">Visited</option>
-                      <option value="joined_group">Joined Group</option>
-                      <option value="converted">Converted</option>
-                      <option value="lost_contact">Lost Contact</option>
-                    </select>
+                    {firstTimer.status === 'CLOSED' ? (
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
+                          firstTimer.converted || firstTimer.memberRecord
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          Closed - {firstTimer.converted || firstTimer.memberRecord ? 'Converted to Member' : 'Inactive'}
+                        </span>
+                      </div>
+                    ) : (
+                      <select
+                        value={firstTimer.status}
+                        onChange={(e) => handleStatusUpdate(e.target.value)}
+                        className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                      >
+                        <option value="not_contacted">Not Contacted</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="scheduled_visit">Visit Scheduled</option>
+                        <option value="visited">Visited</option>
+                        <option value="joined_group">Joined Group</option>
+                        <option value="converted">Converted</option>
+                        <option value="lost_contact">Lost Contact</option>
+                      </select>
+                    )}
 
                     {firstTimer.assignedTo && (
                       <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -619,11 +728,17 @@ export default function FirstTimerDetail() {
                   <div className="text-center py-16">
                     <MessageSquare className="h-10 w-10 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-base font-medium text-gray-900 mb-1">No follow-ups yet</h3>
-                    <p className="text-sm text-gray-500 mb-6">Start tracking your interactions with this visitor</p>
-                    <Button onClick={() => setShowFollowUpForm(true)} size="sm">
-                      <Plus className="h-4 w-4 mr-1.5" />
-                      Add Follow-up
-                    </Button>
+                    <p className="text-sm text-gray-500 mb-6">
+                      {firstTimer.status === 'CLOSED'
+                        ? 'This visitor has been closed'
+                        : 'Start tracking your interactions with this visitor'}
+                    </p>
+                    {firstTimer.status !== 'CLOSED' && (
+                      <Button onClick={() => setShowFollowUpForm(true)} size="sm">
+                        <Plus className="h-4 w-4 mr-1.5" />
+                        Add Follow-up
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -648,8 +763,15 @@ export default function FirstTimerDetail() {
                             <td className="py-3 px-2 text-sm text-gray-900 whitespace-nowrap">
                               {formatDate(followUp.date)}
                             </td>
-                            <td className="py-3 px-2 text-sm text-gray-600 whitespace-nowrap">
-                              {getMethodLabel(followUp.method)}
+                            <td className="py-3 px-2 text-sm whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-600">{getMethodLabel(followUp.method)}</span>
+                                {followUp.method === 'in_visit' && followUp.visitNumber && (
+                                  <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                    {getVisitBadge(followUp.visitNumber)}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-3 px-2 whitespace-nowrap">
                               <span className={cn(
@@ -821,13 +943,15 @@ export default function FirstTimerDetail() {
         </AnimatePresence>
       </div>
 
-      {/* Mobile FAB */}
-      <button
-        onClick={() => setShowFollowUpForm(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gray-900 text-white rounded-full shadow-lg flex items-center justify-center lg:hidden"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+      {/* Mobile FAB - only show if not closed */}
+      {firstTimer.status !== 'CLOSED' && (
+        <button
+          onClick={() => setShowFollowUpForm(true)}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-gray-900 text-white rounded-full shadow-lg flex items-center justify-center lg:hidden"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
 
       {/* Follow-up Form Modal */}
       <AnimatePresence>
@@ -1150,6 +1274,81 @@ export default function FirstTimerDetail() {
                 </Button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Close Modal */}
+      <AnimatePresence>
+        {showCloseModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 overflow-y-auto"
+          >
+            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
+                setShowCloseModal(false)
+                setCloseReason('')
+              }} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+              >
+                <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                  <div className="sm:flex sm:items-start">
+                    <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 sm:mx-0 sm:h-10 sm:w-10">
+                      <XCircle className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                      <h3 className="text-base font-semibold leading-6 text-gray-900">
+                        Close First Timer
+                      </h3>
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-500">
+                          Are you sure you want to close {firstTimer?.firstName} {firstTimer?.lastName}? This will mark them as inactive (not converted to member).
+                        </p>
+                        <div className="mt-4">
+                          <label htmlFor="closeReason" className="block text-sm font-medium text-gray-700">
+                            Reason (optional)
+                          </label>
+                          <textarea
+                            id="closeReason"
+                            rows={3}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+                            placeholder="Enter reason for closing..."
+                            value={closeReason}
+                            onChange={(e) => setCloseReason(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                  <Button
+                    onClick={handleClose}
+                    disabled={closeLoading}
+                    className="inline-flex w-full justify-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 sm:ml-3 sm:w-auto"
+                  >
+                    {closeLoading ? 'Closing...' : 'Close'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowCloseModal(false)
+                      setCloseReason('')
+                    }}
+                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

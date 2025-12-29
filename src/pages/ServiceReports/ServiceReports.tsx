@@ -53,7 +53,7 @@ export default function ServiceReports() {
   const [searchTerm, setSearchTerm] = useState('')
   const [searchParams, setSearchParams] = useState<ServiceReportSearchParams>({
     page: 1,
-    limit: 20,
+    limit: 10,
     search: '',
     sortBy: 'date',
     sortOrder: 'desc'
@@ -590,7 +590,7 @@ export default function ServiceReports() {
           )}
 
           {/* Modern Pagination */}
-          {pagination && pagination.totalPages > 1 && (
+          {pagination && pagination.total > 0 && (
             <div className="border-t border-gray-100 bg-gray-50 px-8 py-4 rounded-b-2xl">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600 font-medium">

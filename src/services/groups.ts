@@ -2,31 +2,73 @@ import { apiService } from './api'
 import { ApiResponse } from '@/types/api'
 import { transformPaginatedResponse, transformSingleResponse } from '@/utils/apiResponseTransform'
 
+export interface MemberReference {
+  _id: string
+  firstName: string
+  lastName: string
+  email?: string
+  phone?: string
+  membershipStatus?: string
+}
+
+export interface RoleReference {
+  _id: string
+  name: string
+  displayName: string
+  slug: string
+}
+
 export interface Group {
   _id: string
   name: string
   type: 'district' | 'unit' | 'fellowship' | 'ministry' | 'committee'
   description?: string
-  districtPastor?: string
-  unitHead?: string
-  champs?: string[]
-  members: string[]
+  // District leadership
+  districtPastor?: string | MemberReference
+  // Unit leadership
+  unitHead?: string | MemberReference
+  assistantUnitHead?: string | MemberReference
+  // Ministry leadership
+  ministryDirector?: string | MemberReference
+  // Ministry-Unit linking
+  linkedUnits?: (string | Group)[]
+  // Default role for group members
+  defaultRole?: string | RoleReference
+  // Members
+  members: (string | MemberReference)[]
+  currentMemberCount?: number
+  maxCapacity?: number
   meetingSchedule?: {
     day: string
     time: string
-    frequency: 'weekly' | 'biweekly' | 'monthly'
+    frequency?: 'weekly' | 'biweekly' | 'monthly'
+    location?: string
+    isVirtual?: boolean
+    virtualLink?: string
+    address?: {
+      street?: string
+      city?: string
+      state?: string
+      country?: string
+    }
   }
   hostingInfo?: {
-    currentHost: string
-    hostRotation: string[]
-    nextRotationDate?: string
+    hostMember?: string | MemberReference
+    rotatingHosts?: (string | MemberReference)[]
+    currentHost?: string | MemberReference
   }
-  capacity?: number
+  // Contact information (top-level fields as per schema)
+  contactPhone?: string
+  contactEmail?: string
+  // Legacy contact object for backward compatibility
   contact?: {
     phone?: string
     email?: string
     address?: string
   }
+  vision?: string
+  mission?: string
+  goals?: string[]
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -38,10 +80,17 @@ export interface CreateGroupData {
   description?: string
   districtPastor?: string
   unitHead?: string
+  assistantUnitHead?: string
+  ministryDirector?: string
+  linkedUnits?: string[]
+  defaultRole?: string
   meetingSchedule?: Group['meetingSchedule']
   hostingInfo?: Group['hostingInfo']
-  capacity?: number
+  maxCapacity?: number
   contact?: Group['contact']
+  vision?: string
+  mission?: string
+  goals?: string[]
 }
 
 export interface UpdateGroupData extends Partial<CreateGroupData> {}
@@ -143,18 +192,18 @@ export const groupsService = {
     return response.data?.data || response.data
   },
 
+  removeDistrictPastor: async (groupId: string): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(`/groups/${groupId}/remove-district-pastor`)
+    return response.data?.data || response.data
+  },
+
   assignUnitHead: async (groupId: string, headId: string): Promise<Group> => {
     const response = await apiService.patch<ApiResponse<Group>>(`/groups/${groupId}/assign-unit-head/${headId}`)
     return response.data?.data || response.data
   },
 
-  addChamp: async (groupId: string, champId: string): Promise<Group> => {
-    const response = await apiService.patch<ApiResponse<Group>>(`/groups/${groupId}/add-champ/${champId}`)
-    return response.data?.data || response.data
-  },
-
-  removeChamp: async (groupId: string, champId: string): Promise<Group> => {
-    const response = await apiService.patch<ApiResponse<Group>>(`/groups/${groupId}/remove-champ/${champId}`)
+  removeUnitHead: async (groupId: string): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(`/groups/${groupId}/remove-unit-head`)
     return response.data?.data || response.data
   },
 
@@ -178,13 +227,90 @@ export const groupsService = {
     return response.data?.data || response.data
   },
 
-  // Note: Bulk upload endpoint not available in backend yet
-  // uploadGroups: async (formData: FormData): Promise<any> => {
-  //   const response = await apiService.post<ApiResponse<any>>('/groups/upload', formData, {
-  //     headers: {
-  //       'Content-Type': 'multipart/form-data'
-  //     }
-  //   })
-  //   return response.data?.data || response.data
-  // },
+  // ============================================
+  // NEW METHODS: Leadership, Bulk Members, Ministry-Unit Sync
+  // ============================================
+
+  // Assign Assistant Unit Head
+  assignAssistantUnitHead: async (groupId: string, memberId: string): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${groupId}/assign-assistant-unit-head/${memberId}`
+    )
+    return response.data?.data || response.data
+  },
+
+  // Remove Assistant Unit Head
+  removeAssistantUnitHead: async (groupId: string): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${groupId}/remove-assistant-unit-head`
+    )
+    return response.data?.data || response.data
+  },
+
+  // Assign Ministry Director
+  assignMinistryDirector: async (groupId: string, memberId: string): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${groupId}/assign-ministry-director/${memberId}`
+    )
+    return response.data?.data || response.data
+  },
+
+  // Remove Ministry Director
+  removeMinistryDirector: async (groupId: string): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${groupId}/remove-ministry-director`
+    )
+    return response.data?.data || response.data
+  },
+
+  // Bulk Add Members
+  addMembersToGroup: async (groupId: string, memberIds: string[]): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${groupId}/members/bulk-add`,
+      { memberIds }
+    )
+    return response.data?.data || response.data
+  },
+
+  // Set Default Role
+  setDefaultRole: async (groupId: string, roleId: string): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${groupId}/default-role/${roleId}`
+    )
+    return response.data?.data || response.data
+  },
+
+  // Remove Default Role
+  removeDefaultRole: async (groupId: string): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${groupId}/remove-default-role`
+    )
+    return response.data?.data || response.data
+  },
+
+  // Link Units to Ministry
+  linkUnitsToMinistry: async (ministryId: string, unitIds: string[]): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${ministryId}/link-units`,
+      { unitIds }
+    )
+    return response.data?.data || response.data
+  },
+
+  // Unlink Units from Ministry
+  unlinkUnitsFromMinistry: async (ministryId: string, unitIds: string[]): Promise<Group> => {
+    const response = await apiService.patch<ApiResponse<Group>>(
+      `/groups/${ministryId}/unlink-units`,
+      { unitIds }
+    )
+    return response.data?.data || response.data
+  },
+
+  // Get all ministries
+  getMinistries: async (params?: GroupSearchParams): Promise<PaginatedResponse<Group>> => {
+    const response = await apiService.get<ApiResponse<any>>('/groups', {
+      params: { ...params, type: 'ministry' }
+    })
+    return transformPaginatedResponse<Group>(response)
+  },
 }

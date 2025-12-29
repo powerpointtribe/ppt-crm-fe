@@ -60,7 +60,7 @@ export default function AuditLogs() {
   // Pagination
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: 10,
     total: 0,
     totalPages: 0,
     hasNext: false,
@@ -492,7 +492,7 @@ export default function AuditLogs() {
           </div>
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
+          {pagination && pagination.total > 0 && (
             <div className="bg-gray-50 px-6 py-3 flex items-center justify-between border-t border-gray-200">
               <div className="text-sm text-gray-700">
                 Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} logs

@@ -332,8 +332,25 @@ export default function MemberAnalytics() {
               <div className="space-y-3">
                 {stats?.byLeadership && stats.byLeadership.length > 0 ? (
                   stats.byLeadership.map((item: any, index: number) => {
-                    const colors = ['bg-purple-100 text-purple-600', 'bg-blue-100 text-blue-600', 'bg-green-100 text-green-600']
-                    const colorClass = colors[index % colors.length]
+                    // Map leadership status codes to readable labels
+                    const leadershipLabels: Record<string, string> = {
+                      'DC': "David's Company",
+                      'LXL': 'League of Xtraordinary Leaders',
+                      'DIRECTOR': 'Director',
+                      'PASTOR': 'Pastor',
+                      'CAMPUS_PASTOR': 'Campus Pastor',
+                      'SENIOR_PASTOR': 'Senior Pastor'
+                    }
+                    const leadershipColors: Record<string, string> = {
+                      'SENIOR_PASTOR': 'bg-amber-100 text-amber-600',
+                      'CAMPUS_PASTOR': 'bg-orange-100 text-orange-600',
+                      'PASTOR': 'bg-red-100 text-red-600',
+                      'DIRECTOR': 'bg-purple-100 text-purple-600',
+                      'LXL': 'bg-blue-100 text-blue-600',
+                      'DC': 'bg-green-100 text-green-600'
+                    }
+                    const label = leadershipLabels[item._id] || item._id
+                    const colorClass = leadershipColors[item._id] || 'bg-gray-100 text-gray-600'
                     return (
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-3">
@@ -341,7 +358,7 @@ export default function MemberAnalytics() {
                             <Heart className={`h-5 w-5 ${colorClass.split(' ')[1]}`} />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{item._id}</p>
+                            <p className="text-sm font-medium text-gray-900">{label}</p>
                             <p className="text-xs text-gray-500">{item.count} {item.count === 1 ? 'member' : 'members'}</p>
                           </div>
                         </div>

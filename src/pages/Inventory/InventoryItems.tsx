@@ -58,7 +58,7 @@ export default function InventoryItems() {
   const [showFilters, setShowFilters] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: 10,
     total: 0,
     totalPages: 0,
     hasNext: false,
@@ -79,7 +79,7 @@ export default function InventoryItems() {
       const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
       const params: InventoryQueryParams = {
         page: parseInt(searchParams.get('page') || '1'),
-        limit: 20,
+        limit: 10,
         search: searchParams.get('search') || undefined,
         category: searchParams.get('category') || undefined,
         status: searchParams.get('status') as any || undefined,
@@ -460,7 +460,7 @@ export default function InventoryItems() {
             </div>
 
             {/* Pagination */}
-            {pagination.totalPages > 1 && (
+            {pagination && pagination.total > 0 && (
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-700">
                   Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} items

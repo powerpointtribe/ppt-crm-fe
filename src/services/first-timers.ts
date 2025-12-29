@@ -237,12 +237,15 @@ export interface BulkStatusUpdateData {
 
 export const firstTimersService = {
   getFirstTimers: async (params?: FirstTimerSearchParams): Promise<PaginatedResponse<FirstTimer>> => {
-    // Clean params by removing undefined/null values and ensuring page/limit have defaults
+    // Clean params by removing undefined/null values and ensuring page/limit have valid defaults
+    const page = Math.max(1, Number(params?.page) || 1)
+    const limit = Math.min(100, Math.max(1, Number(params?.limit) || 10))
+
     const cleanParams = params ? Object.fromEntries(
       Object.entries({
         ...params,
-        page: params.page || 1,
-        limit: params.limit || 10,
+        page,
+        limit,
       }).filter(([, value]) => value !== undefined && value !== null && value !== '')
     ) : { page: 1, limit: 10 }
     const response = await apiService.get<ApiResponse<any>>('/first-timers', { params: cleanParams })
@@ -462,12 +465,15 @@ export const firstTimersService = {
 
   // Archive Management
   getArchivedFirstTimers: async (params?: FirstTimerSearchParams): Promise<PaginatedResponse<FirstTimer>> => {
-    // Clean params by removing undefined/null values and ensuring page/limit have defaults
+    // Clean params by removing undefined/null values and ensuring page/limit have valid defaults
+    const page = Math.max(1, Number(params?.page) || 1)
+    const limit = Math.min(100, Math.max(1, Number(params?.limit) || 10))
+
     const cleanParams = params ? Object.fromEntries(
       Object.entries({
         ...params,
-        page: params.page || 1,
-        limit: params.limit || 10,
+        page,
+        limit,
       }).filter(([, value]) => value !== undefined && value !== null && value !== '')
     ) : { page: 1, limit: 10 }
     const response = await apiService.get<ApiResponse<any>>('/first-timers/archived', { params: cleanParams })
@@ -501,11 +507,14 @@ export const firstTimersService = {
 
   // Ready for Integration
   getReadyForIntegration: async (params?: FirstTimerSearchParams): Promise<PaginatedResponse<FirstTimer>> => {
+    const page = Math.max(1, Number(params?.page) || 1)
+    const limit = Math.min(100, Math.max(1, Number(params?.limit) || 10))
+
     const cleanParams = params ? Object.fromEntries(
       Object.entries({
         ...params,
-        page: params.page || 1,
-        limit: params.limit || 10,
+        page,
+        limit,
       }).filter(([, value]) => value !== undefined && value !== null && value !== '')
     ) : { page: 1, limit: 10 }
     const response = await apiService.get<ApiResponse<any>>('/first-timers/ready-for-integration', { params: cleanParams })

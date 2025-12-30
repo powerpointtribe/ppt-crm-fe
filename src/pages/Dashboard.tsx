@@ -455,7 +455,7 @@ export default function Dashboard() {
             <p className="text-muted-foreground">Get started with common management tasks</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {[
               { label: 'Register Member', path: '/members/new', icon: UsersIcon, color: 'bg-green-500', description: 'Add church member' },
               { label: 'Create Group', path: '/groups/new', icon: GroupIcon, color: 'bg-purple-500', description: 'Start new group' },
@@ -467,20 +467,20 @@ export default function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 + index * 0.1 }}
                 onClick={() => navigate(action.path)}
-                className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:border-gray-300"
+                className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:border-gray-300"
               >
-                <div className={`w-12 h-12 ${action.color} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <action.icon className="h-6 w-6 text-white" />
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 ${action.color} rounded-lg flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform`}>
+                  <action.icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
-                <h3 className="font-semibold text-foreground mb-1">{action.label}</h3>
-                <p className="text-sm text-muted-foreground">{action.description}</p>
+                <h3 className="font-semibold text-sm sm:text-base text-foreground mb-1">{action.label}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">{action.description}</p>
               </motion.div>
             ))}
           </div>
         </motion.div>
 
         {/* Service Reports & Audit Trail Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-8">
           {/* Service Reports Stats */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -488,18 +488,18 @@ export default function Dashboard() {
             transition={{ duration: 0.5, delay: 0.8 }}
           >
             <Card className="h-full">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-white" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-2 mb-4 sm:mb-6">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     </div>
-                    <div>
-                      <h2 className="text-xl font-semibold text-foreground">Service Reports</h2>
-                      <p className="text-sm text-muted-foreground">Attendance and service statistics</p>
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-xl font-semibold text-foreground truncate">Service Reports</h2>
+                      <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Attendance and service statistics</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/service-reports')}>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/service-reports')} className="text-xs sm:text-sm flex-shrink-0">
                     View All
                   </Button>
                 </div>
@@ -507,18 +507,18 @@ export default function Dashboard() {
                 {serviceReportStats ? (
                   <>
                     {/* Key Metrics */}
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600 mb-1">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 sm:p-4 rounded-lg">
+                        <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-1">
                           {serviceReportStats.overall?.totalReports?.toLocaleString() || 0}
                         </div>
-                        <div className="text-sm text-blue-600 font-medium">Total Reports</div>
+                        <div className="text-xs sm:text-sm text-blue-600 font-medium">Total Reports</div>
                       </div>
-                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600 mb-1">
+                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 sm:p-4 rounded-lg">
+                        <div className="text-xl sm:text-2xl font-bold text-green-600 mb-1">
                           {serviceReportStats.overall?.totalAttendance?.toLocaleString() || 0}
                         </div>
-                        <div className="text-sm text-green-600 font-medium">Total Attendance</div>
+                        <div className="text-xs sm:text-sm text-green-600 font-medium">Total Attendance</div>
                       </div>
                     </div>
 
@@ -570,18 +570,18 @@ export default function Dashboard() {
             transition={{ duration: 0.5, delay: 0.9 }}
           >
             <Card className="h-full">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
-                      <Activity className="h-5 w-5 text-white" />
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-2 mb-4 sm:mb-6">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     </div>
-                    <div>
-                      <h2 className="text-xl font-semibold text-foreground">Recent Activity</h2>
-                      <p className="text-sm text-muted-foreground">System audit trail</p>
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-xl font-semibold text-foreground truncate">Recent Activity</h2>
+                      <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">System audit trail</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/audit/logs')}>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/audit/logs')} className="text-xs sm:text-sm flex-shrink-0">
                     View All
                   </Button>
                 </div>

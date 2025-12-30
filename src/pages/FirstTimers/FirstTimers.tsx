@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Plus, Phone, Mail, Calendar, User,
-  MoreHorizontal, Eye, Edit, Trash2, UserPlus,
+  MoreHorizontal, Trash2, UserPlus, Edit,
   Users, Clock, CheckCircle, TrendingUp, UserCheck,
-  X, Filter, Archive, ArchiveRestore, UserCog
+  X, Filter, RefreshCw, UserCog, Archive, ArchiveRestore
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -81,6 +81,11 @@ export default function FirstTimers() {
   const [members, setMembers] = useState<Member[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
   const [selectedAssignee, setSelectedAssignee] = useState('')
+
+  // Status update modal state
+  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [selectedFirstTimerForStatus, setSelectedFirstTimerForStatus] = useState<FirstTimer | null>(null)
+  const [statusUpdateLoading, setStatusUpdateLoading] = useState(false)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -653,6 +658,38 @@ export default function FirstTimers() {
     }
   }
 
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!selectedFirstTimerForStatus) return
+
+    try {
+      setStatusUpdateLoading(true)
+      const id = selectedFirstTimerForStatus._id
+
+      // Handle different status changes using the appropriate API methods
+      if (newStatus === 'READY_FOR_INTEGRATION') {
+        await firstTimersService.markReadyForIntegration(id)
+      } else if (newStatus === 'ARCHIVED') {
+        await firstTimersService.archiveFirstTimer(id)
+      } else if (newStatus === 'CLOSED') {
+        await firstTimersService.closeFirstTimer(id)
+      } else {
+        // For NEW and ENGAGED, use the general update status
+        await firstTimersService.updateStatus(id, newStatus as any)
+      }
+
+      toast.success('Status Updated', `Status changed to ${newStatus.replace(/_/g, ' ')}`)
+      setShowStatusModal(false)
+      setSelectedFirstTimerForStatus(null)
+      await loadFirstTimers()
+      await loadStats()
+      await loadArchiveStats()
+    } catch (error: any) {
+      toast.error('Update Failed', error.message || 'Failed to update status')
+    } finally {
+      setStatusUpdateLoading(false)
+    }
+  }
+
   const [integrateIds, setIntegrateIds] = useState<string[]>([])
 
   const openIntegrateModal = async (ids: string[]) => {
@@ -786,7 +823,7 @@ export default function FirstTimers() {
                 <LoadingSpinner size="md" />
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -795,11 +832,11 @@ export default function FirstTimers() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Visitors</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats?.total || 0}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Visitors</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats?.total || 0}</p>
                   </div>
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Users className="h-5 w-5 text-blue-600" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                   </div>
                 </div>
               </motion.div>
@@ -812,11 +849,11 @@ export default function FirstTimers() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Ready for Integration</p>
-                    <p className="text-2xl font-bold text-green-600">{stats?.readyForIntegration || 0}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Ready for Integration</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-600">{stats?.readyForIntegration || 0}</p>
                   </div>
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <UserCog className="h-5 w-5 text-green-600" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <UserCog className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                   </div>
                 </div>
               </motion.div>
@@ -829,11 +866,11 @@ export default function FirstTimers() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-                    <p className="text-2xl font-bold text-purple-600">{stats?.conversionRate || 0}%</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Conversion Rate</p>
+                    <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats?.conversionRate || 0}%</p>
                   </div>
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-purple-600" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                   </div>
                 </div>
               </motion.div>
@@ -846,11 +883,11 @@ export default function FirstTimers() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Archived</p>
-                    <p className="text-2xl font-bold text-orange-600">{stats?.totalArchived || 0}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Archived</p>
+                    <p className="text-xl sm:text-2xl font-bold text-orange-600">{stats?.totalArchived || 0}</p>
                   </div>
-                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Archive className="h-5 w-5 text-orange-600" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <Archive className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                   </div>
                 </div>
               </motion.div>
@@ -859,8 +896,8 @@ export default function FirstTimers() {
         )}
 
         {/* Date Range Selector and Tabs */}
-        <div className="flex items-center justify-between border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200">
+          <nav className="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
             <button
               onClick={() => handleTabChange('all')}
               className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
@@ -1077,23 +1114,23 @@ export default function FirstTimers() {
           </div>
         ) : (
           <>
-            {/* Bulk Actions Toolbar */}
-            {selectedIds.length > 0 && (
+            {/* Bulk Actions Toolbar - not shown for closed tab */}
+            {selectedIds.length > 0 && activeTab !== 'closed' && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`${activeTab === 'all' ? 'bg-blue-50 border-blue-200' : activeTab === 'ready' ? 'bg-green-50 border-green-200' : activeTab === 'closed' ? 'bg-purple-50 border-purple-200' : 'bg-orange-50 border-orange-200'} border rounded-lg p-4 mb-4`}
+                className={`${activeTab === 'all' ? 'bg-blue-50 border-blue-200' : activeTab === 'ready' ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} border rounded-lg p-4 mb-4`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <span className={`text-sm font-medium ${activeTab === 'all' ? 'text-blue-900' : activeTab === 'ready' ? 'text-green-900' : activeTab === 'closed' ? 'text-purple-900' : 'text-orange-900'}`}>
+                    <span className={`text-sm font-medium ${activeTab === 'all' ? 'text-blue-900' : activeTab === 'ready' ? 'text-green-900' : 'text-orange-900'}`}>
                       {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''} selected
                     </span>
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => setSelectedIds([])}
-                      className={activeTab === 'all' ? 'text-blue-700 hover:text-blue-800' : activeTab === 'ready' ? 'text-green-700 hover:text-green-800' : activeTab === 'closed' ? 'text-purple-700 hover:text-purple-800' : 'text-orange-700 hover:text-orange-800'}
+                      className={activeTab === 'all' ? 'text-blue-700 hover:text-blue-800' : activeTab === 'ready' ? 'text-green-700 hover:text-green-800' : 'text-orange-700 hover:text-orange-800'}
                     >
                       Clear selection
                     </Button>
@@ -1109,10 +1146,6 @@ export default function FirstTimers() {
                         <ArchiveRestore className="h-4 w-4 mr-2" />
                         {archiveLoading ? 'Restoring...' : 'Restore Selected'}
                       </Button>
-                    ) : activeTab === 'closed' ? (
-                      <span className="text-sm text-purple-600">
-                        Closed visitors are read-only
-                      </span>
                     ) : (
                       <div className="relative" data-bulk-actions-menu>
                         <Button
@@ -1209,12 +1242,14 @@ export default function FirstTimers() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-4 py-3 w-12">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.length === firstTimers.length && firstTimers.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
+                      {activeTab !== 'closed' && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.length === firstTimers.length && firstTimers.length > 0}
+                          onChange={handleSelectAll}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      )}
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Visitor</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Contact</th>
@@ -1235,12 +1270,14 @@ export default function FirstTimers() {
                       onClick={() => navigate(`/first-timers/${visitor._id}`)}
                     >
                       <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(visitor._id)}
-                          onChange={() => handleSelectItem(visitor._id)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
+                        {activeTab !== 'closed' && visitor.status !== 'CLOSED' && (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(visitor._id)}
+                            onChange={() => handleSelectItem(visitor._id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        )}
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center space-x-3">
@@ -1309,78 +1346,158 @@ export default function FirstTimers() {
                       </td>
                       <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-center">
-                          <div className="relative">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setActionMenuOpen(actionMenuOpen === visitor._id ? null : visitor._id)}
-                              className="p-1"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
+                          {/* Hide action menu entirely for closed first timers */}
+                          {visitor.status !== 'CLOSED' ? (
+                            <div className="relative">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setActionMenuOpen(actionMenuOpen === visitor._id ? null : visitor._id)}
+                                className="p-1"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
 
-                            {actionMenuOpen === visitor._id && (
-                              <div className="absolute right-0 bottom-full mb-1 w-44 bg-white rounded-md shadow-lg border z-10">
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => {
-                                      navigate(`/first-timers/${visitor._id}`)
-                                      setActionMenuOpen(null)
-                                    }}
-                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <Eye className="h-3 w-3 mr-2" />
-                                    View
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      navigate(`/first-timers/${visitor._id}/edit`)
-                                      setActionMenuOpen(null)
-                                    }}
-                                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <Edit className="h-3 w-3 mr-2" />
-                                    Edit
-                                  </button>
-                                  {activeTab === 'all' && (
+                              {actionMenuOpen === visitor._id && (
+                                <div className={`absolute right-0 w-48 bg-white rounded-md shadow-lg border z-10 ${
+                                  index >= firstTimers.length - 2 ? 'bottom-full mb-1' : 'top-full mt-1'
+                                }`}>
+                                  <div className="py-1">
+                                    {/* Edit - always shown */}
                                     <button
-                                      onClick={() => setArchiveModalOpen(visitor._id)}
-                                      className="flex items-center w-full px-3 py-2 text-sm text-orange-600 hover:bg-orange-50"
+                                      onClick={() => {
+                                        navigate(`/first-timers/${visitor._id}/edit`)
+                                        setActionMenuOpen(null)
+                                      }}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                     >
-                                      <Archive className="h-3 w-3 mr-2" />
-                                      Archive
+                                      <Edit className="h-3 w-3 mr-2" />
+                                      Edit
                                     </button>
-                                  )}
-                                  {activeTab === 'ready' && (
+
+                                    {/* NEW: Only Assign */}
+                                    {visitor.status === 'NEW' && (
+                                      <button
+                                        onClick={() => {
+                                          setSelectedIds([visitor._id])
+                                          setShowBulkAssignModal(true)
+                                          setActionMenuOpen(null)
+                                        }}
+                                        className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                      >
+                                        <UserCheck className="h-3 w-3 mr-2" />
+                                        Assign
+                                      </button>
+                                    )}
+
+                                    {/* ENGAGED: Assign + Update Status */}
+                                    {visitor.status === 'ENGAGED' && (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            setSelectedIds([visitor._id])
+                                            setShowBulkAssignModal(true)
+                                            setActionMenuOpen(null)
+                                          }}
+                                          className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                          <UserCheck className="h-3 w-3 mr-2" />
+                                          Assign
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setSelectedFirstTimerForStatus(visitor)
+                                            setShowStatusModal(true)
+                                            setActionMenuOpen(null)
+                                          }}
+                                          className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                          <RefreshCw className="h-3 w-3 mr-2" />
+                                          Update Status
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {/* READY_FOR_INTEGRATION: Integrate or Move to Engaged */}
+                                    {visitor.status === 'READY_FOR_INTEGRATION' && (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            handleSingleIntegrate(visitor._id)
+                                            setActionMenuOpen(null)
+                                          }}
+                                          className="flex items-center w-full px-3 py-2 text-sm text-green-600 hover:bg-green-50"
+                                        >
+                                          <UserPlus className="h-3 w-3 mr-2" />
+                                          Integrate
+                                        </button>
+                                        <button
+                                          onClick={async () => {
+                                            try {
+                                              await firstTimersService.unmarkReadyForIntegration(visitor._id)
+                                              setActionMenuOpen(null)
+                                              loadFirstTimers()
+                                              toast.success('Status Updated', 'Moved back to Engaged')
+                                            } catch (error: any) {
+                                              toast.error('Failed', error.message || 'Could not update status')
+                                            }
+                                          }}
+                                          className="flex items-center w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                                        >
+                                          <RefreshCw className="h-3 w-3 mr-2" />
+                                          Move to Engaged
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {/* ARCHIVED: Restore or Close */}
+                                    {visitor.status === 'ARCHIVED' && (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            handleUnarchive(visitor._id)
+                                            setActionMenuOpen(null)
+                                          }}
+                                          disabled={archiveLoading}
+                                          className="flex items-center w-full px-3 py-2 text-sm text-green-600 hover:bg-green-50 disabled:opacity-50"
+                                        >
+                                          <ArchiveRestore className="h-3 w-3 mr-2" />
+                                          Restore
+                                        </button>
+                                        <button
+                                          onClick={async () => {
+                                            try {
+                                              await firstTimersService.closeFirstTimer(visitor._id)
+                                              setActionMenuOpen(null)
+                                              loadFirstTimers()
+                                              toast.success('Closed', 'First timer has been closed')
+                                            } catch (error: any) {
+                                              toast.error('Failed', error.message || 'Could not close')
+                                            }
+                                          }}
+                                          className="flex items-center w-full px-3 py-2 text-sm text-purple-600 hover:bg-purple-50"
+                                        >
+                                          <X className="h-3 w-3 mr-2" />
+                                          Close
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {/* Delete - always shown */}
                                     <button
-                                      onClick={() => handleSingleIntegrate(visitor._id)}
-                                      className="flex items-center w-full px-3 py-2 text-sm text-green-600 hover:bg-green-50"
+                                      onClick={() => handleDelete(visitor._id)}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                                     >
-                                      <UserPlus className="h-3 w-3 mr-2" />
-                                      Integrate
+                                      <Trash2 className="h-3 w-3 mr-2" />
+                                      Delete
                                     </button>
-                                  )}
-                                  {activeTab === 'archived' && (
-                                    <button
-                                      onClick={() => handleUnarchive(visitor._id)}
-                                      disabled={archiveLoading}
-                                      className="flex items-center w-full px-3 py-2 text-sm text-green-600 hover:bg-green-50 disabled:opacity-50"
-                                    >
-                                      <ArchiveRestore className="h-3 w-3 mr-2" />
-                                      Restore
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={() => handleDelete(visitor._id)}
-                                    className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-2" />
-                                    Delete
-                                  </button>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
@@ -1873,6 +1990,68 @@ export default function FirstTimers() {
                 >
                   Cancel
                 </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Update Modal */}
+      {showStatusModal && selectedFirstTimerForStatus && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
+              setShowStatusModal(false)
+              setSelectedFirstTimerForStatus(null)
+            }} />
+            <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm">
+              <div className="bg-white px-4 pb-4 pt-5 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-gray-900">
+                    Update Status
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowStatusModal(false)
+                      setSelectedFirstTimerForStatus(null)
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500 mb-4">
+                  {selectedFirstTimerForStatus.firstName} {selectedFirstTimerForStatus.lastName}
+                </p>
+                <div className="space-y-2">
+                  {[
+                    { value: 'READY_FOR_INTEGRATION', label: 'Ready for Integration', color: 'bg-green-50 text-green-700 hover:bg-green-100' },
+                    { value: 'ARCHIVED', label: 'Archived', color: 'bg-orange-50 text-orange-700 hover:bg-orange-100' },
+                    { value: 'CLOSED', label: 'Closed', color: 'bg-purple-50 text-purple-700 hover:bg-purple-100' },
+                  ].map((status) => (
+                    <button
+                      key={status.value}
+                      onClick={() => handleStatusUpdate(status.value)}
+                      disabled={statusUpdateLoading || selectedFirstTimerForStatus.status === status.value}
+                      className={`w-full px-4 py-2.5 text-sm font-medium rounded-lg text-left flex items-center justify-between ${
+                        selectedFirstTimerForStatus.status === status.value
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : status.color
+                      } disabled:opacity-50 transition-colors`}
+                    >
+                      <span>{status.label}</span>
+                      {selectedFirstTimerForStatus.status === status.value && (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {statusUpdateLoading && (
+                  <div className="flex items-center justify-center mt-4">
+                    <LoadingSpinner size="sm" />
+                    <span className="ml-2 text-sm text-gray-500">Updating...</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

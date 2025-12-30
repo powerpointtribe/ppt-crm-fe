@@ -140,7 +140,7 @@ const AuditLogList: React.FC = () => {
         <CardContent>
           <div className="space-y-4">
             {/* Search and Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
@@ -195,20 +195,20 @@ const AuditLogList: React.FC = () => {
             </div>
 
             {/* Date Range */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="text-sm font-medium">Start Date</label>
+                <label className="text-xs sm:text-sm font-medium">Start Date</label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        'w-[240px] justify-start text-left font-normal',
+                        'w-full sm:w-[240px] justify-start text-left font-normal text-sm',
                         !startDate && 'text-muted-foreground'
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, 'PPP') : 'Pick start date'}
+                      <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{startDate ? format(startDate, 'PPP') : 'Pick start date'}</span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -223,18 +223,18 @@ const AuditLogList: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-sm font-medium">End Date</label>
+                <label className="text-xs sm:text-sm font-medium">End Date</label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        'w-[240px] justify-start text-left font-normal',
+                        'w-full sm:w-[240px] justify-start text-left font-normal text-sm',
                         !endDate && 'text-muted-foreground'
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, 'PPP') : 'Pick end date'}
+                      <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{endDate ? format(endDate, 'PPP') : 'Pick end date'}</span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -250,26 +250,26 @@ const AuditLogList: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button onClick={handleSearch} className="flex items-center gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleSearch} className="flex items-center gap-2 flex-1 sm:flex-none justify-center text-sm">
                 <Filter className="h-4 w-4" />
                 Apply Filters
               </Button>
               <Button
                 variant="outline"
                 onClick={() => handleExport('csv')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-sm"
               >
                 <Download className="h-4 w-4" />
-                Export CSV
+                <span className="hidden sm:inline">Export</span> CSV
               </Button>
               <Button
                 variant="outline"
                 onClick={() => handleExport('json')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-sm"
               >
                 <Download className="h-4 w-4" />
-                Export JSON
+                <span className="hidden sm:inline">Export</span> JSON
               </Button>
             </div>
           </div>

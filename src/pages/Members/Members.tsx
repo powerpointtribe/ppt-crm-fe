@@ -1343,7 +1343,102 @@ export default function Members() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* Mobile Card View */}
+              <div className="md:hidden p-3 space-y-3">
+                {members.map((member, index) => (
+                  <motion.div
+                    key={member._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 ${selectedMembers.has(member._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
+                    onClick={() => navigate(`/members/${member._id}`)}
+                  >
+                    {/* Header: Name and Checkbox */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        {canAssignLocation && (
+                          <input
+                            type="checkbox"
+                            checked={selectedMembers.has(member._id)}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              toggleSelectMember(member._id)
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        )}
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {member.firstName} {member.lastName}
+                          </h3>
+                          <p className="text-sm text-gray-500 truncate max-w-[200px]">{member.email}</p>
+                        </div>
+                      </div>
+                      <Badge variant={getStatusColor(member.membershipStatus)} className="text-xs">
+                        {member.membershipStatus.replace('_', ' ')}
+                      </Badge>
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center text-gray-600">
+                        <Phone className="h-3 w-3 mr-1.5 text-gray-400" />
+                        <span className="truncate">{member.phone || '-'}</span>
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <Calendar className="h-3 w-3 mr-1.5 text-gray-400" />
+                        <span>{formatDate(member.dateJoined)}</span>
+                      </div>
+                    </div>
+
+                    {/* Location Info */}
+                    <div className="pt-2 border-t border-gray-100 space-y-1">
+                      <div className="flex items-center text-sm">
+                        <Building2 className="h-3 w-3 mr-1.5 text-primary-600" />
+                        <span className="font-medium text-gray-700 truncate">
+                          {typeof member.branch === 'object' ? member.branch?.name : 'No branch'}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-xs text-gray-500">
+                        <Users className="h-3 w-3 mr-1.5 text-gray-400" />
+                        <span className="truncate">
+                          {member.district?.name || 'No district'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+                      {canAssignLocation && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenLocationModal(member)}
+                          className="flex-1 text-xs"
+                        >
+                          <MapPin className="h-3 w-3 mr-1" />
+                          Location
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/members/${member._id}/edit`)}
+                        className="flex-1 text-xs"
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[600px]">
                   <thead className="bg-muted/50">
                     <tr>
@@ -1487,6 +1582,7 @@ export default function Members() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
 
             {/* Pagination */}

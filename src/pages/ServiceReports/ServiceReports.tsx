@@ -445,7 +445,115 @@ export default function ServiceReports() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                {/* Mobile Card View */}
+                <div className="md:hidden p-3 space-y-3">
+                  {reports.map((report, index) => (
+                    <motion.div
+                      key={report._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+                      onClick={() => openDetailModal(report)}
+                    >
+                      {/* Header: Service Name and Date */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-gray-900 truncate max-w-[180px]">
+                              {report.serviceName}
+                            </h3>
+                            <p className="text-sm text-gray-500">{formatDate(report.date)}</p>
+                          </div>
+                        </div>
+                        {report.serviceTags && report.serviceTags.length > 0 && (
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                            {report.serviceTags.length} tag{report.serviceTags.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Attendance Stats */}
+                      <div className="grid grid-cols-4 gap-2 text-center py-2 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="text-lg font-bold text-gray-900">{report.totalAttendance}</p>
+                          <p className="text-xs text-gray-500">Total</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">{report.numberOfMales}</p>
+                          <p className="text-xs text-gray-500">Male</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">{report.numberOfFemales}</p>
+                          <p className="text-xs text-gray-500">Female</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">{report.numberOfChildren}</p>
+                          <p className="text-xs text-gray-500">Children</p>
+                        </div>
+                      </div>
+
+                      {/* First Timers Highlight */}
+                      {report.numberOfFirstTimers > 0 && (
+                        <div className="flex items-center justify-between p-2 bg-indigo-50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <UserCheck className="w-4 h-4 text-indigo-600" />
+                            <span className="text-sm font-medium text-indigo-700">First Timers</span>
+                          </div>
+                          <span className="text-lg font-bold text-indigo-600">{report.numberOfFirstTimers}</span>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate(`/members/service-reports/${report._id}/edit`)}
+                          className="flex-1 text-xs"
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => generatePdf(report._id, e)}
+                          className="flex-1 text-xs"
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          PDF
+                        </Button>
+                        <button
+                          onClick={(e) => handleDelete(report._id, e)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {reports.length === 0 && (
+                    <div className="text-center py-16">
+                      <div className="w-12 h-12 bg-gray-100 rounded-xl mx-auto mb-4 flex items-center justify-center">
+                        <FileText className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <h3 className="text-base font-medium text-gray-900 mb-1">No reports found</h3>
+                      <p className="text-gray-500 text-sm mb-5">Create your first service report to start tracking.</p>
+                      <Button onClick={() => setShowQuickCreateModal(true)} size="sm">
+                        <Plus className="w-4 h-4 mr-1" />
+                        New Report
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100">

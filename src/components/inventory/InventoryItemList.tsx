@@ -223,8 +223,135 @@ const InventoryItemList: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Items Table */}
-      <Card>
+      {/* Items - Mobile Card View */}
+      <Card className="md:hidden">
+        <CardContent className="p-3">
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading items...</div>
+          ) : items.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No items found</div>
+          ) : (
+            <div className="space-y-3">
+              {/* Mobile Pagination - Top */}
+              {pagination.pages > 1 && (
+                <div className="flex flex-col gap-2 pb-3 border-b border-gray-200">
+                  <div className="text-sm text-gray-500 text-center">
+                    Showing {pagination.count} of {pagination.total} items
+                  </div>
+                  <div className="flex justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.current - 1)}
+                      disabled={pagination.current === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="px-3 py-1 text-sm flex items-center">
+                      {pagination.current} / {pagination.pages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.current + 1)}
+                      disabled={pagination.current === pagination.pages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {items.map((item) => (
+                <div
+                  key={item._id}
+                  className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+                >
+                  {/* Header: Name and Status */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900">{item.name}</h3>
+                      <p className="text-sm text-gray-500">Code: {item.itemCode}</p>
+                      {item.brand && (
+                        <p className="text-xs text-gray-400">
+                          {item.brand} {item.model && `- ${item.model}`}
+                        </p>
+                      )}
+                    </div>
+                    <Badge className={`${getStatusColor(item.status)} text-xs ml-2 flex-shrink-0`}>
+                      {item.status.replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+
+                  {/* Category and Stock */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-400 uppercase">Category</span>
+                      <div>
+                        <Badge variant="outline" style={{ backgroundColor: item.category.color }} className="text-xs">
+                          {item.category.name}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-400 uppercase">Stock</span>
+                      <div className={getStockStatusColor(item)}>
+                        <div className="font-medium">
+                          {item.currentStock} {item.unitOfMeasurement.replace(/_/g, ' ').toLowerCase()}
+                        </div>
+                        {item.reorderLevel > 0 && (
+                          <div className="text-xs text-gray-500">
+                            Reorder at: {item.reorderLevel}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing */}
+                  <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t border-gray-100">
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-400 uppercase">Unit Cost</span>
+                      <p className="font-medium text-gray-900">
+                        {formatCurrency(item.unitCost, item.currency)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-400 uppercase">Total Value</span>
+                      <p className="font-medium text-green-600">
+                        {formatCurrency(item.currentStock * item.unitCost, item.currency)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  {(item.assignedUnit?.name || item.assignedDistrict?.name || item.location) && (
+                    <div className="text-sm pt-2 border-t border-gray-100">
+                      <span className="text-xs text-gray-400 uppercase">Location</span>
+                      <p className="text-gray-700">
+                        {item.assignedUnit?.name || item.assignedDistrict?.name || '-'}
+                        {item.location && <span className="text-gray-500"> - {item.location}</span>}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      Edit
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      View
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Items - Desktop Table View */}
+      <Card className="hidden md:block">
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
@@ -233,10 +360,10 @@ const InventoryItemList: React.FC = () => {
                   <TableHead>Item</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Stock</TableHead>
-                  <TableHead>Unit Cost</TableHead>
-                  <TableHead>Total Value</TableHead>
+                  <TableHead className="hidden lg:table-cell">Unit Cost</TableHead>
+                  <TableHead className="hidden lg:table-cell">Total Value</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead className="hidden xl:table-cell">Location</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -286,10 +413,10 @@ const InventoryItemList: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         {formatCurrency(item.unitCost, item.currency)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         {formatCurrency(item.currentStock * item.unitCost, item.currency)}
                       </TableCell>
                       <TableCell>
@@ -297,7 +424,7 @@ const InventoryItemList: React.FC = () => {
                           {item.status.replace(/_/g, ' ')}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden xl:table-cell">
                         <div>
                           {item.assignedUnit?.name || item.assignedDistrict?.name || '-'}
                           {item.location && (

@@ -1236,7 +1236,124 @@ export default function FirstTimers() {
               </motion.div>
             )}
 
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {firstTimers.map((visitor, index) => (
+                <motion.div
+                  key={visitor._id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 ${selectedIds.includes(visitor._id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+                  onClick={() => navigate(`/first-timers/${visitor._id}`)}
+                >
+                  {/* Header: Name and Checkbox */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      {activeTab !== 'closed' && visitor.status !== 'CLOSED' && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(visitor._id)}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            handleSelectItem(visitor._id)
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      )}
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                          {visitor.firstName.charAt(0)}{visitor.lastName.charAt(0)}
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {visitor.firstName} {visitor.lastName}
+                          </h3>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(visitor.status)}`}>
+                        {getStatusLabel(visitor.status)}
+                      </span>
+                      {visitor.status === 'CLOSED' && (
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                          visitor.converted || visitor.memberRecord
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {visitor.converted || visitor.memberRecord ? 'Member' : 'Inactive'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {visitor.phone && (
+                      <div className="flex items-center text-gray-600">
+                        <Phone className="h-3 w-3 mr-1.5 text-gray-400" />
+                        <span className="truncate">{visitor.phone}</span>
+                      </div>
+                    )}
+                    {visitor.email && (
+                      <div className="flex items-center text-gray-600">
+                        <Mail className="h-3 w-3 mr-1.5 text-gray-400" />
+                        <span className="truncate">{visitor.email}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Visit Date & Assigned To */}
+                  <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center text-gray-600">
+                      <Calendar className="h-3 w-3 mr-1.5 text-gray-400" />
+                      <span>{formatDate(visitor.dateOfVisit)}</span>
+                    </div>
+                    {visitor.assignedTo && (
+                      <div className="flex items-center text-gray-600">
+                        <User className="h-3 w-3 mr-1.5 text-gray-400" />
+                        <span className="truncate">
+                          {typeof visitor.assignedTo === 'object'
+                            ? `${visitor.assignedTo?.firstName} ${visitor.assignedTo?.lastName}`
+                            : 'Assigned'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  {visitor.status !== 'CLOSED' && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/first-timers/${visitor._id}/edit`)}
+                        className="flex-1 text-xs"
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      {visitor.status === 'READY_FOR_INTEGRATION' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openIntegrateModal([visitor._id])}
+                          className="flex-1 text-xs text-green-600 border-green-200 hover:bg-green-50"
+                        >
+                          <UserPlus className="h-3 w-3 mr-1" />
+                          Integrate
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">

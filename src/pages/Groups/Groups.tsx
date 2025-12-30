@@ -757,8 +757,138 @@ export default function Groups() {
           </div>
         )}
 
-        {/* Groups Table */}
-        <Card className="overflow-hidden">
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          {groups.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No groups found matching your criteria.</p>
+            </Card>
+          ) : (
+            groups.map((group, index) => {
+              const GroupIcon = getGroupTypeIcon(group.type)
+              const leaderInfo = getLeaderInfo(group)
+
+              return (
+                <motion.div
+                  key={group._id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 ${bulkSelection.selectedItems.has(group._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
+                  onClick={() => navigate(`/groups/${group._id}`)}
+                >
+                  {/* Header: Name, Type, and Checkbox */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={bulkSelection.selectedItems.has(group._id)}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          bulkSelection.selectItem(group._id)
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <GroupIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <h3 className="font-medium text-gray-900 truncate">{group.name}</h3>
+                        </div>
+                        {group.description && (
+                          <p className="text-sm text-gray-500 truncate mt-0.5">{group.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getGroupTypeBadge(group.type)}`}>
+                        {group.type.toUpperCase()}
+                      </span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        group.isActive
+                          ? 'bg-green-100 text-green-800 border border-green-200'
+                          : 'bg-red-100 text-red-800 border border-red-200'
+                      }`}>
+                        {group.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {/* Leader */}
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-400 uppercase">Leader</span>
+                      <div className="text-gray-700">
+                        {leaderInfo ? (
+                          <div className="flex items-center gap-1">
+                            <leaderInfo.icon className="h-3 w-3 text-gray-400" />
+                            <span className="truncate text-xs">
+                              {typeof leaderInfo.id === 'object'
+                                ? `${leaderInfo.id?.firstName} ${leaderInfo.id?.lastName}`
+                                : 'Assigned'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No leader</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Members */}
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-400 uppercase">Members</span>
+                      <div className="flex items-center gap-1 text-gray-700">
+                        <Users className="h-3 w-3 text-gray-400" />
+                        <span>{group.members?.length || 0}</span>
+                        {group.capacity && (
+                          <span className="text-gray-400">/ {group.capacity}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Meeting Schedule */}
+                  {group.meetingSchedule && (
+                    <div className="pt-2 border-t border-gray-100">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Calendar className="h-3 w-3 text-gray-400" />
+                        <span>{group.meetingSchedule.day}s at {group.meetingSchedule.time}</span>
+                        <span className="text-gray-400">({group.meetingSchedule.frequency})</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/groups/${group._id}`)}
+                      className="flex-1 text-xs"
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/groups/${group._id}/edit`)}
+                      className="flex-1 text-xs"
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                  </div>
+                </motion.div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Desktop Groups Table */}
+        <Card className="overflow-hidden hidden md:block">
           <BulkSelectableTable>
             <BulkSelectHeader
               checked={isAllSelected}

@@ -276,8 +276,101 @@ const AuditLogList: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Audit Logs Table */}
-      <Card>
+      {/* Audit Logs - Mobile Card View */}
+      <Card className="md:hidden">
+        <CardContent className="p-3">
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading audit logs...</div>
+          ) : auditLogs.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No audit logs found</div>
+          ) : (
+            <div className="space-y-3">
+              {/* Mobile Pagination - Top */}
+              {pagination.pages > 1 && (
+                <div className="flex flex-col gap-2 pb-3 border-b border-gray-200">
+                  <div className="text-sm text-gray-500 text-center">
+                    Showing {pagination.count} of {pagination.total} results
+                  </div>
+                  <div className="flex justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.current - 1)}
+                      disabled={pagination.current === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="px-3 py-1 text-sm flex items-center">
+                      {pagination.current} / {pagination.pages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.current + 1)}
+                      disabled={pagination.current === pagination.pages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {auditLogs.map((log) => (
+                <div
+                  key={log._id}
+                  className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+                >
+                  {/* Header: Action and Severity */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={`${getActionColor(log.action)} text-xs`}>
+                        {log.action.replace(/_/g, ' ')}
+                      </Badge>
+                      <Badge className={`${getSeverityColor(log.severity)} text-xs`}>
+                        {log.severity.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {log.entityType.replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+
+                  {/* Timestamp */}
+                  <div className="text-xs text-gray-500 font-mono">
+                    {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
+                  </div>
+
+                  {/* Performed By */}
+                  <div className="text-sm pt-2 border-t border-gray-100">
+                    <span className="text-xs text-gray-400 uppercase">Performed By</span>
+                    <div className="font-medium text-gray-900">{log.performedByName}</div>
+                    <div className="text-xs text-gray-500">{log.performedByEmail}</div>
+                  </div>
+
+                  {/* Description */}
+                  {log.description && (
+                    <div className="text-sm pt-2 border-t border-gray-100">
+                      <span className="text-xs text-gray-400 uppercase">Description</span>
+                      <p className="text-gray-700 text-sm">{log.description}</p>
+                    </div>
+                  )}
+
+                  {/* Unit */}
+                  {(log.relatedUnit?.name || log.relatedDistrict?.name) && (
+                    <div className="text-sm pt-2 border-t border-gray-100">
+                      <span className="text-xs text-gray-400 uppercase">Related Unit</span>
+                      <p className="text-gray-700">{log.relatedUnit?.name || log.relatedDistrict?.name}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Audit Logs - Desktop Table View */}
+      <Card className="hidden md:block">
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
@@ -286,10 +379,10 @@ const AuditLogList: React.FC = () => {
                   <TableHead>Timestamp</TableHead>
                   <TableHead>Action</TableHead>
                   <TableHead>Entity</TableHead>
-                  <TableHead>Performed By</TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead className="hidden lg:table-cell">Performed By</TableHead>
+                  <TableHead className="hidden xl:table-cell">Description</TableHead>
                   <TableHead>Severity</TableHead>
-                  <TableHead>Unit</TableHead>
+                  <TableHead className="hidden lg:table-cell">Unit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -321,13 +414,13 @@ const AuditLogList: React.FC = () => {
                           {log.entityType.replace(/_/g, ' ')}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div>
                           <div className="font-medium">{log.performedByName}</div>
                           <div className="text-sm text-gray-500">{log.performedByEmail}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">
+                      <TableCell className="max-w-xs truncate hidden xl:table-cell">
                         {log.description || 'No description'}
                       </TableCell>
                       <TableCell>
@@ -335,7 +428,7 @@ const AuditLogList: React.FC = () => {
                           {log.severity.toUpperCase()}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         {log.relatedUnit?.name || log.relatedDistrict?.name || '-'}
                       </TableCell>
                     </TableRow>

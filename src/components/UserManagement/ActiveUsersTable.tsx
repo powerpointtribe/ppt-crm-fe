@@ -1,4 +1,4 @@
-import { Edit, UserX, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, UserX, Trash2, ChevronLeft, ChevronRight, Phone, Mail, Clock } from 'lucide-react';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import type { ActiveUser } from '../../services/user-invitations';
@@ -54,8 +54,92 @@ export default function ActiveUsersTable({
 
   return (
     <div className="space-y-4">
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {users && users.map((user) => (
+          <div
+            key={user._id}
+            className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+          >
+            {/* Header: Name and Status */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-medium text-gray-900">
+                  {user.firstName} {user.lastName}
+                </h3>
+                <div className="flex items-center gap-2 mt-1">
+                  {user.role ? (
+                    <Badge variant="info" className="text-xs">
+                      {user.role.displayName || user.role.name}
+                    </Badge>
+                  ) : (
+                    <Badge className="text-xs">No Role</Badge>
+                  )}
+                  {user.isActive ? (
+                    <Badge variant="success" className="text-xs">Active</Badge>
+                  ) : (
+                    <Badge variant="error" className="text-xs">Inactive</Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Info */}
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Mail className="w-4 h-4 text-gray-400" />
+                <span className="truncate">{user.email}</span>
+              </div>
+              {user.phone && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Phone className="w-4 h-4 text-gray-400" />
+                  <span>{user.phone}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-gray-500">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <span className="text-xs">Last login: {formatDate(user.lastLogin)}</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            {(canManageUsers || canDeleteUsers) && (
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                {canManageUsers && (
+                  <>
+                    <button
+                      onClick={() => onEditRole(user)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Edit Role
+                    </button>
+                    <button
+                      onClick={() => onDeactivate(user._id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-yellow-600 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors"
+                    >
+                      <UserX className="w-4 h-4" />
+                      Deactivate
+                    </button>
+                  </>
+                )}
+                {canDeleteUsers && (
+                  <button
+                    onClick={() => onDelete(user._id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
@@ -65,7 +149,7 @@ export default function ActiveUsersTable({
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                 Email
               </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 hidden lg:table-cell">
                 Phone
               </th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
@@ -74,7 +158,7 @@ export default function ActiveUsersTable({
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                 Status
               </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 hidden xl:table-cell">
                 Last Login
               </th>
               <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
@@ -95,7 +179,7 @@ export default function ActiveUsersTable({
                 <td className="py-4 px-4">
                   <p className="text-sm text-gray-600">{user.email}</p>
                 </td>
-                <td className="py-4 px-4">
+                <td className="py-4 px-4 hidden lg:table-cell">
                   <p className="text-sm text-gray-600">{user.phone || '-'}</p>
                 </td>
                 <td className="py-4 px-4">
@@ -114,7 +198,7 @@ export default function ActiveUsersTable({
                     <Badge variant="error">Inactive</Badge>
                   )}
                 </td>
-                <td className="py-4 px-4">
+                <td className="py-4 px-4 hidden xl:table-cell">
                   <p className="text-sm text-gray-600">
                     {formatDate(user.lastLogin)}
                   </p>

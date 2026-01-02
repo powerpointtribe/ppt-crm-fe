@@ -194,8 +194,22 @@ export const membersService = {
     activities: any[];
     total: number;
   }> => {
-    const response = await apiService.get<ApiResponse<any>>(`/activity-tracker/members/${memberId}/timeline`, { params })
-    return response.data?.data || response.data
+    try {
+      // apiService.get returns response.data directly, so 'response' IS the data
+      const response = await apiService.get<{ activities: any[]; total: number }>(`/activity-tracker/members/${memberId}/timeline`, { params })
+      console.log('[MemberTimeline] Raw API response:', response)
+
+      // Handle both wrapped and unwrapped response formats
+      const activities = response?.activities ?? (response as any)?.data?.activities ?? []
+      const total = response?.total ?? (response as any)?.data?.total ?? 0
+
+      console.log('[MemberTimeline] Parsed activities:', activities.length, 'total:', total)
+
+      return { activities, total }
+    } catch (error) {
+      console.error('[MemberTimeline] Error fetching timeline:', error)
+      return { activities: [], total: 0 }
+    }
   },
 
   getMemberTimelineStatistics: async (memberId: string): Promise<{
@@ -206,7 +220,32 @@ export const membersService = {
     trainings: number;
     lastActivity: Date;
   }> => {
-    const response = await apiService.get<ApiResponse<any>>(`/activity-tracker/members/${memberId}/statistics`)
-    return response.data?.data || response.data
+    try {
+      // apiService.get returns response.data directly, so 'response' IS the data
+      const response = await apiService.get<any>(`/activity-tracker/members/${memberId}/statistics`)
+      console.log('[MemberTimeline] Statistics API response:', response)
+
+      // Handle both wrapped and unwrapped response formats
+      const stats = response?.data || response
+
+      return {
+        totalActivities: stats?.totalActivities ?? 0,
+        recentActivities: stats?.recentActivities ?? 0,
+        milestones: stats?.milestones ?? 0,
+        roleChanges: stats?.roleChanges ?? 0,
+        trainings: stats?.trainings ?? 0,
+        lastActivity: stats?.lastActivity || new Date(),
+      }
+    } catch (error) {
+      console.error('[MemberTimeline] Error fetching statistics:', error)
+      return {
+        totalActivities: 0,
+        recentActivities: 0,
+        milestones: 0,
+        roleChanges: 0,
+        trainings: 0,
+        lastActivity: new Date(),
+      }
+    }
   },
 }

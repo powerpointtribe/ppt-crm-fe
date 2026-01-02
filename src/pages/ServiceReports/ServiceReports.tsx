@@ -48,11 +48,13 @@ import {
 } from '@/services/service-reports'
 import { formatDate, formatDateTime } from '@/utils/formatters'
 import { useAppStore } from '@/store'
+import { useAuth } from '@/contexts/AuthContext-unified'
 import { cn } from '@/utils/cn'
 
 export default function ServiceReports() {
   const navigate = useNavigate()
   const { selectedBranch, branches } = useAppStore()
+  const { hasPermission } = useAuth()
   const [reports, setReports] = useState<ServiceReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -86,8 +88,9 @@ export default function ServiceReports() {
   const [tempDateTo, setTempDateTo] = useState('')
   const [tempBranchFilter, setTempBranchFilter] = useState('')
 
-  // Show branch filter when viewing "All Campuses"
-  const showBranchFilter = !selectedBranch && branches.length > 0
+  // Show branch filter only if user has permission to view all branches
+  const canViewAllBranches = hasPermission('branches:view-all')
+  const showBranchFilter = canViewAllBranches && branches.length > 0
 
   const memoizedSearchParams = useMemo(() => {
     const effectiveBranchId = selectedBranch?._id || branchFilter || undefined

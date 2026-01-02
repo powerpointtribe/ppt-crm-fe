@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import { SkeletonTable } from '@/components/ui/Skeleton'
 import FilterModal from '@/components/ui/FilterModal'
-import { BulkSelectableTable, BulkSelectHeader, BulkSelectRow, TableBody, TableHead, TableCell } from '@/components/ui/BulkSelectableTable'
+// BulkSelectableTable components removed - using custom compact table
 import BulkActions, { commonBulkActions, BulkAction } from '@/components/ui/BulkActions'
 import BulkConfirmationModal from '@/components/ui/BulkConfirmationModal'
 import BulkProgressModal from '@/components/ui/BulkProgressModal'
@@ -18,13 +18,14 @@ import { useBulkSelection } from '@/hooks/useBulkSelection'
 import { Group, GroupSearchParams, groupsService } from '@/services/groups'
 import { bulkOperationsService } from '@/services/bulkOperations'
 import { downloadCSV, BulkOperationProgress } from '@/utils/bulkOperations'
-import { formatDate } from '@/utils/formatters'
 import { useAppStore } from '@/store'
+import { useAuth } from '@/contexts/AuthContext-unified'
 
 export default function Groups() {
   const navigate = useNavigate()
   const [urlSearchParams, setUrlSearchParams] = useSearchParams()
   const { selectedBranch, branches } = useAppStore()
+  const { hasPermission } = useAuth()
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -37,6 +38,12 @@ export default function Groups() {
   })
   const [pagination, setPagination] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
+  const [filteredTypeStats, setFilteredTypeStats] = useState<{
+    total: number
+    active: number
+    inactive: number
+    totalMembers: number
+  } | null>(null)
   const [filteredType, setFilteredType] = useState<string | null>(urlSearchParams.get('type'))
   const [showFilterModal, setShowFilterModal] = useState(false)
 
@@ -54,8 +61,9 @@ export default function Groups() {
   const [tempDateTo, setTempDateTo] = useState('')
   const [tempBranchFilter, setTempBranchFilter] = useState('')
 
-  // Show branch filter when viewing "All Campuses"
-  const showBranchFilter = !selectedBranch && branches.length > 0
+  // Show branch filter only if user has permission to view all branches
+  const canViewAllBranches = hasPermission('branches:view-all')
+  const showBranchFilter = canViewAllBranches && branches.length > 0
 
   // Bulk operations state
   const bulkSelection = useBulkSelection<Group>()
@@ -113,6 +121,71 @@ export default function Groups() {
   useEffect(() => {
     loadStats()
   }, [])
+
+  // Load stats specific to the filtered type
+  useEffect(() => {
+    if (filteredType) {
+      loadFilteredTypeStats()
+    } else {
+      setFilteredTypeStats(null)
+    }
+  }, [filteredType, selectedBranch])
+
+  const loadFilteredTypeStats = async () => {
+    if (!filteredType) return
+    try {
+      const effectiveBranchId = selectedBranch?._id || undefined
+      // Fetch counts for active and inactive groups
+      const [activeResponse, inactiveResponse] = await Promise.all([
+        groupsService.getGroups({
+          type: filteredType as GroupSearchParams['type'],
+          isActive: true,
+          branchId: effectiveBranchId,
+          limit: 1 // Just need the total count from pagination
+        }),
+        groupsService.getGroups({
+          type: filteredType as GroupSearchParams['type'],
+          isActive: false,
+          branchId: effectiveBranchId,
+          limit: 1 // Just need the total count from pagination
+        })
+      ])
+
+      // For total members, fetch in batches of 100 (API max limit)
+      let totalMembers = 0
+      let page = 1
+      let hasMore = true
+
+      while (hasMore) {
+        const response = await groupsService.getGroups({
+          type: filteredType as GroupSearchParams['type'],
+          branchId: effectiveBranchId,
+          page,
+          limit: 100
+        })
+
+        totalMembers += response.items.reduce(
+          (acc, g) => acc + (g.currentMemberCount || g.members?.length || 0),
+          0
+        )
+
+        hasMore = response.pagination.hasNext
+        page++
+
+        // Safety limit to prevent infinite loops
+        if (page > 50) break
+      }
+
+      setFilteredTypeStats({
+        total: activeResponse.pagination.total + inactiveResponse.pagination.total,
+        active: activeResponse.pagination.total,
+        inactive: inactiveResponse.pagination.total,
+        totalMembers
+      })
+    } catch (error) {
+      console.error('Error loading filtered type stats:', error)
+    }
+  }
 
   const loadGroups = async () => {
     try {
@@ -579,7 +652,7 @@ export default function Groups() {
       subtitle={getPageSubtitle()}
       searchSection={searchSection}
     >
-      <div className="space-y-6">
+      <div className="space-y-3">
         {/* Bulk Actions Bar */}
         <BulkActions
           selectedCount={bulkSelection.getSelectedCount()}
@@ -590,87 +663,111 @@ export default function Groups() {
 
         {/* Stats Cards - Only show for general groups page */}
         {!filteredType && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+            >
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Users className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Total</p>
+                    <p className="text-base font-semibold text-gray-900">{stats?.total || 0}</p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Total Groups</h3>
-                    <p className="text-2xl font-bold text-blue-600">{stats?.total || 0}</p>
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                   </div>
-                  <Users className="h-8 w-8 text-blue-600" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Active</p>
+                    <p className="text-base font-semibold text-gray-900">{stats?.active || 0}</p>
+                  </div>
                 </div>
               </Card>
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Districts</p>
+                    <p className="text-base font-semibold text-gray-900">{stats?.districts || 0}</p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Selected</h3>
-                    <p className="text-2xl font-bold text-purple-600">{bulkSelection.getSelectedCount()}</p>
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <SettingsIcon className="h-4 w-4 text-green-600" />
                   </div>
-                  <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
-                    <div className="h-3 w-3 bg-purple-600 rounded-full"></div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Units</p>
+                    <p className="text-base font-semibold text-gray-900">{stats?.units || 0}</p>
                   </div>
                 </div>
               </Card>
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+            >
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-orange-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Star className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Ministries</p>
+                    <p className="text-base font-semibold text-gray-900">{stats?.ministries || 0}</p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Active</h3>
-                    <p className="text-2xl font-bold text-green-600">{stats?.active || 0}</p>
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-purple-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Users className="h-4 w-4 text-purple-600" />
                   </div>
-                  <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <div className="h-3 w-3 bg-green-600 rounded-full"></div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Fellowships</p>
+                    <p className="text-base font-semibold text-gray-900">{stats?.fellowships || 0}</p>
                   </div>
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Districts</h3>
-                    <p className="text-2xl font-bold text-green-600">{stats?.districts || 0}</p>
-                  </div>
-                  <MapPin className="h-8 w-8 text-green-600" />
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Units</h3>
-                    <p className="text-2xl font-bold text-orange-600">{stats?.units || 0}</p>
-                  </div>
-                  <SettingsIcon className="h-8 w-8 text-orange-600" />
                 </div>
               </Card>
             </motion.div>
@@ -679,77 +776,78 @@ export default function Groups() {
 
         {/* Subsection Stats - Show specific stats for filtered views */}
         {filteredType && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+            >
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    {filteredType === 'district' && <MapPin className="h-4 w-4 text-blue-600" />}
+                    {filteredType === 'unit' && <SettingsIcon className="h-4 w-4 text-blue-600" />}
+                    {filteredType === 'ministry' && <Star className="h-4 w-4 text-blue-600" />}
+                    {filteredType === 'fellowship' && <Users className="h-4 w-4 text-blue-600" />}
+                    {filteredType === 'committee' && <Shield className="h-4 w-4 text-blue-600" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Total</p>
+                    <p className="text-base font-semibold text-gray-900">{filteredTypeStats?.total ?? pagination?.total ?? 0}</p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Total {getPageTitle()}</h3>
-                    <p className="text-2xl font-bold text-blue-600">{pagination?.total || 0}</p>
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                   </div>
-                  {filteredType === 'district' && <MapPin className="h-8 w-8 text-blue-600" />}
-                  {filteredType === 'unit' && <SettingsIcon className="h-8 w-8 text-blue-600" />}
-                  {filteredType === 'ministry' && <Star className="h-8 w-8 text-blue-600" />}
-                  {filteredType === 'fellowship' && <Users className="h-8 w-8 text-blue-600" />}
-                  {filteredType === 'committee' && <Shield className="h-8 w-8 text-blue-600" />}
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Active</p>
+                    <p className="text-base font-semibold text-gray-900">{filteredTypeStats?.active ?? 0}</p>
+                  </div>
                 </div>
               </Card>
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Inactive</p>
+                    <p className="text-base font-semibold text-gray-900">{filteredTypeStats?.inactive ?? 0}</p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Showing</h3>
-                    <p className="text-2xl font-bold text-green-600">{groups.length}</p>
+              <Card className="p-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-purple-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Users className="h-4 w-4 text-purple-600" />
                   </div>
-                  <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <div className="h-3 w-3 bg-green-600 rounded-full"></div>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Selected</h3>
-                    <p className="text-2xl font-bold text-purple-600">{bulkSelection.getSelectedCount()}</p>
-                  </div>
-                  <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
-                    <div className="h-3 w-3 bg-purple-600 rounded-full"></div>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">Page</h3>
-                    <p className="text-2xl font-bold text-orange-600">{pagination?.page || 1}</p>
-                    <p className="text-xs text-gray-500">of {pagination?.totalPages || 1}</p>
-                  </div>
-                  <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
-                    <Calendar className="h-4 w-4 text-orange-600" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 truncate">Members</p>
+                    <p className="text-base font-semibold text-gray-900">{filteredTypeStats?.totalMembers ?? 0}</p>
                   </div>
                 </div>
               </Card>
@@ -758,11 +856,11 @@ export default function Groups() {
         )}
 
         {/* Mobile Card View */}
-        <div className="md:hidden space-y-3">
+        <div className="md:hidden space-y-1.5">
           {groups.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No groups found matching your criteria.</p>
+            <Card className="p-6 text-center">
+              <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500 text-sm">No groups found matching your criteria.</p>
             </Card>
           ) : (
             groups.map((group, index) => {
@@ -772,15 +870,15 @@ export default function Groups() {
               return (
                 <motion.div
                   key={group._id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 ${bulkSelection.selectedItems.has(group._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
+                  transition={{ delay: index * 0.015 }}
+                  className={`bg-white border border-gray-200 rounded-lg p-2.5 ${bulkSelection.selectedItems.has(group._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
                   onClick={() => navigate(`/groups/${group._id}`)}
                 >
-                  {/* Header: Name, Type, and Checkbox */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
+                  {/* Header Row */}
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <input
                         type="checkbox"
                         checked={bulkSelection.selectedItems.has(group._id)}
@@ -791,95 +889,74 @@ export default function Groups() {
                         onClick={(e) => e.stopPropagation()}
                         className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
                       />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <GroupIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <h3 className="font-medium text-gray-900 truncate">{group.name}</h3>
-                        </div>
-                        {group.description && (
-                          <p className="text-sm text-gray-500 truncate mt-0.5">{group.description}</p>
-                        )}
-                      </div>
+                      <GroupIcon className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                      <h3 className="font-medium text-gray-900 text-sm truncate">{group.name}</h3>
                     </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getGroupTypeBadge(group.type)}`}>
-                        {group.type.toUpperCase()}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${getGroupTypeBadge(group.type)}`}>
+                        {group.type.charAt(0).toUpperCase() + group.type.slice(1)}
                       </span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                         group.isActive
-                          ? 'bg-green-100 text-green-800 border border-green-200'
-                          : 'bg-red-100 text-red-800 border border-red-200'
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-gray-100 text-gray-600'
                       }`}>
+                        <span className={`w-1 h-1 rounded-full ${group.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
                         {group.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                   </div>
 
-                  {/* Info Grid */}
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  {/* Info Row */}
+                  <div className="flex items-center gap-3 text-xs text-gray-500 pl-6">
                     {/* Leader */}
-                    <div className="space-y-1">
-                      <span className="text-xs text-gray-400 uppercase">Leader</span>
-                      <div className="text-gray-700">
-                        {leaderInfo ? (
-                          <div className="flex items-center gap-1">
-                            <leaderInfo.icon className="h-3 w-3 text-gray-400" />
-                            <span className="truncate text-xs">
-                              {typeof leaderInfo.id === 'object'
-                                ? `${leaderInfo.id?.firstName} ${leaderInfo.id?.lastName}`
-                                : 'Assigned'}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-xs">No leader</span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-1">
+                      {leaderInfo ? (
+                        <>
+                          <leaderInfo.icon className="h-3 w-3 text-gray-400" />
+                          <span className="truncate max-w-[100px]">
+                            {typeof leaderInfo.id === 'object'
+                              ? `${leaderInfo.id?.firstName} ${leaderInfo.id?.lastName}`
+                              : leaderInfo.title}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-gray-400">No leader</span>
+                      )}
                     </div>
-
+                    <span className="text-gray-300">|</span>
                     {/* Members */}
-                    <div className="space-y-1">
-                      <span className="text-xs text-gray-400 uppercase">Members</span>
-                      <div className="flex items-center gap-1 text-gray-700">
-                        <Users className="h-3 w-3 text-gray-400" />
-                        <span>{group.members?.length || 0}</span>
-                        {group.capacity && (
-                          <span className="text-gray-400">/ {group.capacity}</span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3 text-gray-400" />
+                      <span>{group.currentMemberCount || group.members?.length || 0}{group.maxCapacity > 0 ? `/${group.maxCapacity}` : ''}</span>
                     </div>
+                    {group.meetingSchedule && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 text-gray-400" />
+                          <span>{group.meetingSchedule.day}s</span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
-                  {/* Meeting Schedule */}
-                  {group.meetingSchedule && (
-                    <div className="pt-2 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="h-3 w-3 text-gray-400" />
-                        <span>{group.meetingSchedule.day}s at {group.meetingSchedule.time}</span>
-                        <span className="text-gray-400">({group.meetingSchedule.frequency})</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                  {/* Actions Row */}
+                  <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-gray-100 pl-6" onClick={(e) => e.stopPropagation()}>
+                    <button
                       onClick={() => navigate(`/groups/${group._id}`)}
-                      className="flex-1 text-xs"
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded transition-colors"
                     >
-                      <Eye className="h-3 w-3 mr-1" />
+                      <Eye className="h-3 w-3" />
                       View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    </button>
+                    <button
                       onClick={() => navigate(`/groups/${group._id}/edit`)}
-                      className="flex-1 text-xs"
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded transition-colors"
                     >
-                      <Edit className="h-3 w-3 mr-1" />
+                      <Edit className="h-3 w-3" />
                       Edit
-                    </Button>
+                    </button>
                   </div>
                 </motion.div>
               )
@@ -889,133 +966,146 @@ export default function Groups() {
 
         {/* Desktop Groups Table */}
         <Card className="overflow-hidden hidden md:block">
-          <BulkSelectableTable>
-            <BulkSelectHeader
-              checked={isAllSelected}
-              indeterminate={isIndeterminate}
-              onToggle={() => bulkSelection.selectAll(groups)}
-            >
-              <TableHead>Group</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Leader</TableHead>
-              <TableHead>Members</TableHead>
-              <TableHead>Meeting Schedule</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </BulkSelectHeader>
-            <TableBody>
-              {groups.map((group) => {
-                const GroupIcon = getGroupTypeIcon(group.type)
-                const leaderInfo = getLeaderInfo(group)
-                const LeaderIcon = leaderInfo?.icon
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="w-10 px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isIndeterminate
+                      }}
+                      onChange={() => bulkSelection.selectAll(groups)}
+                      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Type</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leader</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Members</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {groups.map((group) => {
+                  const GroupIcon = getGroupTypeIcon(group.type)
+                  const leaderInfo = getLeaderInfo(group)
+                  const LeaderIcon = leaderInfo?.icon
 
-                return (
-                  <BulkSelectRow
-                    key={group._id}
-                    checked={bulkSelection.selectedItems.has(group._id)}
-                    onToggle={() => bulkSelection.selectItem(group._id)}
-                    onClick={() => navigate(`/groups/${group._id}`)}
-                  >
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <GroupIcon className="h-6 w-6 text-gray-400" />
+                  return (
+                    <tr
+                      key={group._id}
+                      onClick={() => navigate(`/groups/${group._id}`)}
+                      className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                        bulkSelection.selectedItems.has(group._id) ? 'bg-primary-50' : ''
+                      }`}
+                    >
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={bulkSelection.selectedItems.has(group._id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => bulkSelection.selectItem(group._id)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <GroupIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate text-sm">{group.name}</p>
+                            {group.description && (
+                              <p className="text-xs text-gray-500 truncate max-w-[180px]">{group.description}</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{group.name}</p>
-                          {group.description && (
-                            <p className="text-sm text-gray-600">{group.description}</p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${getGroupTypeBadge(group.type)}`}>
+                          {group.type.charAt(0).toUpperCase() + group.type.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {leaderInfo && LeaderIcon ? (
+                          <div className="flex items-center gap-1.5">
+                            <LeaderIcon className="h-3.5 w-3.5 text-gray-400" />
+                            <div className="min-w-0">
+                              <p className="text-xs text-gray-900 truncate">
+                                {typeof leaderInfo.id === 'object'
+                                  ? `${leaderInfo.id?.firstName} ${leaderInfo.id?.lastName}`
+                                  : leaderInfo.title}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1 text-xs">
+                          <span className="text-gray-900 font-medium">{group.currentMemberCount || group.members?.length || 0}</span>
+                          {group.maxCapacity > 0 && (
+                            <span className="text-gray-400">/{group.maxCapacity}</span>
                           )}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getGroupTypeBadge(group.type)}`}>
-                        {group.type.toUpperCase()}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {leaderInfo && LeaderIcon ? (
-                        <div className="flex items-center space-x-2">
-                          <LeaderIcon className="h-4 w-4 text-gray-400" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{leaderInfo.title}</p>
-                            <p className="text-xs text-gray-600">
-                              {typeof leaderInfo.id === 'object' ? `${leaderInfo.id?.firstName} ${leaderInfo.id?.lastName}` : `ID: ${leaderInfo.id}`}
-                            </p>
+                      </td>
+                      <td className="px-3 py-2">
+                        {group.meetingSchedule ? (
+                          <div className="text-xs">
+                            <span className="text-gray-900">{group.meetingSchedule.day}s</span>
+                            <span className="text-gray-400"> · {group.meetingSchedule.time}</span>
                           </div>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">No leader assigned</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-900">{group.members?.length || 0}</span>
-                        {group.capacity && (
-                          <span className="text-gray-600">/ {group.capacity}</span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {group.meetingSchedule ? (
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          <div>
-                            <p className="text-sm text-gray-900">
-                              {group.meetingSchedule.day}s
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {group.meetingSchedule.time} - {group.meetingSchedule.frequency}
-                            </p>
-                          </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          group.isActive
+                            ? 'bg-green-50 text-green-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${group.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                          {group.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-0.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate(`/groups/${group._id}`)
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                            title="View"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate(`/groups/${group._id}/edit`)
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">Not scheduled</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        group.isActive
-                          ? 'bg-green-100 text-green-800 border border-green-200'
-                          : 'bg-red-100 text-red-800 border border-red-200'
-                      }`}>
-                        {group.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/groups/${group._id}`)
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/groups/${group._id}/edit`)
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </BulkSelectRow>
-                )
-              })}
-            </TableBody>
-          </BulkSelectableTable>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {groups.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 text-sm">
               No groups found matching your criteria.
             </div>
           )}
@@ -1023,33 +1113,36 @@ export default function Groups() {
 
         {/* Pagination */}
         {pagination && pagination.total > 0 && (
-          <div className="flex justify-center">
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs text-gray-500">
+              Showing {((pagination.page - 1) * pagination.limit) + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
                 disabled={!pagination.hasPrev}
                 onClick={() => {
                   const newParams = new URLSearchParams(urlSearchParams)
                   newParams.set('page', (pagination.page - 1).toString())
                   setUrlSearchParams(newParams)
                 }}
+                className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Previous
-              </Button>
-              <span className="px-4 py-2 text-sm text-gray-600">
-                Page {pagination.page} of {pagination.totalPages}
+                Prev
+              </button>
+              <span className="px-2 py-1 text-xs text-gray-600">
+                {pagination.page} / {pagination.totalPages}
               </span>
-              <Button
-                variant="secondary"
+              <button
                 disabled={!pagination.hasNext}
                 onClick={() => {
                   const newParams = new URLSearchParams(urlSearchParams)
                   newParams.set('page', (pagination.page + 1).toString())
                   setUrlSearchParams(newParams)
                 }}
+                className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Next
-              </Button>
+              </button>
             </div>
           </div>
         )}

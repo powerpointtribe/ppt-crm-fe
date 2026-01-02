@@ -53,12 +53,34 @@ export default function Login() {
     } catch (error: any) {
       debugLog(`Login error: ${error.message}`)
 
-      // Handle different types of errors
-      if (error.code === 401) {
-        setError('password', {
+      // Extract error details from various response formats
+      const errorCode = error.errorCode || error.response?.data?.errorCode;
+      const errorMessage = error.message || error.response?.data?.message;
+
+      // Handle invitation-related errors
+      if (errorCode === 'INVITATION_REQUIRED') {
+        setError('email', {
           type: 'manual',
-          message: 'Invalid email or password'
+          message: 'Access denied. You need an invitation to access this platform. Please contact an administrator.'
         })
+      } else if (errorCode === 'INVITATION_EXPIRED') {
+        setError('email', {
+          type: 'manual',
+          message: 'Your invitation has expired. Please contact an administrator for a new invitation.'
+        })
+      } else if (error.code === 401) {
+        // Check if it's a custom 401 with invitation message
+        if (errorMessage?.toLowerCase().includes('invitation')) {
+          setError('email', {
+            type: 'manual',
+            message: errorMessage
+          })
+        } else {
+          setError('password', {
+            type: 'manual',
+            message: 'Invalid email or password'
+          })
+        }
       } else if (error.code === 400) {
         setError('email', {
           type: 'manual',
@@ -266,7 +288,7 @@ export default function Login() {
                 transition={{ delay: 0.9 }}
               >
                 <p className="text-sm text-muted-foreground">
-                  Access restricted to authorized PowerPoint Tribe leadership and administrators only.
+                  Access restricted to invited Powerpoint Tribe members only. Contact an administrator if you need access.
                 </p>
               </motion.div>
 

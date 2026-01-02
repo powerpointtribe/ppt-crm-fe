@@ -239,13 +239,24 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: 'Account',
+    items: [
+      {
+        icon: Settings,
+        label: 'My Settings',
+        path: '/my-settings',
+        requiredPermission: null,
+      },
+    ],
+  },
+  {
     label: 'System',
     items: [
       {
         icon: Settings,
-        label: 'Settings',
+        label: 'Admin Settings',
         path: '/settings',
-        requiredPermission: null,
+        requiredPermission: 'dashboard:view-settings',
       },
     ],
   },

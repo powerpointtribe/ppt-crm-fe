@@ -16,7 +16,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Info
+  Info,
+  ChevronDown
 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -31,6 +32,7 @@ interface TimelineActivity {
   title: string
   description?: string
   activityDate: string
+  effectiveDate?: string
   status: string
   priority: string
   fromRole?: string
@@ -75,6 +77,7 @@ export default function MemberTimeline({ memberId }: MemberTimelineProps) {
   const [error, setError] = useState<any>(null)
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const limit = 10
 
   useEffect(() => {
@@ -93,9 +96,7 @@ export default function MemberTimeline({ memberId }: MemberTimelineProps) {
       }
 
       const currentOffset = loadMore ? offset : 0
-      const [timelineData] = await Promise.all([
-        membersService.getMemberTimeline(memberId, { limit, offset: currentOffset })
-      ])
+      const timelineData = await membersService.getMemberTimeline(memberId, { limit, offset: currentOffset })
 
       if (loadMore) {
         setActivities(prev => [...prev, ...timelineData.activities])
@@ -106,7 +107,7 @@ export default function MemberTimeline({ memberId }: MemberTimelineProps) {
       setHasMore(timelineData.activities.length === limit)
       setOffset(currentOffset + timelineData.activities.length)
     } catch (error: any) {
-      console.error('Error loading timeline:', error)
+      console.error('[MemberTimeline] Error loading timeline:', error)
       setError(error)
     } finally {
       setLoading(false)
@@ -123,75 +124,90 @@ export default function MemberTimeline({ memberId }: MemberTimelineProps) {
     }
   }
 
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
   const getActivityIcon = (activityType: string) => {
     const iconMap: Record<string, JSX.Element> = {
-      'MEMBER_REGISTRATION': <User className="h-4 w-4" />,
-      'FIRST_TIME_VISITOR': <Heart className="h-4 w-4" />,
-      'MEMBERSHIP_STATUS_CHANGE': <Users className="h-4 w-4" />,
-      'UNIT_ASSIGNMENT': <MapPin className="h-4 w-4" />,
-      'UNIT_TRANSFER': <MapPin className="h-4 w-4" />,
-      'ROLE_PROMOTION': <ArrowUp className="h-4 w-4" />,
-      'ROLE_CHANGE': <Users className="h-4 w-4" />,
-      'ROLE_DEMOTION': <ArrowDown className="h-4 w-4" />,
-      'LEADERSHIP_APPOINTMENT': <Crown className="h-4 w-4" />,
-      'LEADERSHIP_PROMOTION': <Shield className="h-4 w-4" />,
-      'TRAINING_ENROLLMENT': <GraduationCap className="h-4 w-4" />,
-      'TRAINING_GRADUATION': <Award className="h-4 w-4" />,
-      'DC_ENROLLMENT': <GraduationCap className="h-4 w-4" />,
-      'LXL_ENROLLMENT': <GraduationCap className="h-4 w-4" />,
-      'PASTORAL_TRAINING_START': <GraduationCap className="h-4 w-4" />,
-      'INTERNSHIP_ASSIGNMENT': <Star className="h-4 w-4" />,
-      'WATER_BAPTISM': <Heart className="h-4 w-4" />,
-      'SPIRIT_BAPTISM': <Heart className="h-4 w-4" />,
-      'BAPTISM': <Heart className="h-4 w-4" />,
-      'SALVATION': <Heart className="h-4 w-4" />,
-      'MARRIAGE': <Heart className="h-4 w-4" />,
-      'CONFIRMATION': <CheckCircle className="h-4 w-4" />,
+      'MEMBER_REGISTRATION': <User className="h-3 w-3" />,
+      'FIRST_TIME_VISITOR': <Heart className="h-3 w-3" />,
+      'MEMBERSHIP_STATUS_CHANGE': <Users className="h-3 w-3" />,
+      'UNIT_ASSIGNMENT': <MapPin className="h-3 w-3" />,
+      'UNIT_TRANSFER': <MapPin className="h-3 w-3" />,
+      'ROLE_PROMOTION': <ArrowUp className="h-3 w-3" />,
+      'ROLE_CHANGE': <Users className="h-3 w-3" />,
+      'ROLE_DEMOTION': <ArrowDown className="h-3 w-3" />,
+      'LEADERSHIP_APPOINTMENT': <Crown className="h-3 w-3" />,
+      'LEADERSHIP_PROMOTION': <Shield className="h-3 w-3" />,
+      'TRAINING_ENROLLMENT': <GraduationCap className="h-3 w-3" />,
+      'TRAINING_GRADUATION': <Award className="h-3 w-3" />,
+      'DC_ENROLLMENT': <GraduationCap className="h-3 w-3" />,
+      'LXL_ENROLLMENT': <GraduationCap className="h-3 w-3" />,
+      'PASTORAL_TRAINING_START': <GraduationCap className="h-3 w-3" />,
+      'INTERNSHIP_ASSIGNMENT': <Star className="h-3 w-3" />,
+      'WATER_BAPTISM': <Heart className="h-3 w-3" />,
+      'SPIRIT_BAPTISM': <Heart className="h-3 w-3" />,
+      'BAPTISM': <Heart className="h-3 w-3" />,
+      'SALVATION': <Heart className="h-3 w-3" />,
+      'MARRIAGE': <Heart className="h-3 w-3" />,
+      'CONFIRMATION': <CheckCircle className="h-3 w-3" />,
     }
-    return iconMap[activityType] || <Info className="h-4 w-4" />
+    return iconMap[activityType] || <Info className="h-3 w-3" />
   }
 
   const getActivityColor = (activityType: string, priority: string) => {
-    if (priority === 'CRITICAL') return 'text-red-600 bg-red-100'
-    if (priority === 'HIGH') return 'text-orange-600 bg-orange-100'
+    if (priority === 'CRITICAL') return 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400'
+    if (priority === 'HIGH') return 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400'
 
     const colorMap: Record<string, string> = {
-      'MEMBER_REGISTRATION': 'text-green-600 bg-green-100',
-      'FIRST_TIME_VISITOR': 'text-blue-600 bg-blue-100',
-      'ROLE_PROMOTION': 'text-green-600 bg-green-100',
-      'LEADERSHIP_APPOINTMENT': 'text-purple-600 bg-purple-100',
-      'TRAINING_GRADUATION': 'text-yellow-600 bg-yellow-100',
-      'WATER_BAPTISM': 'text-blue-600 bg-blue-100',
-      'SPIRIT_BAPTISM': 'text-indigo-600 bg-indigo-100',
-      'SALVATION': 'text-red-600 bg-red-100',
+      'MEMBER_REGISTRATION': 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
+      'FIRST_TIME_VISITOR': 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',
+      'ROLE_PROMOTION': 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
+      'LEADERSHIP_APPOINTMENT': 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400',
+      'TRAINING_GRADUATION': 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400',
+      'WATER_BAPTISM': 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',
+      'SPIRIT_BAPTISM': 'text-indigo-600 bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400',
+      'SALVATION': 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',
     }
-    return colorMap[activityType] || 'text-gray-600 bg-gray-100'
+    return colorMap[activityType] || 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-400'
   }
 
-  const getPriorityBadge = (priority: string) => {
-    const colors = {
-      'CRITICAL': 'bg-red-100 text-red-800',
-      'HIGH': 'bg-orange-100 text-orange-800',
-      'MEDIUM': 'bg-yellow-100 text-yellow-800',
-      'LOW': 'bg-green-100 text-green-800',
-    }
-    return colors[priority as keyof typeof colors] || 'bg-gray-100 text-gray-800'
-  }
-
-  const getStatusIcon = (status: string) => {
+  const getStatusDot = (status: string) => {
     switch (status) {
-      case 'COMPLETED': return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'ACTIVE': return <Clock className="h-4 w-4 text-blue-500" />
-      case 'PENDING': return <AlertCircle className="h-4 w-4 text-yellow-500" />
-      default: return <Info className="h-4 w-4 text-gray-500" />
+      case 'COMPLETED': return 'bg-green-500'
+      case 'ACTIVE': return 'bg-blue-500'
+      case 'PENDING': return 'bg-yellow-500'
+      default: return 'bg-gray-400'
     }
+  }
+
+  const hasDetails = (activity: TimelineActivity) => {
+    return (
+      (activity.fromRole && activity.toRole) ||
+      (activity.fromUnit && activity.toUnit) ||
+      activity.relatedCohort ||
+      activity.certification ||
+      (activity.previousLocation && activity.newLocation) ||
+      activity.reason ||
+      activity.notes ||
+      (activity.tags && activity.tags.length > 0)
+    )
   }
 
   if (loading) {
     return (
-      <Card className="p-6">
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner size="lg" />
+      <Card className="p-4">
+        <div className="flex justify-center items-center h-32">
+          <LoadingSpinner size="md" />
         </div>
       </Card>
     )
@@ -199,15 +215,10 @@ export default function MemberTimeline({ memberId }: MemberTimelineProps) {
 
   if (error) {
     return (
-      <Card className="p-6">
-        <div className="text-center text-red-600">
-          <p>Error loading timeline: {error.message}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => loadTimeline()}
-            className="mt-2"
-          >
+      <Card className="p-4">
+        <div className="text-center text-red-600 dark:text-red-400">
+          <p className="text-sm">Error loading timeline: {error.message}</p>
+          <Button variant="outline" size="sm" onClick={() => loadTimeline()} className="mt-2">
             Retry
           </Button>
         </div>
@@ -216,198 +227,187 @@ export default function MemberTimeline({ memberId }: MemberTimelineProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Timeline Statistics */}
+    <div className="space-y-3">
+      {/* Compact Statistics */}
       {statistics && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Timeline Overview</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{statistics.totalActivities}</div>
-              <div className="text-sm text-gray-600">Total Activities</div>
+        <Card className="p-3">
+          <div className="flex flex-wrap gap-4 text-center">
+            <div className="flex-1 min-w-[60px]">
+              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{statistics.totalActivities}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{statistics.recentActivities}</div>
-              <div className="text-sm text-gray-600">Recent (30d)</div>
+            <div className="flex-1 min-w-[60px]">
+              <div className="text-lg font-bold text-green-600 dark:text-green-400">{statistics.recentActivities}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Recent</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{statistics.milestones}</div>
-              <div className="text-sm text-gray-600">Milestones</div>
+            <div className="flex-1 min-w-[60px]">
+              <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{statistics.milestones}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Milestones</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{statistics.roleChanges}</div>
-              <div className="text-sm text-gray-600">Role Changes</div>
+            <div className="flex-1 min-w-[60px]">
+              <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{statistics.roleChanges}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Roles</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-indigo-600">{statistics.trainings}</div>
-              <div className="text-sm text-gray-600">Trainings</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Last Activity</div>
-              <div className="text-sm font-medium">{formatDate(statistics.lastActivity)}</div>
+            <div className="flex-1 min-w-[60px]">
+              <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{statistics.trainings}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Training</div>
             </div>
           </div>
         </Card>
       )}
 
-      {/* Timeline */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-6">Activity Timeline</h3>
+      {/* Compact Timeline */}
+      <Card className="p-3">
+        <h3 className="text-sm font-semibold mb-3 text-gray-900 dark:text-white">Activity Timeline</h3>
 
         {activities.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            No timeline activities found for this member.
+          <div className="text-center py-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400">No activities found.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              Activities will appear here when changes are made.
+            </p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-1">
             <AnimatePresence>
-              {activities.map((activity, index) => (
-                <motion.div
-                  key={activity._id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="relative flex gap-4"
-                >
-                  {/* Timeline line */}
-                  {index < activities.length - 1 && (
-                    <div className="absolute left-6 top-12 w-px h-full bg-gray-200"></div>
-                  )}
+              {activities.map((activity, index) => {
+                const isExpanded = expandedItems.has(activity._id)
+                const showExpandButton = hasDetails(activity)
 
-                  {/* Activity icon */}
-                  <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${getActivityColor(activity.activityType, activity.priority)}`}>
-                    {getActivityIcon(activity.activityType)}
-                  </div>
+                return (
+                  <motion.div
+                    key={activity._id}
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="relative"
+                  >
+                    {/* Timeline connector */}
+                    {index < activities.length - 1 && (
+                      <div className="absolute left-[11px] top-6 w-px h-full bg-gray-200 dark:bg-gray-700" />
+                    )}
 
-                  {/* Activity content */}
-                  <div className="flex-1 bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-gray-900">{activity.title}</h4>
-                          {getStatusIcon(activity.status)}
-                          <Badge className={getPriorityBadge(activity.priority)} size="sm">
-                            {activity.priority}
-                          </Badge>
-                        </div>
-
-                        {activity.description && (
-                          <p className="text-gray-700 mb-3">{activity.description}</p>
-                        )}
-
-                        {/* Activity details */}
-                        <div className="space-y-2">
-                          {/* Role changes */}
-                          {activity.fromRole && activity.toRole && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="text-gray-500">Role:</span>
-                              <span className="text-red-600">{activity.fromRole}</span>
-                              <ArrowUp className="h-3 w-3 text-gray-400" />
-                              <span className="text-green-600">{activity.toRole}</span>
-                            </div>
-                          )}
-
-                          {/* Unit transfers */}
-                          {activity.fromUnit && activity.toUnit && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <span className="text-gray-500">Unit:</span>
-                              <span className="text-red-600">{activity.fromUnit.name}</span>
-                              <ArrowUp className="h-3 w-3 text-gray-400" />
-                              <span className="text-green-600">{activity.toUnit.name}</span>
-                            </div>
-                          )}
-
-                          {/* Training details */}
-                          {activity.relatedCohort && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <GraduationCap className="h-3 w-3 text-gray-400" />
-                              <span className="text-gray-500">Cohort:</span>
-                              <span className="text-blue-600">{activity.relatedCohort.name}</span>
-                            </div>
-                          )}
-
-                          {activity.certification && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Award className="h-3 w-3 text-gray-400" />
-                              <span className="text-gray-500">Certification:</span>
-                              <span className="text-purple-600">{activity.certification}</span>
-                            </div>
-                          )}
-
-                          {/* Location changes */}
-                          {activity.previousLocation && activity.newLocation && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <MapPin className="h-3 w-3 text-gray-400" />
-                              <span className="text-gray-500">Location:</span>
-                              <span className="text-red-600">{activity.previousLocation}</span>
-                              <ArrowUp className="h-3 w-3 text-gray-400" />
-                              <span className="text-green-600">{activity.newLocation}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Tags */}
-                        {activity.tags && activity.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-3">
-                            {activity.tags.map((tag, tagIndex) => (
-                              <Badge key={tagIndex} variant="outline" size="sm">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Reason */}
-                        {activity.reason && (
-                          <div className="mt-3 p-2 bg-gray-50 rounded text-sm">
-                            <span className="font-medium text-gray-700">Reason: </span>
-                            <span className="text-gray-600">{activity.reason}</span>
-                          </div>
-                        )}
-
-                        {/* Notes */}
-                        {activity.notes && (
-                          <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                            <span className="font-medium text-blue-700">Notes: </span>
-                            <span className="text-blue-600">{activity.notes}</span>
-                          </div>
-                        )}
+                    <div className="flex gap-2">
+                      {/* Icon */}
+                      <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${getActivityColor(activity.activityType, activity.priority)}`}>
+                        {getActivityIcon(activity.activityType)}
                       </div>
 
-                      <div className="text-right ml-4">
-                        <div className="text-sm text-gray-500">{formatDate(activity.activityDate)}</div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          by {activity.initiatedBy.firstName} {activity.initiatedBy.lastName}
-                        </div>
-                        {activity.approvedBy && (
-                          <div className="text-xs text-green-600 mt-1">
-                            approved by {activity.approvedBy.firstName} {activity.approvedBy.lastName}
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 pb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(activity.status)}`} />
+                              <span className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                {activity.title}
+                              </span>
+                              {showExpandButton && (
+                                <button
+                                  onClick={() => toggleExpand(activity._id)}
+                                  className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                                >
+                                  <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                </button>
+                              )}
+                            </div>
+                            {activity.description && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
+                                {activity.description}
+                              </p>
+                            )}
                           </div>
-                        )}
+                          <div className="flex-shrink-0 text-right">
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                              {formatDate(activity.effectiveDate || activity.activityDate)}
+                            </div>
+                            {activity.initiatedBy && (
+                              <div className="text-[10px] text-gray-400 dark:text-gray-500">
+                                {activity.initiatedBy.firstName} {activity.initiatedBy.lastName?.[0]}.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Expandable details */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700 space-y-1 text-xs">
+                                {activity.fromRole && activity.toRole && (
+                                  <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                                    <span className="text-gray-400">Role:</span>
+                                    <span className="text-red-500">{activity.fromRole}</span>
+                                    <ArrowUp className="h-2.5 w-2.5" />
+                                    <span className="text-green-500">{activity.toRole}</span>
+                                  </div>
+                                )}
+                                {activity.fromUnit && activity.toUnit && (
+                                  <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                                    <span className="text-gray-400">Unit:</span>
+                                    <span className="text-red-500">{activity.fromUnit.name}</span>
+                                    <ArrowUp className="h-2.5 w-2.5" />
+                                    <span className="text-green-500">{activity.toUnit.name}</span>
+                                  </div>
+                                )}
+                                {activity.relatedCohort && (
+                                  <div className="text-gray-600 dark:text-gray-300">
+                                    <span className="text-gray-400">Cohort:</span> {activity.relatedCohort.name}
+                                  </div>
+                                )}
+                                {activity.certification && (
+                                  <div className="text-gray-600 dark:text-gray-300">
+                                    <span className="text-gray-400">Cert:</span> {activity.certification}
+                                  </div>
+                                )}
+                                {activity.reason && (
+                                  <div className="text-gray-600 dark:text-gray-300">
+                                    <span className="text-gray-400">Reason:</span> {activity.reason}
+                                  </div>
+                                )}
+                                {activity.notes && (
+                                  <div className="text-gray-600 dark:text-gray-300">
+                                    <span className="text-gray-400">Notes:</span> {activity.notes}
+                                  </div>
+                                )}
+                                {activity.tags && activity.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {activity.tags.map((tag, i) => (
+                                      <span key={i} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-[10px]">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                )
+              })}
             </AnimatePresence>
 
-            {/* Load More Button */}
+            {/* Load More */}
             {hasMore && (
-              <div className="text-center pt-4">
+              <div className="text-center pt-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => loadTimeline(true)}
                   disabled={loadingMore}
+                  className="text-xs"
                 >
-                  {loadingMore ? (
-                    <>
-                      <LoadingSpinner size="sm" className="mr-2" />
-                      Loading...
-                    </>
-                  ) : (
-                    'Load More Activities'
-                  )}
+                  {loadingMore ? 'Loading...' : 'Load More'}
                 </Button>
               </div>
             )}

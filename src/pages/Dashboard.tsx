@@ -1,17 +1,18 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Users, UserPlus, UsersIcon, GroupIcon, ArrowRight, TrendingUp, TrendingDown, Activity, Calendar, BarChart3, ChevronDown, FileText, Eye, Edit, Trash2, LogIn, LogOut, Settings } from 'lucide-react'
+import { UserPlus, UsersIcon, GroupIcon, ArrowRight, TrendingUp, TrendingDown, Activity, Calendar, ChevronDown, FileText, Eye, Edit, Trash2, LogIn, LogOut, Settings, Shield, Info, Globe, Building2, MapPin, User } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { SkeletonDashboard } from '@/components/ui/Skeleton'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
-import { dashboardService, DashboardOverview } from '@/services/dashboard'
+import { dashboardService, DashboardOverview, DashboardScope } from '@/services/dashboard'
 import { serviceReportsService, ServiceReportStats } from '@/services/service-reports'
-import { auditService, AuditLog, AuditAction } from '@/services/audit'
+import { auditService, AuditLog } from '@/services/audit'
 import { useAppStore } from '@/store'
+import { useAuth } from '@/contexts/AuthContext-unified'
 
 type DateRangePreset = '1m' | '3m' | '6m' | '1y' | 'custom'
 
@@ -78,6 +79,7 @@ const formatTimeAgo = (timestamp: string) => {
 
 export default function Dashboard() {
   const { selectedBranch, branches } = useAppStore()
+  const { member, hasPermission, isAdmin, canManageMembers, canAccessFirstTimers, canManageGroups } = useAuth()
   const [stats, setStats] = useState<Partial<DashboardOverview> | null>(null)
   const [serviceReportStats, setServiceReportStats] = useState<ServiceReportStats | null>(null)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
@@ -86,6 +88,7 @@ export default function Dashboard() {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRangePreset>('3m')
   const [showDateRangeDropdown, setShowDateRangeDropdown] = useState(false)
   const [branchFilter, setBranchFilter] = useState('')
+  const [dashboardScope, setDashboardScope] = useState<DashboardScope | null>(null)
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
     const date = new Date()
     date.setMonth(date.getMonth() - 3)
@@ -98,6 +101,66 @@ export default function Dashboard() {
 
   // Show branch filter when viewing "All Campuses"
   const showBranchFilter = !selectedBranch && branches.length > 0
+
+  // Map permissions to audit entity types for filtering
+  const getAccessibleAuditEntities = useMemo(() => {
+    const entityMap: Array<{ permission: string; entities: string[] }> = [
+      { permission: 'members:view', entities: ['MEMBER', 'USER'] },
+      { permission: 'units:view', entities: ['GROUP', 'MINISTRY', 'UNIT'] },
+      { permission: 'first-timers:view', entities: ['FIRST_TIMER', 'FIRST-TIMER'] },
+      { permission: 'inventory:view-items', entities: ['INVENTORY_ITEM', 'INVENTORY_CATEGORY', 'INVENTORY_MOVEMENT'] },
+      { permission: 'branches:view', entities: ['BRANCH'] },
+      { permission: 'roles:view-roles', entities: ['ROLE', 'PERMISSION'] },
+      { permission: 'audit-logs:view', entities: ['AUDIT_LOG'] },
+      { permission: 'service-reports:view', entities: ['SERVICE_REPORT'] },
+    ]
+
+    // Admin sees everything
+    if (isAdmin) {
+      return null // null means no filtering
+    }
+
+    const accessibleEntities = new Set<string>()
+
+    // Always allow system/auth events
+    accessibleEntities.add('SYSTEM')
+    accessibleEntities.add('AUTH')
+    accessibleEntities.add('SYSTEM_CONFIG')
+
+    entityMap.forEach(({ permission, entities }) => {
+      if (hasPermission(permission)) {
+        entities.forEach(entity => accessibleEntities.add(entity))
+      }
+    })
+
+    return accessibleEntities
+  }, [isAdmin, hasPermission])
+
+  // Filter audit logs based on accessible entities
+  const filterAuditLogsByAccess = (logs: AuditLog[]): AuditLog[] => {
+    // Admin sees all logs
+    if (!getAccessibleAuditEntities) {
+      return logs
+    }
+
+    return logs.filter(log => {
+      const entityType = (log.entityType || log.entity || '').toUpperCase()
+      const action = (log.action || '').toUpperCase()
+
+      // Allow auth-related actions for everyone (login, logout, password changes)
+      if (action.includes('LOGIN') || action.includes('LOGOUT') || action.includes('PASSWORD')) {
+        return true
+      }
+
+      // If no entity type, allow by default (system events)
+      if (!entityType) {
+        return true
+      }
+
+      // Check if user has access to this entity type
+      return getAccessibleAuditEntities.has(entityType)
+    })
+  }
 
   const currentDateRangeOption = useMemo(() => {
     return dateRangePresets.find(opt => opt.value === selectedDateRange) || dateRangePresets[1]
@@ -160,17 +223,29 @@ export default function Dashboard() {
       // Use selectedBranch if set, otherwise use the filter dropdown
       const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
 
+      // Use scoped=true for non-admin users to get permission-filtered data
+      const useScoped = !isAdmin
+
       // Load all data in parallel with date range filtering
       const [dashboardData, serviceStats, recentAuditLogs] = await Promise.all([
-        dashboardService.getStats(range.startDate, range.endDate, effectiveBranchId),
+        dashboardService.getStats(range.startDate, range.endDate, effectiveBranchId, useScoped),
         serviceReportsService.getServiceReportStats({ dateFrom: range.startDate, dateTo: range.endDate, branchId: effectiveBranchId }).catch(() => null),
-        auditService.getRecentActivity(5, range.startDate, range.endDate).catch(() => [])
+        // Fetch more logs than needed since we'll filter by permissions
+        auditService.getRecentActivity(20, range.startDate, range.endDate).catch(() => [])
       ])
 
       console.log('Dashboard data received:', dashboardData)
       setStats(dashboardData)
       setServiceReportStats(serviceStats)
-      setAuditLogs(recentAuditLogs)
+
+      // Filter audit logs based on user's accessible modules and limit to 5
+      const filteredAuditLogs = filterAuditLogsByAccess(recentAuditLogs).slice(0, 5)
+      setAuditLogs(filteredAuditLogs)
+
+      // Store scope info from API response if available
+      if (dashboardData?.scope) {
+        setDashboardScope(dashboardData.scope)
+      }
     } catch (error: any) {
       console.error('Error loading dashboard stats:', error)
 
@@ -228,7 +303,8 @@ export default function Dashboard() {
     return 'default'
   }
 
-  const modules = [
+  // Define all available modules with their permission requirements
+  const allModules = [
     {
       title: 'Members',
       description: 'New members in period',
@@ -239,6 +315,8 @@ export default function Dashboard() {
       gradient: 'from-green-500 to-green-600',
       bgColor: 'bg-green-50',
       path: '/members',
+      hasAccess: canManageMembers,
+      requiredPermission: 'members:view',
     },
     {
       title: 'Groups',
@@ -250,6 +328,8 @@ export default function Dashboard() {
       gradient: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-50',
       path: '/groups',
+      hasAccess: canManageGroups,
+      requiredPermission: 'units:view',
     },
     {
       title: 'First Timers',
@@ -261,8 +341,54 @@ export default function Dashboard() {
       gradient: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50',
       path: '/first-timers',
+      hasAccess: canAccessFirstTimers,
+      requiredPermission: 'first-timers:view',
     },
   ]
+
+  // Filter modules based on user permissions
+  const modules = allModules.filter(module => module.hasAccess)
+
+  // Determine user's scope for display
+  const userScope = useMemo(() => {
+    if (isAdmin) {
+      return { type: 'global', label: 'Full Access', icon: Globe, color: 'text-blue-600 bg-blue-50' }
+    }
+    if (hasPermission('branches:view-all')) {
+      return { type: 'global', label: 'All Campuses', icon: Globe, color: 'text-blue-600 bg-blue-50' }
+    }
+    if (hasPermission('members:view-district')) {
+      return { type: 'district', label: 'District Level', icon: MapPin, color: 'text-purple-600 bg-purple-50' }
+    }
+    if (hasPermission('units:manage')) {
+      return { type: 'unit', label: 'Unit Level', icon: Building2, color: 'text-green-600 bg-green-50' }
+    }
+    return { type: 'self', label: 'Personal', icon: User, color: 'text-gray-600 bg-gray-50' }
+  }, [isAdmin, hasPermission])
+
+  // Get user's role display name
+  const userRoleDisplay = useMemo(() => {
+    if (member?.role) {
+      if (typeof member.role === 'object' && member.role.displayName) {
+        return member.role.displayName
+      }
+      if (typeof member.role === 'string') {
+        return member.role
+      }
+    }
+    if (member?.membershipStatus) {
+      const statusMap: Record<string, string> = {
+        'SENIOR_PASTOR': 'Senior Pastor',
+        'PASTOR': 'Pastor',
+        'DIRECTOR': 'Director',
+        'LXL': 'LXL',
+        'DC': 'DC',
+        'MEMBER': 'Member',
+      }
+      return statusMap[member.membershipStatus] || member.membershipStatus
+    }
+    return 'Member'
+  }, [member])
 
   // Helper function to get audit action icon
   const getAuditActionIcon = (action: string) => {
@@ -315,12 +441,33 @@ export default function Dashboard() {
   return (
     <Layout title="Dashboard">
       <div className="space-y-6">
-        {/* Date Range Filter */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        {/* Scope Indicator & Date Range Filter */}
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4">
+          {/* Scope Indicator */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-4 border-b border-gray-100 dark:border-slate-700">
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${userScope.color}`}>
+                <userScope.icon className="h-4 w-4" />
+                <span className="text-sm font-medium">{userScope.label}</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
+                <Shield className="h-4 w-4" />
+                <span>Viewing as: <span className="font-medium text-gray-700 dark:text-slate-300">{userRoleDisplay}</span></span>
+              </div>
+            </div>
+            {modules.length < allModules.length && (
+              <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-full">
+                <Info className="h-3.5 w-3.5" />
+                <span>Showing {modules.length} of {allModules.length} modules based on your access</span>
+              </div>
+            )}
+          </div>
+
+          {/* Date Range Filter */}
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-gray-500 dark:text-slate-400">
               Showing data for{' '}
-              <span className="font-medium text-foreground">
+              <span className="font-medium text-gray-900 dark:text-white">
                 {selectedDateRange === 'custom' && appliedCustomDates
                   ? `${formatDateDisplay(appliedCustomDates.start)} - ${formatDateDisplay(appliedCustomDates.end)}`
                   : selectedDateRange === 'custom'
@@ -333,24 +480,24 @@ export default function Dashboard() {
               {selectedDateRange === 'custom' && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">From:</span>
+                    <span className="text-sm text-gray-500 dark:text-slate-400">From:</span>
                     <input
                       type="date"
                       value={customStartDate}
                       onChange={(e) => setCustomStartDate(e.target.value)}
                       max={customEndDate}
-                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                      className="px-3 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">To:</span>
+                    <span className="text-sm text-gray-500 dark:text-slate-400">To:</span>
                     <input
                       type="date"
                       value={customEndDate}
                       onChange={(e) => setCustomEndDate(e.target.value)}
                       min={customStartDate}
                       max={formatDateForInput(new Date())}
-                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                      className="px-3 py-1.5 text-sm border border-gray-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     />
                   </div>
                   <Button
@@ -367,20 +514,20 @@ export default function Dashboard() {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setShowDateRangeDropdown(!showDateRangeDropdown)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg hover:border-gray-300 dark:hover:border-slate-500 transition-colors text-sm font-medium text-gray-900 dark:text-white"
                 >
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Calendar className="h-4 w-4 text-gray-500 dark:text-slate-400" />
                   {currentDateRangeOption.label}
-                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showDateRangeDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 text-gray-500 dark:text-slate-400 transition-transform ${showDateRangeDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 {showDateRangeDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50">
                     {dateRangePresets.map((option) => (
                       <button
                         key={option.value}
                         onClick={() => handleDateRangeChange(option.value)}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                          selectedDateRange === option.value ? 'bg-primary-50 text-primary-600 font-medium' : 'text-foreground'
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                          selectedDateRange === option.value ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium' : 'text-gray-900 dark:text-white'
                         }`}
                       >
                         {option.label}
@@ -394,6 +541,15 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
+        {modules.length === 0 ? (
+          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl p-8 text-center">
+            <Info className="h-12 w-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-700 dark:text-slate-300 mb-2">No Modules Available</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400">
+              You don't have access to any dashboard modules. Please contact your administrator for permissions.
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
           {modules.map((module, index) => {
             const TrendIcon = module.trend ? getTrendIcon(module.trend) : null
@@ -442,6 +598,7 @@ export default function Dashboard() {
             )
           })}
         </div>
+        )}
 
         {/* Quick Actions Section */}
         <motion.div
@@ -455,28 +612,45 @@ export default function Dashboard() {
             <p className="text-muted-foreground">Get started with common management tasks</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {[
-              { label: 'Register Member', path: '/members/new', icon: UsersIcon, color: 'bg-green-500', description: 'Add church member' },
-              { label: 'Create Group', path: '/groups/new', icon: GroupIcon, color: 'bg-purple-500', description: 'Start new group' },
-              { label: 'Add First Timer', path: '/first-timers/new', icon: UserPlus, color: 'bg-orange-500', description: 'Register visitor' },
-            ].map((action, index) => (
-              <motion.div
-                key={action.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 + index * 0.1 }}
-                onClick={() => navigate(action.path)}
-                className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:border-gray-300"
-              >
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 ${action.color} rounded-lg flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform`}>
-                  <action.icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+          {(() => {
+            const quickActions = [
+              { label: 'Register Member', path: '/members/new', icon: UsersIcon, color: 'bg-green-500', description: 'Add church member', hasAccess: hasPermission('members:create') },
+              { label: 'Create Group', path: '/groups/new', icon: GroupIcon, color: 'bg-purple-500', description: 'Start new group', hasAccess: hasPermission('units:create') },
+              { label: 'Add First Timer', path: '/first-timers/new', icon: UserPlus, color: 'bg-orange-500', description: 'Register visitor', hasAccess: hasPermission('first-timers:create') },
+            ].filter(action => action.hasAccess)
+
+            if (quickActions.length === 0) {
+              return (
+                <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl p-6 text-center">
+                  <Info className="h-10 w-10 text-gray-400 dark:text-slate-500 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 dark:text-slate-400">
+                    No quick actions available based on your current permissions.
+                  </p>
                 </div>
-                <h3 className="font-semibold text-sm sm:text-base text-foreground mb-1">{action.label}</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">{action.description}</p>
-              </motion.div>
-            ))}
-          </div>
+              )
+            }
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {quickActions.map((action, index) => (
+                  <motion.div
+                    key={action.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 + index * 0.1 }}
+                    onClick={() => navigate(action.path)}
+                    className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group hover:border-gray-300 dark:hover:border-slate-600"
+                  >
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 ${action.color} rounded-lg flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform`}>
+                      <action.icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white mb-1">{action.label}</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400">{action.description}</p>
+                  </motion.div>
+                ))}
+              </div>
+            )
+          })()}
         </motion.div>
 
         {/* Service Reports & Audit Trail Section */}
@@ -621,6 +795,11 @@ export default function Dashboard() {
                     <div className="flex flex-col items-center justify-center py-8 text-center">
                       <Activity className="h-12 w-12 text-muted-foreground/50 mb-3" />
                       <p className="text-sm text-muted-foreground">No recent activity</p>
+                      {!isAdmin && (
+                        <p className="text-xs text-muted-foreground/70 mt-1">
+                          Activity is filtered based on your module access
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

@@ -161,8 +161,9 @@ export default function Members() {
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
 
-  // Show branch filter only when viewing all campuses
-  const showBranchFilter = !selectedBranch && branches.length > 0
+  // Show branch filter only if user has permission to view all branches
+  const canViewAllBranches = hasPermission('branches:view-all')
+  const showBranchFilter = canViewAllBranches && branches.length > 0
 
   const hasActiveFilters = statusFilter || genderFilter || maritalStatusFilter || districtFilter || branchFilter || dateFromFilter || dateToFilter
   const activeFilterCount = [statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter].filter(Boolean).length
@@ -1815,8 +1816,8 @@ export default function Members() {
                   </div>
                 )}
 
-                {/* Branch Select */}
-                {allBranches.length > 0 && (
+                {/* Branch Select - Only visible to users with branches:view-all permission */}
+                {canViewAllBranches && allBranches.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       <div className="flex items-center gap-2">
@@ -1942,8 +1943,8 @@ export default function Members() {
                   <p>This will update the location for all {selectedMembers.size} selected member{selectedMembers.size !== 1 ? 's' : ''}.</p>
                 </div>
 
-                {/* Branch Select */}
-                {allBranches.length > 0 && (
+                {/* Branch Select - Only visible to users with branches:view-all permission */}
+                {canViewAllBranches && allBranches.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       <div className="flex items-center gap-2">

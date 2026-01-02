@@ -124,9 +124,13 @@ export default function UserManagement() {
     }
   };
 
-  // Initial load
+  // Fetch statistics on mount
   useEffect(() => {
     fetchStatistics();
+  }, []);
+
+  // Fetch data based on active tab
+  useEffect(() => {
     if (activeTab === 'active-users') {
       fetchActiveUsers(1, searchQuery);
     } else {
@@ -418,7 +422,7 @@ export default function UserManagement() {
             <UserPlus className="w-4 h-4" />
             Pending Invites
             <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
-              {invitesTotal}
+              {statistics?.pending ?? invitesTotal}
             </span>
           </button>
         </nav>

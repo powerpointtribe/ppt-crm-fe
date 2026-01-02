@@ -86,9 +86,8 @@ export const membersService = {
     return transformSingleResponse<LoginResponse>(response) as LoginResponse
   },
 
-  register: async (data: CreateMemberData): Promise<LoginResponse> => {
-    const response = await apiService.post<ApiResponse<LoginResponse>>('/auth/register', data)
-    return transformSingleResponse<LoginResponse>(response) as LoginResponse
+  register: async (_data: CreateMemberData): Promise<LoginResponse> => {
+    throw new Error('Registration is disabled. Access is by invitation only.');
   },
 
   getProfile: async (): Promise<Member> => {

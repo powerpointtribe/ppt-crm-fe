@@ -284,16 +284,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Use current member permissions if available
     if (member?.permissions?.includes) {
       const has = member.permissions.includes(permission);
-      console.log(`Permission check for '${permission}': ${has} (from member data)`);
       return has;
     }
     // Fallback to cached permissions during loading
     if (cachedPermissions?.permissions?.includes) {
       const has = cachedPermissions.permissions.includes(permission);
-      console.log(`Permission check for '${permission}': ${has} (from cache)`);
       return has;
     }
-    console.log(`Permission check for '${permission}': false (no permissions data)`);
     return false;
   };
 

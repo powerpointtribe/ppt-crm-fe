@@ -1,78 +1,34 @@
 import { z } from 'zod'
 
-// Meeting schedule schema
+// Meeting schedule schema - all fields optional for flexibility
 export const meetingScheduleSchema = z.object({
-  day: z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], {
-    required_error: 'Meeting day is required'
-  }),
-  time: z.string().min(1, 'Meeting time is required'),
-  frequency: z.enum(['weekly', 'biweekly', 'monthly'], {
-    required_error: 'Meeting frequency is required'
-  })
-})
+  day: z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']).optional(),
+  time: z.string().optional(), // Made optional - empty string is allowed
+  frequency: z.enum(['weekly', 'biweekly', 'monthly']).optional().default('weekly'),
+  isVirtual: z.boolean().optional().default(false),
+  meetingLink: z.string().optional(), // For virtual meetings
+  venue: z.string().optional(), // For physical meetings
+}).optional()
 
-// Hosting info schema
-export const hostingInfoSchema = z.object({
-  currentHost: z.string().min(1, 'Current host is required'),
-  hostRotation: z.array(z.string()).optional().default([]),
-  nextRotationDate: z.string().optional()
-})
-
-// Contact schema
-export const contactSchema = z.object({
-  phone: z.string().optional(),
-  email: z.string().email('Valid email is required').optional().or(z.literal('')),
-  address: z.string().optional()
-})
-
-// Main group schema
+// Main group schema - simplified
 export const groupSchema = z.object({
   name: z.string().min(1, 'Group name is required').max(100, 'Name is too long'),
   type: z.enum(['district', 'unit', 'fellowship', 'ministry', 'committee'], {
     required_error: 'Group type is required'
   }),
   description: z.string().optional(),
-  capacity: z.number().min(1, 'Capacity must be at least 1').optional(),
 
-  // Leadership fields
+  // Leadership fields (member IDs from dropdown)
   districtPastor: z.string().optional(),
   unitHead: z.string().optional(),
-  champs: z.array(z.string()).optional().default([]),
+  assistantUnitHead: z.string().optional(),
+  ministryDirector: z.string().optional(),
 
-  // Optional nested objects
-  meetingSchedule: meetingScheduleSchema.optional(),
-  hostingInfo: hostingInfoSchema.optional(),
-  contact: contactSchema.optional()
-}).refine((data) => {
-  // If type is district, districtPastor should be provided
-  if (data.type === 'district' && !data.districtPastor) {
-    return false
-  }
-  return true
-}, {
-  message: 'District Pastor is required for district groups',
-  path: ['districtPastor']
-}).refine((data) => {
-  // If type is unit, unitHead should be provided
-  if (data.type === 'unit' && !data.unitHead) {
-    return false
-  }
-  return true
-}, {
-  message: 'Unit Head is required for unit groups',
-  path: ['unitHead']
-}).refine((data) => {
-  // Validate meeting schedule consistency
-  if (data.meetingSchedule) {
-    const { day, time, frequency } = data.meetingSchedule
-    if ((day || time || frequency) && !(day && time && frequency)) {
-      return false
-    }
-  }
-  return true
-}, {
-  message: 'Complete meeting schedule required (day, time, and frequency)',
-  path: ['meetingSchedule']
+  // Ministry-specific: linked units (members in these units auto-join the ministry)
+  linkedUnits: z.array(z.string()).optional().default([]),
+
+  // Meeting schedule - entirely optional
+  meetingSchedule: meetingScheduleSchema,
 })
 
 export type GroupFormData = z.infer<typeof groupSchema>
@@ -83,7 +39,6 @@ export const bulkGroupEditSchema = z.object({
   districtPastor: z.string().optional(),
   unitHead: z.string().optional(),
   isActive: z.boolean().optional(),
-  capacity: z.number().min(1).optional()
 })
 
 export type BulkGroupEditData = z.infer<typeof bulkGroupEditSchema>

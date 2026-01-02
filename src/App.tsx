@@ -40,6 +40,7 @@ import ServiceReportDetail from '@/pages/ServiceReports/ServiceReportDetail'
 import ServiceReportEdit from '@/pages/ServiceReports/ServiceReportEdit'
 import PublicVisitorRegistration from '@/pages/PublicVisitorRegistration'
 import Settings from '@/pages/Settings'
+import UserSettings from '@/pages/UserSettings'
 
 // Bulk Operations Module
 import BulkOperationsDashboard from '@/pages/BulkOperations/BulkOperationsDashboard'
@@ -240,7 +241,14 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* Settings */}
+        {/* User Settings - Personal preferences for all users */}
+        <Route path="/my-settings" element={
+          <ProtectedRoute>
+            <UserSettings />
+          </ProtectedRoute>
+        } />
+
+        {/* Admin Settings - System-wide configuration */}
         <Route path="/settings" element={
           <ProtectedRoute>
             <Settings />

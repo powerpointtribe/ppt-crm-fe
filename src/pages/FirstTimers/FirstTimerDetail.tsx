@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Edit, Phone, Mail, Calendar, MapPin,
   Users, Clock, CheckCircle, AlertCircle, UserPlus, Plus,
-  User, MessageSquare, Star, Heart, Copy, Check, Archive, ArchiveRestore, X, XCircle
+  User, MessageSquare, Star, Heart, Copy, Check, Archive, ArchiveRestore, X, XCircle,
+  ChevronDown, ArrowRight, RotateCcw
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -15,6 +16,7 @@ import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
 import { FirstTimer, firstTimersService, FollowUpRecord } from '@/services/first-timers'
 import { Group, groupsService } from '@/services/groups'
+import { membersService, Member } from '@/services/members'
 import { formatDate } from '@/utils/formatters'
 import { cn } from '@/utils/cn'
 
@@ -47,11 +49,31 @@ export default function FirstTimerDetail() {
   const [closeReason, setCloseReason] = useState('')
   const [closeLoading, setCloseLoading] = useState(false)
 
+  // Status dropdown and assign modal states
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [members, setMembers] = useState<Member[]>([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [selectedAssignee, setSelectedAssignee] = useState('')
+  const [assignLoading, setAssignLoading] = useState(false)
+  const statusDropdownRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (id) {
       loadFirstTimer()
     }
   }, [id])
+
+  // Close status dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const loadFirstTimer = async () => {
     try {
@@ -118,6 +140,50 @@ export default function FirstTimerDetail() {
       toast.success('Unmarked', 'First-timer is no longer marked as ready for integration')
     } catch (error: any) {
       toast.error('Failed', error.message || 'Failed to unmark ready for integration')
+    }
+  }
+
+  const openAssignModal = async () => {
+    setShowAssignModal(true)
+    setShowStatusDropdown(false)
+    setMembersLoading(true)
+    try {
+      const result = await membersService.getMembers({ limit: 100, sortBy: 'firstName', sortOrder: 'asc' })
+      setMembers(result.items || [])
+    } catch (error) {
+      toast.error('Failed to load members')
+    } finally {
+      setMembersLoading(false)
+    }
+  }
+
+  const handleAssign = async () => {
+    if (!selectedAssignee) {
+      toast.error('Please select a member to assign')
+      return
+    }
+    try {
+      setAssignLoading(true)
+      await firstTimersService.assignForFollowUp(id!, selectedAssignee)
+      toast.success('Assigned', 'First-timer has been assigned successfully')
+      setShowAssignModal(false)
+      setSelectedAssignee('')
+      await loadFirstTimer()
+    } catch (error: any) {
+      toast.error('Assignment Failed', error.message || 'Failed to assign first-timer')
+    } finally {
+      setAssignLoading(false)
+    }
+  }
+
+  const handleMoveToEngaged = async () => {
+    setShowStatusDropdown(false)
+    try {
+      await firstTimersService.unmarkReadyForIntegration(id!)
+      await loadFirstTimer()
+      toast.success('Status Updated', 'First-timer moved back to Engaged status')
+    } catch (error: any) {
+      toast.error('Failed', error.message || 'Failed to update status')
     }
   }
 
@@ -436,46 +502,146 @@ export default function FirstTimerDetail() {
                     <Edit className="h-4 w-4 mr-1.5" />
                     Edit
                   </Button>
-                  {firstTimer.isArchived ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleUnarchive}
-                      disabled={archiveLoading}
-                      className="text-green-600 border-green-200 hover:bg-green-50"
-                    >
-                      <ArchiveRestore className="h-4 w-4 mr-1.5" />
-                      {archiveLoading ? 'Restoring...' : 'Restore'}
-                    </Button>
-                  ) : !firstTimer.readyForIntegration && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setShowArchiveModal(true)}
-                      className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                    >
-                      <Archive className="h-4 w-4 mr-1.5" />
-                      Archive
-                    </Button>
-                  )}
-                  {firstTimer.readyForIntegration && (
+
+                  {/* Status Update Dropdown */}
+                  <div className="relative" ref={statusDropdownRef}>
                     <Button
                       size="sm"
-                      onClick={openIntegrateModal}
-                      disabled={!firstTimer.assignedTo || !firstTimer.followUps || firstTimer.followUps.length === 0}
-                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={
-                        !firstTimer.assignedTo
-                          ? 'First-timer must be assigned to someone'
-                          : !firstTimer.followUps || firstTimer.followUps.length === 0
-                            ? 'At least one follow-up record is required'
-                            : ''
-                      }
+                      onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                      className="bg-blue-600 hover:bg-blue-700"
                     >
-                      <UserPlus className="h-4 w-4 mr-1.5" />
-                      Integrate
+                      <ArrowRight className="h-4 w-4 mr-1.5" />
+                      Update Status
+                      <ChevronDown className={cn("h-4 w-4 ml-1.5 transition-transform", showStatusDropdown && "rotate-180")} />
                     </Button>
-                  )}
+
+                    {/* Dropdown Menu */}
+                    <AnimatePresence>
+                      {showStatusDropdown && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+                        >
+                          {/* NEW status - only assign */}
+                          {firstTimer.status === 'NEW' && (
+                            <button
+                              onClick={openAssignModal}
+                              className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                              <User className="h-4 w-4 mr-3 text-blue-600" />
+                              <span>Assign to Someone</span>
+                            </button>
+                          )}
+
+                          {/* ENGAGED status - ready for integration, archive, close */}
+                          {firstTimer.status === 'ENGAGED' && (
+                            <>
+                              <button
+                                onClick={openAssignModal}
+                                className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                <User className="h-4 w-4 mr-3 text-blue-600" />
+                                <span>{firstTimer.assignedTo ? 'Reassign' : 'Assign to Someone'}</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowStatusDropdown(false)
+                                  handleReadyForIntegration()
+                                }}
+                                disabled={!firstTimer.assignedTo || !firstTimer.followUps || firstTimer.followUps.length === 0}
+                                className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={!firstTimer.assignedTo ? 'Must be assigned first' : !firstTimer.followUps?.length ? 'Requires follow-up' : ''}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-3 text-green-600" />
+                                <span>Ready for Integration</span>
+                              </button>
+                              <div className="border-t border-gray-100 my-1" />
+                              <button
+                                onClick={() => {
+                                  setShowStatusDropdown(false)
+                                  setShowArchiveModal(true)
+                                }}
+                                className="flex items-center w-full px-4 py-2.5 text-sm text-orange-600 hover:bg-orange-50"
+                              >
+                                <Archive className="h-4 w-4 mr-3" />
+                                <span>Archive</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowStatusDropdown(false)
+                                  setShowCloseModal(true)
+                                }}
+                                disabled={!firstTimer.assignedTo || !firstTimer.followUps || firstTimer.followUps.length === 0}
+                                className="flex items-center w-full px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={!firstTimer.assignedTo ? 'Must be assigned first' : !firstTimer.followUps?.length ? 'Requires follow-up' : ''}
+                              >
+                                <XCircle className="h-4 w-4 mr-3" />
+                                <span>Close</span>
+                              </button>
+                            </>
+                          )}
+
+                          {/* ARCHIVED status - restore or close */}
+                          {(firstTimer.status === 'ARCHIVED' || firstTimer.isArchived) && firstTimer.status !== 'ENGAGED' && firstTimer.status !== 'READY_FOR_INTEGRATION' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setShowStatusDropdown(false)
+                                  handleUnarchive()
+                                }}
+                                disabled={archiveLoading}
+                                className="flex items-center w-full px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 disabled:opacity-50"
+                              >
+                                <RotateCcw className="h-4 w-4 mr-3" />
+                                <span>{archiveLoading ? 'Restoring...' : 'Restore to Engaged'}</span>
+                              </button>
+                              <div className="border-t border-gray-100 my-1" />
+                              <button
+                                onClick={() => {
+                                  setShowStatusDropdown(false)
+                                  setShowCloseModal(true)
+                                }}
+                                disabled={!firstTimer.assignedTo || !firstTimer.followUps || firstTimer.followUps.length === 0}
+                                className="flex items-center w-full px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={!firstTimer.assignedTo ? 'Must be assigned first' : !firstTimer.followUps?.length ? 'Requires follow-up' : ''}
+                              >
+                                <XCircle className="h-4 w-4 mr-3" />
+                                <span>Close</span>
+                              </button>
+                            </>
+                          )}
+
+                          {/* READY_FOR_INTEGRATION status - integrate or move back to engaged */}
+                          {firstTimer.status === 'READY_FOR_INTEGRATION' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setShowStatusDropdown(false)
+                                  openIntegrateModal()
+                                }}
+                                className="flex items-center w-full px-4 py-2.5 text-sm text-green-600 hover:bg-green-50"
+                              >
+                                <UserPlus className="h-4 w-4 mr-3" />
+                                <span>Integrate as Member</span>
+                              </button>
+                              <div className="border-t border-gray-100 my-1" />
+                              <button
+                                onClick={handleMoveToEngaged}
+                                className="flex items-center w-full px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50"
+                              >
+                                <RotateCcw className="h-4 w-4 mr-3" />
+                                <span>Move Back to Engaged</span>
+                              </button>
+                            </>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
                   <Button
                     size="sm"
                     onClick={() => setShowFollowUpForm(true)}
@@ -483,25 +649,6 @@ export default function FirstTimerDetail() {
                     <Plus className="h-4 w-4 mr-1.5" />
                     Add Follow-up
                   </Button>
-                  {(firstTimer.status === 'ENGAGED' || firstTimer.status === 'ARCHIVED' || firstTimer.isArchived) && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setShowCloseModal(true)}
-                      disabled={!firstTimer.assignedTo || !firstTimer.followUps || firstTimer.followUps.length === 0}
-                      className="text-purple-600 border-purple-200 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={
-                        !firstTimer.assignedTo
-                          ? 'First-timer must be assigned to someone'
-                          : !firstTimer.followUps || firstTimer.followUps.length === 0
-                            ? 'At least one follow-up record is required'
-                            : ''
-                      }
-                    >
-                      <XCircle className="h-4 w-4 mr-1.5" />
-                      Close
-                    </Button>
-                  )}
                 </>
               )}
             </div>
@@ -657,47 +804,148 @@ export default function FirstTimerDetail() {
                   </div>
                 </div>
 
-                {/* Status */}
+                {/* Status & Assignment */}
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-4">Status</h3>
-                  <div className="flex items-center gap-4">
-                    {firstTimer.status === 'CLOSED' ? (
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
-                          firstTimer.converted || firstTimer.memberRecord
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          Closed - {firstTimer.converted || firstTimer.memberRecord ? 'Converted to Member' : 'Inactive'}
-                        </span>
-                      </div>
-                    ) : (
-                      <select
-                        value={firstTimer.status}
-                        onChange={(e) => handleStatusUpdate(e.target.value)}
-                        className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                      >
-                        <option value="not_contacted">Not Contacted</option>
-                        <option value="contacted">Contacted</option>
-                        <option value="scheduled_visit">Visit Scheduled</option>
-                        <option value="visited">Visited</option>
-                        <option value="joined_group">Joined Group</option>
-                        <option value="converted">Converted</option>
-                        <option value="lost_contact">Lost Contact</option>
-                      </select>
-                    )}
+                  <h3 className="text-sm font-medium text-gray-900 mb-4">Status & Assignment</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Current Status</span>
+                      <span className={cn(
+                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                        firstTimer.status === 'NEW' && "bg-gray-100 text-gray-700",
+                        firstTimer.status === 'ENGAGED' && "bg-blue-100 text-blue-700",
+                        firstTimer.status === 'READY_FOR_INTEGRATION' && "bg-green-100 text-green-700",
+                        firstTimer.status === 'ARCHIVED' && "bg-orange-100 text-orange-700",
+                        firstTimer.status === 'CLOSED' && "bg-purple-100 text-purple-700"
+                      )}>
+                        {getStatusLabel(firstTimer.status)}
+                      </span>
+                    </div>
 
-                    {firstTimer.assignedTo && (
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <User className="h-4 w-4" />
-                        <span>Assigned to </span>
-                        <span className="text-gray-900">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Assigned To</span>
+                      {firstTimer.assignedTo ? (
+                        <span className="text-sm font-medium text-gray-900">
                           {typeof firstTimer.assignedTo === 'object'
                             ? `${(firstTimer.assignedTo as any)?.firstName} ${(firstTimer.assignedTo as any)?.lastName}`
-                            : firstTimer.assignedTo}
+                            : 'Assigned'}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">Not assigned</span>
+                      )}
+                    </div>
+
+                    {firstTimer.status === 'CLOSED' && (
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                        <span className="text-sm text-gray-500">Outcome</span>
+                        <span className={cn(
+                          "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                          firstTimer.converted || firstTimer.memberRecord
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-700"
+                        )}>
+                          {firstTimer.converted || firstTimer.memberRecord ? 'Converted to Member' : 'Inactive'}
                         </span>
                       </div>
                     )}
+
+                    {/* Status Flow Indicator */}
+                    <div className="pt-3 border-t border-gray-200">
+                      <p className="text-xs text-gray-500 mb-3">Status Flow</p>
+
+                      {/* Main Flow Path */}
+                      <div className="space-y-3">
+                        {/* Primary Path: NEW → ENGAGED → READY → MEMBER */}
+                        <div className="flex items-center gap-1.5 text-xs flex-wrap">
+                          <span className={cn(
+                            "px-2.5 py-1.5 rounded-md font-medium transition-all",
+                            firstTimer.status === 'NEW'
+                              ? "bg-gray-900 text-white ring-2 ring-gray-900 ring-offset-2"
+                              : "bg-gray-100 text-gray-500"
+                          )}>New</span>
+                          <ArrowRight className={cn("h-3.5 w-3.5", firstTimer.status === 'NEW' ? "text-gray-900" : "text-gray-300")} />
+                          <span className={cn(
+                            "px-2.5 py-1.5 rounded-md font-medium transition-all",
+                            firstTimer.status === 'ENGAGED'
+                              ? "bg-blue-600 text-white ring-2 ring-blue-600 ring-offset-2"
+                              : "bg-gray-100 text-gray-500"
+                          )}>Engaged</span>
+                          <ArrowRight className={cn("h-3.5 w-3.5", firstTimer.status === 'ENGAGED' ? "text-blue-600" : "text-gray-300")} />
+                          <span className={cn(
+                            "px-2.5 py-1.5 rounded-md font-medium transition-all",
+                            firstTimer.status === 'READY_FOR_INTEGRATION'
+                              ? "bg-green-600 text-white ring-2 ring-green-600 ring-offset-2"
+                              : "bg-gray-100 text-gray-500"
+                          )}>Ready</span>
+                          <ArrowRight className={cn("h-3.5 w-3.5", firstTimer.status === 'READY_FOR_INTEGRATION' ? "text-green-600" : "text-gray-300")} />
+                          <span className={cn(
+                            "px-2.5 py-1.5 rounded-md font-medium transition-all",
+                            firstTimer.status === 'CLOSED' && (firstTimer.converted || firstTimer.memberRecord)
+                              ? "bg-emerald-600 text-white ring-2 ring-emerald-600 ring-offset-2"
+                              : "bg-gray-100 text-gray-500"
+                          )}>Member</span>
+                        </div>
+
+                        {/* Archive Branch */}
+                        <div className="flex items-center gap-1.5 text-xs ml-[88px]">
+                          <div className="flex flex-col items-center">
+                            <div className={cn(
+                              "w-0.5 h-3",
+                              firstTimer.status === 'ARCHIVED' ? "bg-orange-400" : "bg-gray-200"
+                            )} />
+                            <ArrowRight className={cn(
+                              "h-3.5 w-3.5 rotate-90",
+                              firstTimer.status === 'ARCHIVED' ? "text-orange-500" : "text-gray-300"
+                            )} />
+                          </div>
+                          <span className={cn(
+                            "px-2.5 py-1.5 rounded-md font-medium transition-all",
+                            firstTimer.status === 'ARCHIVED' || firstTimer.isArchived
+                              ? "bg-orange-500 text-white ring-2 ring-orange-500 ring-offset-2"
+                              : "bg-gray-100 text-gray-500"
+                          )}>Archived</span>
+                          <ArrowRight className={cn("h-3.5 w-3.5", firstTimer.status === 'ARCHIVED' ? "text-orange-500" : "text-gray-300")} />
+                          <span className={cn(
+                            "px-2.5 py-1.5 rounded-md font-medium transition-all",
+                            firstTimer.status === 'CLOSED' && !firstTimer.converted && !firstTimer.memberRecord
+                              ? "bg-purple-600 text-white ring-2 ring-purple-600 ring-offset-2"
+                              : "bg-gray-100 text-gray-500"
+                          )}>Closed</span>
+                        </div>
+
+                        {/* Legend */}
+                        <div className="pt-2 border-t border-gray-100 mt-2">
+                          <p className="text-[10px] text-gray-400 mb-1.5">Possible transitions from current status:</p>
+                          <div className="flex flex-wrap gap-2 text-[10px]">
+                            {firstTimer.status === 'NEW' && (
+                              <span className="text-gray-500">• Assign → <span className="text-blue-600 font-medium">Engaged</span></span>
+                            )}
+                            {firstTimer.status === 'ENGAGED' && (
+                              <>
+                                <span className="text-gray-500">• Ready for Integration → <span className="text-green-600 font-medium">Ready</span></span>
+                                <span className="text-gray-500">• Archive → <span className="text-orange-500 font-medium">Archived</span></span>
+                                <span className="text-gray-500">• Close → <span className="text-purple-600 font-medium">Closed</span></span>
+                              </>
+                            )}
+                            {(firstTimer.status === 'ARCHIVED' || firstTimer.isArchived) && firstTimer.status !== 'ENGAGED' && firstTimer.status !== 'READY_FOR_INTEGRATION' && (
+                              <>
+                                <span className="text-gray-500">• Restore → <span className="text-blue-600 font-medium">Engaged</span></span>
+                                <span className="text-gray-500">• Close → <span className="text-purple-600 font-medium">Closed</span></span>
+                              </>
+                            )}
+                            {firstTimer.status === 'READY_FOR_INTEGRATION' && (
+                              <>
+                                <span className="text-gray-500">• Integrate → <span className="text-emerald-600 font-medium">Member</span></span>
+                                <span className="text-gray-500">• Move Back → <span className="text-blue-600 font-medium">Engaged</span></span>
+                              </>
+                            )}
+                            {firstTimer.status === 'CLOSED' && (
+                              <span className="text-gray-500 italic">No further transitions available</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1271,6 +1519,120 @@ export default function FirstTimerDetail() {
                   className="bg-green-600 hover:bg-green-700"
                 >
                   {integrateLoading ? 'Integrating...' : 'Integrate'}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Assign Modal */}
+      <AnimatePresence>
+        {showAssignModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+            onClick={() => {
+              setShowAssignModal(false)
+              setSelectedAssignee('')
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <User className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Assign for Follow-up</h3>
+                    <p className="text-xs text-gray-500">Select a member to handle follow-ups</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAssignModal(false)
+                    setSelectedAssignee('')
+                  }}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {membersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <LoadingSpinner size="md" />
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Assign to <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedAssignee}
+                        onChange={(e) => setSelectedAssignee(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Select a member</option>
+                        {members.map((member) => (
+                          <option key={member._id} value={member._id}>
+                            {member.firstName} {member.lastName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {firstTimer?.assignedTo && (
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-600">
+                          Currently assigned to: <strong>
+                            {typeof firstTimer.assignedTo === 'object'
+                              ? `${(firstTimer.assignedTo as any)?.firstName} ${(firstTimer.assignedTo as any)?.lastName}`
+                              : 'Unknown'}
+                          </strong>
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="bg-blue-50 rounded-lg p-3">
+                      <p className="text-xs text-blue-700">
+                        The assigned member will be notified and responsible for following up with this visitor.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 bg-gray-50">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setShowAssignModal(false)
+                    setSelectedAssignee('')
+                  }}
+                  disabled={assignLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleAssign}
+                  disabled={!selectedAssignee || assignLoading || membersLoading}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {assignLoading ? 'Assigning...' : 'Assign'}
                 </Button>
               </div>
             </motion.div>

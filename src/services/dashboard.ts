@@ -5,6 +5,13 @@ export interface DateRange {
   endDate: string
 }
 
+export interface DashboardScope {
+  type: 'full' | 'module-limited'
+  accessibleModules: string[]
+  isAdmin: boolean
+  userRole: string
+}
+
 export interface DashboardOverview {
   // All-time totals
   totalMembers: number
@@ -28,6 +35,8 @@ export interface DashboardOverview {
     firstTimersTrend: string
   }
   dateRange?: DateRange
+  scope?: DashboardScope
+  accessibleModules?: string[]
 }
 
 export interface ActivityItem {
@@ -65,13 +74,14 @@ class DashboardService {
     return apiService.get<DashboardOverview>('/dashboard/overview')
   }
 
-  async getStats(startDate?: string, endDate?: string, branchId?: string): Promise<Partial<DashboardOverview>> {
+  async getStats(startDate?: string, endDate?: string, branchId?: string, scoped: boolean = false): Promise<Partial<DashboardOverview>> {
     try {
       // Build query params
       const params = new URLSearchParams()
       if (startDate) params.append('startDate', startDate)
       if (endDate) params.append('endDate', endDate)
       if (branchId) params.append('branchId', branchId)
+      if (scoped) params.append('scoped', 'true')
 
       const queryString = params.toString()
       const url = `/dashboard/overview${queryString ? `?${queryString}` : ''}`
@@ -102,7 +112,9 @@ class DashboardService {
           firstTimersTrend: this.formatPercentage(recentActivity?.recentFirstTimers?.percentage, recentActivity?.recentFirstTimers?.trend)
         },
         recentActivity: [], // Map from upcomingTasks if needed
-        dateRange: response.data?.dateRange
+        dateRange: response.data?.dateRange,
+        scope: response.data?.scope,
+        accessibleModules: response.data?.accessibleModules
       }
 
       return mappedData

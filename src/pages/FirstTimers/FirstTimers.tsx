@@ -21,11 +21,13 @@ import { Member, membersService } from '@/services/members'
 import { Group, groupsService } from '@/services/groups'
 import { formatDate } from '@/utils/formatters'
 import { useAppStore } from '@/store'
+import { useAuth } from '@/contexts/AuthContext-unified'
 
 export default function FirstTimers() {
   const navigate = useNavigate()
   const toast = useToast()
   const { selectedBranch, branches } = useAppStore()
+  const { hasPermission } = useAuth()
   const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'closed' | 'archived'>('all')
   const [dateRange, setDateRange] = useState<DateRangeFilter>('3months')
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
@@ -69,8 +71,10 @@ export default function FirstTimers() {
   const [tempDateTo, setTempDateTo] = useState('')
   const [tempBranchFilter, setTempBranchFilter] = useState('')
 
-  // Show branch filter when viewing "All Campuses"
-  const showBranchFilter = !selectedBranch && branches.length > 0
+  // Show branch filter only if user has permission to view all branches
+  const canViewAllBranches = hasPermission('branches:view-all')
+  const showBranchFilter = canViewAllBranches && branches.length > 0
+  const canAssignFirstTimers = hasPermission('first-timers:assign')
   const [stats, setStats] = useState<any>(null)
   const [statsLoading, setStatsLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -1172,16 +1176,18 @@ export default function FirstTimers() {
                             <div className="py-1">
                               {activeTab === 'all' && (
                                 <>
-                                  <button
-                                    onClick={() => {
-                                      setShowBulkActionsMenu(false)
-                                      setShowBulkAssignModal(true)
-                                    }}
-                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <UserPlus className="h-3.5 w-3.5 mr-2 text-blue-600" />
-                                    Assign for Follow-up
-                                  </button>
+                                  {canAssignFirstTimers && (
+                                    <button
+                                      onClick={() => {
+                                        setShowBulkActionsMenu(false)
+                                        setShowBulkAssignModal(true)
+                                      }}
+                                      className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <UserPlus className="h-3.5 w-3.5 mr-2 text-blue-600" />
+                                      Assign for Follow-up
+                                    </button>
+                                  )}
                                   <button
                                     onClick={handleBulkReadyForIntegration}
                                     className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
@@ -1207,16 +1213,18 @@ export default function FirstTimers() {
                                     <UserPlus className="h-3.5 w-3.5 mr-2 text-green-600" />
                                     Integrate Selected
                                   </button>
-                                  <button
-                                    onClick={() => {
-                                      setShowBulkActionsMenu(false)
-                                      setShowBulkAssignModal(true)
-                                    }}
-                                    className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <UserCheck className="h-3.5 w-3.5 mr-2 text-blue-600" />
-                                    Assign for Follow-up
-                                  </button>
+                                  {canAssignFirstTimers && (
+                                    <button
+                                      onClick={() => {
+                                        setShowBulkActionsMenu(false)
+                                        setShowBulkAssignModal(true)
+                                      }}
+                                      className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <UserCheck className="h-3.5 w-3.5 mr-2 text-blue-600" />
+                                      Assign for Follow-up
+                                    </button>
+                                  )}
                                   <button
                                     onClick={handleBulkUnmarkReady}
                                     className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
@@ -1493,7 +1501,7 @@ export default function FirstTimers() {
                                     </button>
 
                                     {/* NEW: Only Assign */}
-                                    {visitor.status === 'NEW' && (
+                                    {visitor.status === 'NEW' && canAssignFirstTimers && (
                                       <button
                                         onClick={() => {
                                           setSelectedIds([visitor._id])
@@ -1510,17 +1518,19 @@ export default function FirstTimers() {
                                     {/* ENGAGED: Assign + Update Status */}
                                     {visitor.status === 'ENGAGED' && (
                                       <>
-                                        <button
-                                          onClick={() => {
-                                            setSelectedIds([visitor._id])
-                                            setShowBulkAssignModal(true)
-                                            setActionMenuOpen(null)
-                                          }}
-                                          className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        >
-                                          <UserCheck className="h-3 w-3 mr-2" />
-                                          Assign
-                                        </button>
+                                        {canAssignFirstTimers && (
+                                          <button
+                                            onClick={() => {
+                                              setSelectedIds([visitor._id])
+                                              setShowBulkAssignModal(true)
+                                              setActionMenuOpen(null)
+                                            }}
+                                            className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          >
+                                            <UserCheck className="h-3 w-3 mr-2" />
+                                            Assign
+                                          </button>
+                                        )}
                                         <button
                                           onClick={() => {
                                             setSelectedFirstTimerForStatus(visitor)

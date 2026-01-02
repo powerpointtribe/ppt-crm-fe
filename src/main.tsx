@@ -6,6 +6,29 @@ import ErrorBoundary from './components/ErrorBoundary.tsx'
 import { AuthProvider } from './contexts/AuthContext-unified.tsx'
 import './index.css'
 
+// Initialize theme before rendering to prevent flash
+const initializeTheme = () => {
+  const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null
+  const theme = savedTheme || 'system'
+
+  if (theme === 'system') {
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    document.documentElement.classList.toggle('dark', systemPrefersDark)
+  } else {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }
+}
+
+initializeTheme()
+
+// Listen for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'system' || !savedTheme) {
+    document.documentElement.classList.toggle('dark', e.matches)
+  }
+})
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

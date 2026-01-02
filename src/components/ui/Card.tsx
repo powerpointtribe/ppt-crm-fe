@@ -13,8 +13,8 @@ export default function Card({ children, className, hoverable = false, onClick }
   return (
     <motion.div
       className={cn(
-        'card',
-        hoverable && 'hover:bg-muted/50 cursor-pointer',
+        'bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-200',
+        hoverable && 'hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer',
         onClick && 'cursor-pointer',
         className
       )}

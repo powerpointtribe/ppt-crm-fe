@@ -15,6 +15,7 @@ export interface Role {
   displayName: string
   description?: string
   permissions: string[] | Permission[] // Array of Permission IDs or populated Permission objects
+  modules?: string[] // Selected modules for this role
   parentRole?: string
   level: number
   isSystemRole: boolean
@@ -43,11 +44,17 @@ export interface Permission {
   metadata?: Record<string, any>
 }
 
+export interface ModuleInfo {
+  identifier: string
+  displayName: string
+}
+
 export interface CreateRoleDto {
   name: string
   slug: string
   displayName: string
   description?: string
+  modules?: string[] // Selected modules for this role
   parentRole?: string
   level?: number
   colorCode?: string
@@ -60,6 +67,7 @@ export interface UpdateRoleDto {
   slug?: string
   displayName?: string
   description?: string
+  modules?: string[] // Selected modules for this role
   parentRole?: string
   level?: number
   isActive?: boolean
@@ -186,6 +194,14 @@ class RolesService {
    */
   async assignRoleToMember(memberId: string, roleId: string): Promise<void> {
     await apiService.patch(`/members/${memberId}/role`, { roleId })
+  }
+
+  /**
+   * Get all available modules for role assignment
+   */
+  async getAvailableModules(): Promise<ModuleInfo[]> {
+    const response = await apiService.get<{ modules: ModuleInfo[] }>('/roles/available-modules')
+    return response.modules || []
   }
 }
 

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, AlertCircle } from 'lucide-react'
-import { rolesService, CreateRoleDto, MembershipStatusTag } from '@/services/roles'
+import { ArrowLeft, Save, AlertCircle, Package } from 'lucide-react'
+import { rolesService, CreateRoleDto, MembershipStatusTag, ModuleInfo } from '@/services/roles'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import Layout from '@/components/Layout'
 
@@ -9,15 +9,31 @@ export default function CreateRolePage() {
   const navigate = useNavigate()
   const { hasPermission } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [availableModules, setAvailableModules] = useState<ModuleInfo[]>([])
+  const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set())
   const [formData, setFormData] = useState<CreateRoleDto>({
     name: '',
     slug: '',
     displayName: '',
     description: '',
     colorCode: '#6B7280',
-    membershipStatusTag: undefined
+    membershipStatusTag: undefined,
+    modules: []
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Fetch available modules on mount
+  useEffect(() => {
+    const fetchModules = async () => {
+      try {
+        const modules = await rolesService.getAvailableModules()
+        setAvailableModules(modules)
+      } catch (error) {
+        console.error('Failed to fetch available modules:', error)
+      }
+    }
+    fetchModules()
+  }, [])
 
   // Membership status options
   const membershipStatusOptions: { value: MembershipStatusTag | ''; label: string }[] = [
@@ -81,6 +97,26 @@ export default function CreateRolePage() {
     }
   }
 
+  const handleModuleToggle = (moduleId: string) => {
+    setSelectedModules(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(moduleId)) {
+        newSet.delete(moduleId)
+      } else {
+        newSet.add(moduleId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSelectAllModules = (selectAll: boolean) => {
+    if (selectAll) {
+      setSelectedModules(new Set(availableModules.map(m => m.identifier)))
+    } else {
+      setSelectedModules(new Set())
+    }
+  }
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
@@ -99,7 +135,11 @@ export default function CreateRolePage() {
 
     try {
       setLoading(true)
-      const newRole = await rolesService.createRole(formData)
+      const roleData: CreateRoleDto = {
+        ...formData,
+        modules: Array.from(selectedModules)
+      }
+      const newRole = await rolesService.createRole(roleData)
       navigate(`/roles/${newRole._id}/edit`)
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to create role')
@@ -251,6 +291,60 @@ export default function CreateRolePage() {
             When this role is assigned to a member, their membership status will automatically update to this value.
           </p>
         </div>
+
+        {/* Module Selection */}
+        {availableModules.length > 0 && (
+          <div className="pt-4 border-t">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-gray-600" />
+                <label className="block text-sm font-medium text-gray-700">
+                  Module Access
+                </label>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-500">
+                  {selectedModules.size} / {availableModules.length} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleSelectAllModules(selectedModules.size !== availableModules.length)}
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  {selectedModules.size === availableModules.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Select the modules this role should have access to. Users with this role will be able to view data from selected modules.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {availableModules.map(module => {
+                const isSelected = selectedModules.has(module.identifier)
+                return (
+                  <label
+                    key={module.identifier}
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
+                      isSelected
+                        ? 'border-primary-500 bg-primary-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleModuleToggle(module.identifier)}
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900">
+                      {module.displayName}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t">

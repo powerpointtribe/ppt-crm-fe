@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Save, Shield, Check, AlertCircle } from 'lucide-react'
-import { rolesService, Role, Permission, UpdateRoleDto, MembershipStatusTag } from '@/services/roles'
+import { ArrowLeft, Save, Shield, Check, AlertCircle, Package } from 'lucide-react'
+import { rolesService, Role, Permission, UpdateRoleDto, MembershipStatusTag, ModuleInfo } from '@/services/roles'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import Layout from '@/components/Layout'
 
@@ -14,12 +14,15 @@ export default function EditRolePage() {
   const [role, setRole] = useState<Role | null>(null)
   const [allPermissions, setAllPermissions] = useState<Record<string, Permission[]>>({})
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set())
+  const [availableModules, setAvailableModules] = useState<ModuleInfo[]>([])
+  const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set())
   const [formData, setFormData] = useState<UpdateRoleDto>({
     displayName: '',
     description: '',
     colorCode: '#6B7280',
     isActive: true,
-    membershipStatusTag: undefined
+    membershipStatusTag: undefined,
+    modules: []
   })
 
   // Membership status options
@@ -70,9 +73,10 @@ export default function EditRolePage() {
 
     try {
       setLoading(true)
-      const [roleData, permissionsByModule] = await Promise.all([
+      const [roleData, permissionsByModule, modules] = await Promise.all([
         rolesService.getRoleById(id, true),
-        rolesService.getPermissionsByModule()
+        rolesService.getPermissionsByModule(),
+        rolesService.getAvailableModules()
       ])
 
       setRole(roleData)
@@ -81,15 +85,20 @@ export default function EditRolePage() {
         description: roleData.description,
         colorCode: roleData.colorCode || '#6B7280',
         isActive: roleData.isActive,
-        membershipStatusTag: roleData.membershipStatusTag
+        membershipStatusTag: roleData.membershipStatusTag,
+        modules: roleData.modules || []
       })
       setAllPermissions(permissionsByModule)
+      setAvailableModules(modules)
 
       // Set currently selected permissions (extract IDs from populated permission objects)
       const permissionIds = (roleData.permissions || []).map((p: any) =>
         typeof p === 'string' ? p : p._id
       )
       setSelectedPermissions(new Set(permissionIds))
+
+      // Set currently selected modules
+      setSelectedModules(new Set(roleData.modules || []))
     } catch (error) {
       console.error('Failed to fetch role:', error)
       alert('Failed to load role')
@@ -134,6 +143,26 @@ export default function EditRolePage() {
     })
   }
 
+  const handleModuleToggle = (moduleId: string) => {
+    setSelectedModules(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(moduleId)) {
+        newSet.delete(moduleId)
+      } else {
+        newSet.add(moduleId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSelectAllModules = (selectAll: boolean) => {
+    if (selectAll) {
+      setSelectedModules(new Set(availableModules.map(m => m.identifier)))
+    } else {
+      setSelectedModules(new Set())
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!id) return
@@ -141,8 +170,12 @@ export default function EditRolePage() {
     try {
       setSaving(true)
 
-      // Update role details
-      await rolesService.updateRole(id, formData)
+      // Update role details with modules
+      const updateData: UpdateRoleDto = {
+        ...formData,
+        modules: Array.from(selectedModules)
+      }
+      await rolesService.updateRole(id, updateData)
 
       // Update permissions (replace all) - only if user has permission
       if (canAssignPermissions && selectedPermissions.size > 0) {
@@ -333,6 +366,58 @@ export default function EditRolePage() {
             </div>
           )}
         </div>
+
+        {/* Module Access */}
+        {availableModules.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-gray-600" />
+                <h2 className="text-xl font-semibold text-gray-900">Module Access</h2>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-600">
+                  {selectedModules.size} / {availableModules.length} modules selected
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleSelectAllModules(selectedModules.size !== availableModules.length)}
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  {selectedModules.size === availableModules.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Select the modules this role should have access to. Users with this role will be able to view data from selected modules on the dashboard.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {availableModules.map(module => {
+                const isSelected = selectedModules.has(module.identifier)
+                return (
+                  <label
+                    key={module.identifier}
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
+                      isSelected
+                        ? 'border-primary-500 bg-primary-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleModuleToggle(module.identifier)}
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900">
+                      {module.displayName}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Permissions */}
         <div className="bg-white rounded-lg shadow-sm p-6">

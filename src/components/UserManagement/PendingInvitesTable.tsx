@@ -25,7 +25,6 @@ export default function PendingInvitesTable({
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
-      year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -43,115 +42,76 @@ export default function PendingInvitesTable({
     if (diffMs < 0) {
       return { text: 'Expired', isExpired: true };
     } else if (diffDays > 0) {
-      return { text: `${diffDays} day${diffDays > 1 ? 's' : ''} left`, isExpired: false };
+      return { text: `${diffDays}d left`, isExpired: false };
     } else if (diffHours > 0) {
-      return { text: `${diffHours} hour${diffHours > 1 ? 's' : ''} left`, isExpired: false };
+      return { text: `${diffHours}h left`, isExpired: false };
     } else {
-      return { text: 'Less than 1 hour', isExpired: false };
+      return { text: '<1h', isExpired: false };
     }
   };
 
   if (invitations?.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-          <Mail className="w-8 h-8 text-gray-400" />
+      <div className="text-center py-8">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-3">
+          <Mail className="w-6 h-6 text-gray-400" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Invitations</h3>
-        <p className="text-gray-600">
-          All invitations have been accepted, revoked, or expired.
+        <h3 className="text-sm font-medium text-gray-900 mb-1">No Pending Invitations</h3>
+        <p className="text-xs text-gray-500">
+          All invitations have been processed.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-2">
         {invitations && invitations.map((invitation) => {
           const timeRemaining = getTimeRemaining(invitation.expiresAt);
 
           return (
             <div
               key={invitation._id}
-              className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+              className="bg-white border border-gray-200 rounded-lg p-3 space-y-2"
             >
-              {/* Header: Name and Role */}
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-medium text-gray-900">
                     {invitation.member.firstName} {invitation.member.lastName}
                   </h3>
-                  <p className="text-sm text-gray-500 truncate">{invitation.member.email}</p>
+                  <p className="text-xs text-gray-500 truncate">{invitation.member.email}</p>
                 </div>
-                <Badge variant="info" className="text-xs ml-2 flex-shrink-0">
+                <Badge variant="info" className="text-[10px] ml-2 flex-shrink-0">
                   {invitation.role.displayName || invitation.role.name}
                 </Badge>
               </div>
 
-              {/* Status Info */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="space-y-1">
-                  <span className="text-xs text-gray-400 uppercase">Invited By</span>
-                  <p className="text-gray-700 flex items-center gap-1">
-                    <User className="w-3 h-3 text-gray-400" />
-                    {invitation.invitedBy.firstName} {invitation.invitedBy.lastName}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-xs text-gray-400 uppercase">Status</span>
-                  <div className="flex items-center gap-1.5">
-                    <Clock
-                      className={`w-4 h-4 ${
-                        timeRemaining.isExpired ? 'text-red-500' : 'text-yellow-500'
-                      }`}
-                    />
-                    <span
-                      className={`text-sm ${
-                        timeRemaining.isExpired ? 'text-red-600 font-medium' : 'text-gray-600'
-                      }`}
-                    >
-                      {timeRemaining.text}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Email Status & Resend Count */}
-              <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                  {invitation.emailSent ? (
-                    <>
-                      <Mail className="w-4 h-4 text-green-500" />
-                      <span className="text-gray-600 text-xs">
-                        Sent {formatDate(invitation.emailSentAt || invitation.createdAt)}
-                      </span>
-                    </>
-                  ) : (
-                    <Badge variant="warning" className="text-xs">Not Sent</Badge>
-                  )}
-                </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className={timeRemaining.isExpired ? 'text-red-600' : 'text-gray-500'}>
+                  <Clock className="w-3 h-3 inline mr-1" />
+                  {timeRemaining.text}
+                </span>
                 {invitation.resendCount > 0 && (
-                  <Badge className="text-xs">Resent {invitation.resendCount}x</Badge>
+                  <Badge className="text-[10px]">Resent {invitation.resendCount}x</Badge>
                 )}
               </div>
 
-              {/* Actions */}
               {canInviteUsers && (
-                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                <div className="flex items-center gap-1.5 pt-2 border-t border-gray-100">
                   <button
                     onClick={() => onResend(invitation._id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="w-3 h-3" />
                     Resend
                   </button>
                   <button
                     onClick={() => onRevoke(invitation._id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-red-600 bg-red-50 hover:bg-red-100 rounded transition-colors"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3 h-3" />
                     Revoke
                   </button>
                 </div>
@@ -166,30 +126,13 @@ export default function PendingInvitesTable({
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                Member
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 hidden lg:table-cell">
-                Email
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                Role
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 hidden xl:table-cell">
-                Invited By
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 hidden lg:table-cell">
-                Sent
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                Expires
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 hidden xl:table-cell">
-                Resent
-              </th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                Actions
-              </th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Member</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 hidden lg:table-cell">Email</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Role</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 hidden xl:table-cell">Invited By</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Expires</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 hidden lg:table-cell">Resent</th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -198,85 +141,59 @@ export default function PendingInvitesTable({
 
               return (
                 <tr key={invitation._id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-4 px-4">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {invitation.member.firstName} {invitation.member.lastName}
-                      </p>
-                      <p className="text-sm text-gray-500 lg:hidden">{invitation.member.email}</p>
-                    </div>
+                  <td className="py-2 px-3">
+                    <p className="text-sm font-medium text-gray-900">
+                      {invitation.member.firstName} {invitation.member.lastName}
+                    </p>
+                    <p className="text-xs text-gray-500 lg:hidden">{invitation.member.email}</p>
                   </td>
-                  <td className="py-4 px-4 hidden lg:table-cell">
-                    <p className="text-sm text-gray-600">{invitation.member.email}</p>
+                  <td className="py-2 px-3 hidden lg:table-cell">
+                    <p className="text-xs text-gray-600">{invitation.member.email}</p>
                   </td>
-                  <td className="py-4 px-4">
-                    <Badge variant="info">
+                  <td className="py-2 px-3">
+                    <Badge variant="info" className="text-[10px]">
                       {invitation.role.displayName || invitation.role.name}
                     </Badge>
                   </td>
-                  <td className="py-4 px-4 hidden xl:table-cell">
-                    <p className="text-sm text-gray-600">
+                  <td className="py-2 px-3 hidden xl:table-cell">
+                    <p className="text-xs text-gray-600">
                       {invitation.invitedBy.firstName} {invitation.invitedBy.lastName}
                     </p>
                   </td>
-                  <td className="py-4 px-4 hidden lg:table-cell">
-                    <div className="flex items-center gap-2">
-                      {invitation.emailSent ? (
-                        <>
-                          <Mail className="w-4 h-4 text-green-500" />
-                          <span className="text-sm text-gray-600">
-                            {formatDate(invitation.emailSentAt || invitation.createdAt)}
-                          </span>
-                        </>
-                      ) : (
-                        <Badge variant="warning">Not Sent</Badge>
-                      )}
-                    </div>
+                  <td className="py-2 px-3">
+                    <span className={`text-xs flex items-center gap-1 ${timeRemaining.isExpired ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                      <Clock className={`w-3 h-3 ${timeRemaining.isExpired ? 'text-red-500' : 'text-yellow-500'}`} />
+                      {timeRemaining.text}
+                    </span>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2">
-                      <Clock
-                        className={`w-4 h-4 ${
-                          timeRemaining.isExpired ? 'text-red-500' : 'text-yellow-500'
-                        }`}
-                      />
-                      <span
-                        className={`text-sm ${
-                          timeRemaining.isExpired ? 'text-red-600 font-medium' : 'text-gray-600'
-                        }`}
-                      >
-                        {timeRemaining.text}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 hidden xl:table-cell">
+                  <td className="py-2 px-3 hidden lg:table-cell">
                     {invitation.resendCount > 0 ? (
-                      <Badge>{invitation.resendCount}x</Badge>
+                      <Badge className="text-[10px]">{invitation.resendCount}x</Badge>
                     ) : (
-                      <span className="text-sm text-gray-400">-</span>
+                      <span className="text-xs text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="flex justify-end gap-2">
+                  <td className="py-2 px-3">
+                    <div className="flex justify-end gap-1">
                       {canInviteUsers ? (
                         <>
                           <button
                             onClick={() => onResend(invitation._id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Resend Invitation"
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Resend"
                           >
-                            <Send className="w-4 h-4" />
+                            <Send className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => onRevoke(invitation._id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Revoke Invitation"
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Revoke"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </>
                       ) : (
-                        <span className="text-sm text-gray-400">No actions</span>
+                        <span className="text-xs text-gray-400">-</span>
                       )}
                     </div>
                   </td>
@@ -289,26 +206,26 @@ export default function PendingInvitesTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-          <p className="text-sm text-gray-600">
+        <div className="flex items-center justify-between border-t border-gray-200 pt-3">
+          <p className="text-xs text-gray-500">
             Page {currentPage} of {totalPages}
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Previous
+              <ChevronLeft className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
-              Next
-              <ChevronRight className="w-4 h-4 ml-1" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>

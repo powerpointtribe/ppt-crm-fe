@@ -80,18 +80,18 @@ export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUser
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} size="md">
-      <div className="p-6">
+    <Modal isOpen={true} onClose={onClose} size="sm">
+      <div className="p-3">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-3">
           <div className="flex items-center">
-            <div className="bg-blue-100 p-3 rounded-lg mr-3">
-              <Edit className="w-6 h-6 text-blue-600" />
+            <div className="bg-blue-100 p-1.5 rounded-lg mr-2">
+              <Edit className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Edit User Role</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Update the role for {user.firstName} {user.lastName}
+              <h2 className="text-base font-bold text-gray-900">Edit User Role</h2>
+              <p className="text-[10px] text-gray-500">
+                {user.firstName} {user.lastName}
               </p>
             </div>
           </div>
@@ -99,45 +99,31 @@ export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUser
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center py-12">
+          <div className="flex justify-center items-center py-6">
             <LoadingSpinner />
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {/* User Info */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Name</p>
-                  <p className="font-medium text-gray-900">
-                    {user.firstName} {user.lastName}
-                  </p>
+                  <p className="text-gray-500">Email</p>
+                  <p className="font-medium text-gray-900 truncate">{user.email}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-600 mb-1">Email</p>
-                  <p className="font-medium text-gray-900">{user.email}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Current Role</p>
+                  <p className="text-gray-500">Current Role</p>
                   {user.role ? (
-                    <Badge variant="info">
+                    <Badge variant="info" className="text-[10px]">
                       {user.role.displayName || user.role.name}
                     </Badge>
                   ) : (
-                    <Badge>No Role</Badge>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Status</p>
-                  {user.isActive ? (
-                    <Badge variant="success">Active</Badge>
-                  ) : (
-                    <Badge variant="error">Inactive</Badge>
+                    <Badge className="text-[10px]">No Role</Badge>
                   )}
                 </div>
               </div>
@@ -145,54 +131,47 @@ export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUser
 
             {/* New Role Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select New Role <span className="text-red-500">*</span>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                New Role <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedRoleId}
                 onChange={(e) => setSelectedRoleId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
                 <option value="">Select a role...</option>
                 {roles.map((role) => (
                   <option key={role._id} value={role._id}>
                     {role.displayName || role.name}
-                    {role.description && ` - ${role.description}`}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
-                The new role will determine what permissions the user has
-              </p>
             </div>
 
             {/* Warning */}
             {selectedRoleId && selectedRoleId !== user.role?._id && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-medium text-yellow-900 mb-2">Important Notice</h4>
-                <ul className="text-sm text-yellow-800 space-y-1">
-                  <li>• The user's permissions will change immediately</li>
-                  <li>• They may need to log out and log back in to see changes</li>
-                  <li>• Make sure the new role has appropriate permissions</li>
-                </ul>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                <p className="text-[10px] text-yellow-800">
+                  Permissions will change immediately. User may need to re-login.
+                </p>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+              <Button type="button" variant="outline" size="sm" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting || !selectedRoleId}>
+              <Button type="submit" size="sm" disabled={submitting || !selectedRoleId}>
                 {submitting ? (
                   <>
                     <LoadingSpinner />
-                    <span className="ml-2">Updating...</span>
+                    <span className="ml-1">Updating...</span>
                   </>
                 ) : (
                   <>
-                    <Edit className="w-4 h-4 mr-2" />
+                    <Edit className="w-3 h-3 mr-1" />
                     Update Role
                   </>
                 )}

@@ -210,79 +210,77 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} size="md">
-      <div className="p-4">
+    <Modal isOpen={true} onClose={onClose} size="sm">
+      <div className="p-3">
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-3">
           <div className="flex items-center">
-            <div className="bg-blue-100 p-2 rounded-lg mr-2">
-              <UserPlus className="w-5 h-5 text-blue-600" />
+            <div className="bg-blue-100 p-1.5 rounded-lg mr-2">
+              <UserPlus className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Invite User</h2>
-              <p className="text-xs text-gray-600 mt-0.5">
-                Send an invitation to grant platform access
-              </p>
+              <h2 className="text-base font-bold text-gray-900">Invite User</h2>
+              <p className="text-[10px] text-gray-500">Grant platform access</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center py-8">
+          <div className="flex justify-center items-center py-6">
             <LoadingSpinner />
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {/* Member Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Select Member <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 {selectedMember ? (
-                  <div className="flex items-center justify-between p-3 border border-gray-300 rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between p-2 border border-gray-300 rounded-lg bg-gray-50">
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-sm font-medium text-gray-900">
                         {selectedMember.firstName} {selectedMember.lastName}
                       </p>
-                      <p className="text-sm text-gray-600">{selectedMember.email}</p>
+                      <p className="text-xs text-gray-500">{selectedMember.email}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSelectedMember(null)}
                       className="text-red-500 hover:text-red-700"
                     >
-                      <X className="w-5 h-5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
                   <>
                     <div className="relative">
-                      <Input
-                        placeholder="Search members by name or email..."
+                      <input
+                        type="text"
+                        placeholder="Search members..."
                         value={searchQuery}
                         onChange={(e) => {
                           setSearchQuery(e.target.value);
                           setShowMemberDropdown(true);
                         }}
                         onFocus={() => setShowMemberDropdown(true)}
+                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
-                      <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     </div>
 
                     {showMemberDropdown && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                         {filteredMembers.length === 0 ? (
-                          <div className="p-4 text-center text-gray-600">
-                            {searchQuery
-                              ? 'No members found matching your search'
-                              : 'No members available for invitation'}
+                          <div className="p-2 text-center text-xs text-gray-500">
+                            {searchQuery ? 'No members found' : 'No members available'}
                           </div>
                         ) : (
                           filteredMembers.map((member) => (
@@ -290,15 +288,12 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
                               key={member._id}
                               type="button"
                               onClick={() => handleSelectMember(member)}
-                              className="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                              className="w-full text-left px-2 py-1.5 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                             >
-                              <p className="font-medium text-gray-900">
+                              <p className="text-sm font-medium text-gray-900">
                                 {member.firstName} {member.lastName}
                               </p>
-                              <p className="text-sm text-gray-600">{member.email}</p>
-                              {member.phone && (
-                                <p className="text-xs text-gray-500">{member.phone}</p>
-                              )}
+                              <p className="text-xs text-gray-500">{member.email}</p>
                             </button>
                           ))
                         )}
@@ -307,139 +302,116 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
                   </>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Only members without platform access are shown
-              </p>
             </div>
 
             {/* Role Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Assign Role <span className="text-red-500">*</span>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Role <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedRoleId}
                 onChange={(e) => setSelectedRoleId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
                 <option value="">Select a role...</option>
                 {roles.map((role) => (
                   <option key={role._id} value={role._id}>
                     {role.displayName || role.name}
-                    {role.description && ` - ${role.description}`}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
-                The role determines what permissions the user will have
-              </p>
             </div>
 
             {/* Branch Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-teal-600" />
-                  Assign to Branch <span className="text-red-500">*</span>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                <div className="flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-teal-600" />
+                  Branch <span className="text-red-500">*</span>
                 </div>
               </label>
               <select
                 value={selectedBranchId}
                 onChange={(e) => setSelectedBranchId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
                 <option value="">Select a branch...</option>
                 {branches.map((branch) => (
                   <option key={branch._id} value={branch._id}>
-                    {branch.name}
-                    {branch.isMainBranch && ' (Main Branch)'}
+                    {branch.name}{branch.isMainBranch && ' (Main)'}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
-                The user will only have access to data within this branch
-              </p>
             </div>
 
             {/* District Selection (for Assistant Pastors) */}
             {isAssistantPastor && selectedBranchId && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-blue-600" />
-                    Assign Districts <span className="text-red-500">*</span>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-blue-600" />
+                    Districts <span className="text-red-500">*</span>
                   </div>
                 </label>
                 {loadingDistricts ? (
-                  <div className="flex items-center justify-center py-4">
+                  <div className="flex items-center justify-center py-2">
                     <LoadingSpinner />
                   </div>
                 ) : districts.length === 0 ? (
-                  <p className="text-sm text-gray-500 py-2">
-                    No districts available for this branch
-                  </p>
+                  <p className="text-xs text-gray-500">No districts available</p>
                 ) : (
-                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-1">
+                  <div className="max-h-24 overflow-y-auto border border-gray-300 rounded-lg p-1.5 space-y-0.5">
                     {districts.map((district) => (
                       <label
                         key={district._id}
-                        className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        className="flex items-center gap-1.5 px-1.5 py-1 hover:bg-gray-50 rounded cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           checked={selectedDistrictIds.includes(district._id)}
                           onChange={() => handleDistrictToggle(district._id)}
-                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          className="h-3 w-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
-                        <span className="text-sm text-gray-900">{district.name}</span>
+                        <span className="text-xs text-gray-900">{district.name}</span>
                       </label>
                     ))}
                   </div>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Assistant Pastors can only manage members within their assigned districts
-                </p>
               </div>
             )}
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Notes (Optional)
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                placeholder="Add any notes about this invitation..."
+                rows={2}
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                placeholder="Add notes..."
               />
             </div>
 
             {/* Info Box */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <h4 className="font-medium text-blue-900 mb-1.5 text-sm">What happens next?</h4>
-              <ul className="text-xs text-blue-800 space-y-0.5">
-                <li>• An email will be sent with login credentials</li>
-                <li>• The user will receive a temporary password</li>
-                <li>• They must change their password on first login</li>
-                <li>• The invitation expires in 7 days</li>
-                <li>• User will only see data from their assigned branch</li>
-                {isAssistantPastor && (
-                  <li>• Assistant Pastors will manage only their assigned districts</li>
-                )}
-              </ul>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+              <p className="text-[10px] text-blue-800">
+                An email with login credentials will be sent. The invitation expires in 7 days.
+              </p>
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+              <Button type="button" variant="outline" size="sm" onClick={onClose}>
                 Cancel
               </Button>
               <Button
                 type="submit"
+                size="sm"
                 disabled={
                   submitting ||
                   !selectedMember ||
@@ -451,11 +423,11 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
                 {submitting ? (
                   <>
                     <LoadingSpinner />
-                    <span className="ml-2">Sending Invitation...</span>
+                    <span className="ml-1">Sending...</span>
                   </>
                 ) : (
                   <>
-                    <UserPlus className="w-4 h-4 mr-2" />
+                    <UserPlus className="w-3 h-3 mr-1" />
                     Send Invitation
                   </>
                 )}

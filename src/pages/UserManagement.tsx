@@ -255,17 +255,17 @@ export default function UserManagement() {
 
   // Search Section for Layout header
   const searchSection = (
-    <div className="flex gap-3 items-center flex-wrap">
-      <div className="flex-1 min-w-[250px]">
+    <div className="flex gap-2 items-center flex-wrap">
+      <div className="flex-1 min-w-[200px]">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
             placeholder="Search users..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
           />
         </div>
       </div>
@@ -273,7 +273,7 @@ export default function UserManagement() {
         <select
           value={branchFilter}
           onChange={(e) => setBranchFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
+          className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
         >
           <option value="">All Campuses</option>
           {branches.map(branch => (
@@ -282,12 +282,12 @@ export default function UserManagement() {
         </select>
       )}
       <Button variant="outline" size="sm" onClick={handleRefresh}>
-        <RefreshCw className="w-4 h-4" />
+        <RefreshCw className="w-3.5 h-3.5" />
       </Button>
       {canInviteUsers && (
         <Button size="sm" onClick={() => setShowInviteModal(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Invite User
+          <UserPlus className="w-3.5 h-3.5 mr-1" />
+          Invite
         </Button>
       )}
     </div>
@@ -327,119 +327,107 @@ export default function UserManagement() {
       subtitle="Manage user invitations and platform access"
       searchSection={searchSection}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards - Compact */}
       {statistics && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-5 gap-4"
+          transition={{ duration: 0.2 }}
+          className="grid grid-cols-2 md:grid-cols-5 gap-2"
         >
-          <Card className="p-4 hover:shadow-md transition-shadow">
+          <Card className="p-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Invitations</p>
-                <p className="text-2xl font-bold text-gray-900">{statistics.total}</p>
+                <p className="text-[10px] text-gray-500 uppercase">Total</p>
+                <p className="text-lg font-bold text-gray-900">{statistics.total}</p>
               </div>
-              <Users className="w-8 h-8 text-blue-500" />
+              <Users className="w-5 h-5 text-blue-500" />
             </div>
           </Card>
-          <Card className="p-4 hover:shadow-md transition-shadow">
+          <Card className="p-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">{statistics.pending}</p>
+                <p className="text-[10px] text-gray-500 uppercase">Pending</p>
+                <p className="text-lg font-bold text-yellow-600">{statistics.pending}</p>
               </div>
-              <Badge variant="warning">Pending</Badge>
+              <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
             </div>
           </Card>
-          <Card className="p-4 hover:shadow-md transition-shadow">
+          <Card className="p-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Accepted</p>
-                <p className="text-2xl font-bold text-green-600">{statistics.accepted}</p>
+                <p className="text-[10px] text-gray-500 uppercase">Accepted</p>
+                <p className="text-lg font-bold text-green-600">{statistics.accepted}</p>
               </div>
-              <Badge variant="success">Accepted</Badge>
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
             </div>
           </Card>
-          <Card className="p-4 hover:shadow-md transition-shadow">
+          <Card className="p-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Revoked</p>
-                <p className="text-2xl font-bold text-red-600">{statistics.revoked}</p>
+                <p className="text-[10px] text-gray-500 uppercase">Revoked</p>
+                <p className="text-lg font-bold text-red-600">{statistics.revoked}</p>
               </div>
-              <Badge variant="error">Revoked</Badge>
+              <div className="w-2 h-2 rounded-full bg-red-500"></div>
             </div>
           </Card>
-          <Card className="p-4 hover:shadow-md transition-shadow">
+          <Card className="p-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Expired</p>
-                <p className="text-2xl font-bold text-gray-600">{statistics.expired}</p>
+                <p className="text-[10px] text-gray-500 uppercase">Expired</p>
+                <p className="text-lg font-bold text-gray-600">{statistics.expired}</p>
               </div>
-              <Badge>Expired</Badge>
+              <div className="w-2 h-2 rounded-full bg-gray-400"></div>
             </div>
           </Card>
         </motion.div>
       )}
 
-      {/* Tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="border-b border-gray-200"
-      >
-        <nav className="flex space-x-8" aria-label="Tabs">
+      {/* Tabs - Compact */}
+      <div className="border-b border-gray-200">
+        <nav className="flex space-x-6" aria-label="Tabs">
           <button
             onClick={() => setActiveTab('active-users')}
             className={`
-              py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2
+              py-2 px-1 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5
               ${activeTab === 'active-users'
                 ? 'border-primary-600 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }
             `}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-3.5 h-3.5" />
             Active Users
-            <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
+            <span className="py-0.5 px-2 rounded-full text-[10px] bg-gray-100 text-gray-900">
               {activeUsersTotal}
             </span>
           </button>
           <button
             onClick={() => setActiveTab('pending-invites')}
             className={`
-              py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2
+              py-2 px-1 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5
               ${activeTab === 'pending-invites'
                 ? 'border-primary-600 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }
             `}
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlus className="w-3.5 h-3.5" />
             Pending Invites
-            <span className="ml-2 py-0.5 px-2.5 rounded-full text-xs bg-gray-100 text-gray-900">
+            <span className="py-0.5 px-2 rounded-full text-[10px] bg-gray-100 text-gray-900">
               {statistics?.pending ?? invitesTotal}
             </span>
           </button>
         </nav>
-      </motion.div>
+      </div>
 
       {/* Content Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card>
-
-        {/* Content */}
-        <div className="p-6">
+      <Card>
+        <div className="p-3">
           {loading ? (
-            <div className="flex justify-center items-center py-12">
+            <div className="flex justify-center items-center py-8">
               <LoadingSpinner />
             </div>
           ) : activeTab === 'active-users' ? (
@@ -466,8 +454,7 @@ export default function UserManagement() {
             />
           )}
         </div>
-        </Card>
-      </motion.div>
+      </Card>
 
       {/* Modals */}
       {showInviteModal && (

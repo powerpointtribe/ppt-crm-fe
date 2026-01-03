@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, ArrowLeft, Send } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -21,14 +21,12 @@ type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 export default function ForgotPassword() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
-  const navigate = useNavigate()
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setError,
-    getValues,
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
   })
@@ -53,11 +51,6 @@ export default function ForgotPassword() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleContinueToReset = () => {
-    const email = getValues('email')
-    navigate('/reset-password', { state: { email } })
   }
 
   if (isSubmitted) {
@@ -93,7 +86,7 @@ export default function ForgotPassword() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                We've sent a password reset code to your email address.
+                We've sent a password reset link to your email address.
               </motion.p>
             </div>
 
@@ -105,17 +98,15 @@ export default function ForgotPassword() {
             >
               <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-800">
-                  Didn't receive the email? Check your spam folder or try again.
+                  Click the link in the email to reset your password. The link will expire in 15 minutes.
                 </p>
               </div>
 
-              <Button
-                onClick={handleContinueToReset}
-                className="w-full"
-                size="lg"
-              >
-                Continue to Reset Password
-              </Button>
+              <div className="text-center p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <p className="text-sm text-gray-600">
+                  Didn't receive the email? Check your spam folder or try again.
+                </p>
+              </div>
 
               <div className="text-center">
                 <Link
@@ -167,7 +158,7 @@ export default function ForgotPassword() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
             >
-              Enter your email address and we'll send you a code to reset your password.
+              Enter your email address and we'll send you a link to reset your password.
             </motion.p>
           </div>
 
@@ -193,7 +184,7 @@ export default function ForgotPassword() {
               className="w-full"
               size="lg"
             >
-              {isLoading ? 'Sending...' : 'Send Reset Code'}
+              {isLoading ? 'Sending...' : 'Send Reset Link'}
             </Button>
           </motion.form>
 

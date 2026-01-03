@@ -264,7 +264,7 @@ const InventoryItemList: React.FC = () => {
               {items.map((item) => (
                 <div
                   key={item._id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+                  className="bg-white border border-gray-100 rounded-xl p-4 space-y-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1),0_1px_3px_-1px_rgba(0,0,0,0.06)]"
                 >
                   {/* Header: Name and Status */}
                   <div className="flex items-start justify-between">

@@ -856,7 +856,7 @@ export default function Groups() {
         )}
 
         {/* Mobile Card View */}
-        <div className="md:hidden space-y-1.5">
+        <div className="md:hidden space-y-3">
           {groups.length === 0 ? (
             <Card className="p-6 text-center">
               <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
@@ -873,7 +873,7 @@ export default function Groups() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.015 }}
-                  className={`bg-white border border-gray-200 rounded-lg p-2.5 ${bulkSelection.selectedItems.has(group._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
+                  className={`bg-white border border-gray-100 rounded-xl p-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1),0_1px_3px_-1px_rgba(0,0,0,0.06)] ${bulkSelection.selectedItems.has(group._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
                   onClick={() => navigate(`/groups/${group._id}`)}
                 >
                   {/* Header Row */}

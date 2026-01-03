@@ -1252,7 +1252,7 @@ export default function FirstTimers() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.03 }}
-                  className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 ${selectedIds.includes(visitor._id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+                  className={`bg-white border border-gray-100 rounded-xl p-4 space-y-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1),0_1px_3px_-1px_rgba(0,0,0,0.06)] ${selectedIds.includes(visitor._id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
                   onClick={() => navigate(`/first-timers/${visitor._id}`)}
                 >
                   {/* Header: Name and Checkbox */}

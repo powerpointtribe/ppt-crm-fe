@@ -1353,7 +1353,7 @@ export default function Members() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 ${selectedMembers.has(member._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
+                    className={`bg-white border border-gray-100 rounded-xl p-4 space-y-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1),0_1px_3px_-1px_rgba(0,0,0,0.06)] ${selectedMembers.has(member._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
                     onClick={() => navigate(`/members/${member._id}`)}
                   >
                     {/* Header: Name and Checkbox */}

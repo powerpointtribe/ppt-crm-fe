@@ -9,6 +9,7 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { apiService } from '@/services/api'
+import { useForceLightMode } from '@/hooks/useForceLightMode'
 
 const forgotPasswordSchema = z.object({
   email: z.string()
@@ -19,6 +20,7 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 
 export default function ForgotPassword() {
+  useForceLightMode()
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
 

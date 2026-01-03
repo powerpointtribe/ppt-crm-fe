@@ -51,7 +51,7 @@ export default function Header({ title, subtitle, searchSection, actions }: Head
 
   return (
     <motion.header
-      className="bg-white dark:bg-slate-800 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 sticky top-0 z-30 transition-colors duration-200"
+      className="bg-white backdrop-blur-sm border-b border-gray-200 sticky top-0 z-30"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -63,11 +63,11 @@ export default function Header({ title, subtitle, searchSection, actions }: Head
           <div className="flex items-center gap-4 min-w-0">
             <div className="min-w-0">
               <div className="flex items-center gap-3">
-                <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white truncate">{title}</h1>
+                <h1 className="text-lg md:text-xl font-bold text-gray-900 truncate">{title}</h1>
                 {actions && <div className="hidden sm:flex items-center gap-2">{actions}</div>}
               </div>
               {(member || subtitle) && (
-                <p className="text-sm text-gray-500 dark:text-slate-400 truncate">
+                <p className="text-sm text-gray-500 truncate">
                   {member ? `Welcome, ${member.firstName}` : ''}{member && subtitle ? ' • ' : ''}{subtitle || ''}
                 </p>
               )}
@@ -76,28 +76,28 @@ export default function Header({ title, subtitle, searchSection, actions }: Head
 
           {/* Right: User Info and Actions */}
           <div className="flex items-center space-x-2 md:space-x-3 flex-shrink-0">
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors relative text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hidden md:block">
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative text-gray-500 hover:text-gray-900 hidden md:block">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
             </button>
 
-            <div className="flex items-center space-x-2 pl-2 border-l border-gray-200 dark:border-slate-700">
+            <div className="flex items-center space-x-2 pl-2 border-l border-gray-200">
               {member && (
-                <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 bg-gray-100 dark:bg-slate-700 rounded-lg">
+                <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 bg-gray-100 rounded-lg">
                   <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                     <span className="text-white text-sm font-medium">
                       {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}
                     </span>
                   </div>
                   <div className="text-sm">
-                    <p className="font-medium text-gray-900 dark:text-white">{member.firstName} {member.lastName}</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 capitalize">{getPrimaryRole()?.replace('_', ' ')}</p>
+                    <p className="font-medium text-gray-900">{member.firstName} {member.lastName}</p>
+                    <p className="text-xs text-gray-500 capitalize">{getPrimaryRole()?.replace('_', ' ')}</p>
                   </div>
                 </div>
               )}
 
               <button
-                className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-900"
                 title={member ? `${member.firstName} ${member.lastName}` : 'Member Profile'}
               >
                 <User className="h-5 w-5" />
@@ -118,7 +118,7 @@ export default function Header({ title, subtitle, searchSection, actions }: Head
       {/* Legacy Search Section - Use PageToolbar instead for new implementations */}
       {searchSection && (
         <div className="px-4 md:px-6 pb-4 pt-0">
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-3">
+          <div className="bg-white border border-gray-200 rounded-lg p-3">
             {searchSection}
           </div>
         </div>

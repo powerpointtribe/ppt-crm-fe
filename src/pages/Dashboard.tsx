@@ -13,6 +13,7 @@ import { serviceReportsService, ServiceReportStats } from '@/services/service-re
 import { auditService, AuditLog } from '@/services/audit'
 import { useAppStore } from '@/store'
 import { useAuth } from '@/contexts/AuthContext-unified'
+import { useForceLightMode } from '@/hooks/useForceLightMode'
 
 type DateRangePreset = '1m' | '3m' | '6m' | '1y' | 'custom'
 
@@ -78,6 +79,7 @@ const formatTimeAgo = (timestamp: string) => {
 }
 
 export default function Dashboard() {
+  useForceLightMode()
   const { selectedBranch, branches } = useAppStore()
   const { member, hasPermission, isAdmin, canManageMembers, canAccessFirstTimers, canManageGroups } = useAuth()
   const [stats, setStats] = useState<Partial<DashboardOverview> | null>(null)

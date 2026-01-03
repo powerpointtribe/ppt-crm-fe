@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
+import { useForceLightMode } from '@/hooks/useForceLightMode'
 
 const features = [
   {
@@ -90,6 +91,7 @@ const stats = [
 ]
 
 export default function LandingPage() {
+  useForceLightMode()
   const [isScrolled, setIsScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 

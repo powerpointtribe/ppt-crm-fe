@@ -7,9 +7,10 @@ import { AuthProvider } from './contexts/AuthContext-unified.tsx'
 import './index.css'
 
 // Initialize theme before rendering to prevent flash
+// Default to light theme - only apply dark if user explicitly selected it
 const initializeTheme = () => {
   const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null
-  const theme = savedTheme || 'system'
+  const theme = savedTheme || 'light' // Default to light instead of system
 
   if (theme === 'system') {
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -21,10 +22,10 @@ const initializeTheme = () => {
 
 initializeTheme()
 
-// Listen for system theme changes
+// Listen for system theme changes (only applies when user has selected 'system')
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
   const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'system' || !savedTheme) {
+  if (savedTheme === 'system') {
     document.documentElement.classList.toggle('dark', e.matches)
   }
 })

@@ -11,6 +11,7 @@ import Input from '@/components/ui/Input'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import { debugLog } from '@/components/DebugPanel'
 import DebugPanel from '@/components/DebugPanel'
+import { useForceLightMode } from '@/hooks/useForceLightMode'
 
 const loginSchema = z.object({
   email: z.string()
@@ -24,6 +25,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 
 export default function Login() {
+  useForceLightMode()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()

@@ -30,7 +30,7 @@ export default function Layout({ children, title = 'Dashboard', subtitle, search
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 relative transition-colors duration-200">
+    <div className="min-h-screen bg-gray-50 relative">
       <ConnectionStatus />
       <Sidebar />
 

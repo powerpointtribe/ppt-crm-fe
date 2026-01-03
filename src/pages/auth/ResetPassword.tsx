@@ -9,6 +9,7 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { apiService } from '@/services/api'
+import { useForceLightMode } from '@/hooks/useForceLightMode'
 
 const resetPasswordSchema = z.object({
   newPassword: z.string()
@@ -24,6 +25,7 @@ const resetPasswordSchema = z.object({
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>
 
 export default function ResetPassword() {
+  useForceLightMode()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)

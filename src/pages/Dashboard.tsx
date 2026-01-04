@@ -656,8 +656,9 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Service Reports & Audit Trail Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-8">
-          {/* Service Reports Stats */}
+        <div className={`grid grid-cols-1 ${hasPermission('service-reports:view') ? 'lg:grid-cols-2' : ''} gap-4 sm:gap-6 lg:gap-8 mb-8`}>
+          {/* Service Reports Stats - Only show if user has permission */}
+          {hasPermission('service-reports:view') && (
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -730,14 +731,17 @@ export default function Dashboard() {
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
                     <p className="text-sm text-muted-foreground">No service reports data available</p>
-                    <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/service-reports/new')}>
-                      Create First Report
-                    </Button>
+                    {hasPermission('service-reports:create') && (
+                      <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/service-reports/new')}>
+                        Create First Report
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
             </Card>
           </motion.div>
+          )}
 
           {/* Audit Trail / Recent Activity */}
           <motion.div

@@ -30,7 +30,7 @@ export default function Layout({ children, title = 'Dashboard', subtitle, search
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50 relative">
+    <div className="min-h-screen bg-gray-50 relative overflow-x-hidden">
       <ConnectionStatus />
       <Sidebar />
 
@@ -43,7 +43,7 @@ export default function Layout({ children, title = 'Dashboard', subtitle, search
         <Header title={title} subtitle={subtitle} searchSection={searchSection} actions={actions} />
 
         <motion.div
-          className="flex-1 p-4 md:p-6"
+          className="flex-1 p-4 md:p-6 overflow-x-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}

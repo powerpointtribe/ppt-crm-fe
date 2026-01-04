@@ -540,6 +540,7 @@ export default function GroupDetail() {
                         <tr>
                           <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Name</th>
                           <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Contact</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Unit</th>
                           <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Status</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
@@ -586,6 +587,9 @@ export default function GroupDetail() {
                                   <p className="text-sm text-gray-400">-</p>
                                 </td>
                                 <td className="py-3 px-4">
+                                  <p className="text-sm text-gray-400">-</p>
+                                </td>
+                                <td className="py-3 px-4">
                                   <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-600 rounded-full">
                                     Not loaded
                                   </span>
@@ -621,6 +625,15 @@ export default function GroupDetail() {
                               </td>
                               <td className="py-3 px-4">
                                 <p className="text-sm text-gray-600">{memberRef.email || memberRef.phone || '-'}</p>
+                              </td>
+                              <td className="py-3 px-4">
+                                {(memberRef as any).unit?.name ? (
+                                  <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+                                    {(memberRef as any).unit.name}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-gray-400">-</span>
+                                )}
                               </td>
                               <td className="py-3 px-4">
                                 {memberRef.membershipStatus && (

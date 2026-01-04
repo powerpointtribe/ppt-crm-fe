@@ -802,7 +802,7 @@ export default function Members() {
 
   return (
     <Layout title="Members" subtitle="Manage church members">
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-full overflow-hidden">
         {/* Page Toolbar with Search and Actions */}
         <PageToolbar
           searchValue={searchTerm}
@@ -1314,8 +1314,9 @@ export default function Members() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
+          className="w-full overflow-hidden"
         >
-          <Card>
+          <Card className="overflow-hidden">
             {members.length === 0 ? (
               <div className="text-center py-12">
                 {activeTab === 'birthdays' ? (
@@ -1440,7 +1441,7 @@ export default function Members() {
 
               {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full min-w-[600px]">
+                <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
                       {canAssignLocation && (
@@ -1456,22 +1457,19 @@ export default function Members() {
                           />
                         </th>
                       )}
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Member
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                         Contact
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                         Location
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
-                        Joined
-                      </th>
-                      <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="px-3 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -1496,15 +1494,15 @@ export default function Members() {
                           />
                         </td>
                       )}
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-foreground">
                             {member.firstName} {member.lastName}
                           </div>
-                          <div className="text-xs sm:text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">{member.email}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[150px]">{member.email}</div>
                         </div>
                       </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                      <td className="px-3 py-4 whitespace-nowrap hidden lg:table-cell">
                         <div className="space-y-1">
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Phone className="h-3 w-3 mr-1" />
@@ -1512,28 +1510,28 @@ export default function Members() {
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Mail className="h-3 w-3 mr-1" />
-                            {member.email}
+                            <span className="truncate max-w-[150px]">{member.email}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <Badge variant={getStatusColor(member.membershipStatus)} className="text-xs">
                           {member.membershipStatus.replace('_', ' ')}
                         </Badge>
                       </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                      <td className="px-3 py-4 whitespace-nowrap hidden md:table-cell">
                         <div className="space-y-0.5">
                           {/* Branch - Top level, darkest */}
                           <div className="flex items-center text-sm font-medium text-gray-800">
                             <Building2 className="h-3 w-3 mr-1.5 flex-shrink-0 text-primary-600" />
-                            <span className="truncate max-w-[100px] lg:max-w-[120px]">
+                            <span className="truncate max-w-[120px]">
                               {typeof member.branch === 'object' ? member.branch?.name : 'No branch'}
                             </span>
                           </div>
                           {/* District - Mid level */}
                           <div className="flex items-center text-xs text-gray-500">
                             <Users className="h-3 w-3 mr-1.5 flex-shrink-0 text-gray-400" />
-                            <span className="truncate max-w-[100px] lg:max-w-[120px]">
+                            <span className="truncate max-w-[120px]">
                               {member.district?.name || 'No district'}
                             </span>
                           </div>
@@ -1541,20 +1539,14 @@ export default function Members() {
                           {member.unit && (
                             <div className="flex items-center text-xs text-gray-400">
                               <Home className="h-3 w-3 mr-1.5 flex-shrink-0 text-gray-300" />
-                              <span className="truncate max-w-[100px] lg:max-w-[120px]">
+                              <span className="truncate max-w-[120px]">
                                 {typeof member.unit === 'object' ? member.unit.name : 'Assigned'}
                               </span>
                             </div>
                           )}
                         </div>
                       </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(member.dateJoined)}
-                        </div>
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-0.5 sm:gap-1">
                           {canAssignLocation && (
                             <Button

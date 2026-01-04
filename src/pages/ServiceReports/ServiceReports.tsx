@@ -92,6 +92,11 @@ export default function ServiceReports() {
   const canViewAllBranches = hasPermission('branches:view-all')
   const showBranchFilter = canViewAllBranches && branches.length > 0
 
+  // Permission checks for actions
+  const canCreateReport = hasPermission('service-reports:create')
+  const canUpdateReport = hasPermission('service-reports:update')
+  const canDeleteReport = hasPermission('service-reports:delete')
+
   const memoizedSearchParams = useMemo(() => {
     const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
     return {
@@ -301,12 +306,14 @@ export default function ServiceReports() {
         </button>
       )}
 
-      <div className="flex items-center gap-2 ml-auto">
-        <Button size="sm" onClick={() => setShowQuickCreateModal(true)}>
-          <Plus className="w-4 h-4 mr-1" />
-          New Report
-        </Button>
-      </div>
+      {canCreateReport && (
+        <div className="flex items-center gap-2 ml-auto">
+          <Button size="sm" onClick={() => setShowQuickCreateModal(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            New Report
+          </Button>
+        </div>
+      )}
     </form>
   )
 
@@ -511,32 +518,38 @@ export default function ServiceReports() {
                       )}
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => navigate(`/members/service-reports/${report._id}/edit`)}
-                          className="flex-1 text-xs"
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={(e) => generatePdf(report._id, e)}
-                          className="flex-1 text-xs"
-                        >
-                          <Download className="h-3 w-3 mr-1" />
-                          PDF
-                        </Button>
-                        <button
-                          onClick={(e) => handleDelete(report._id, e)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      {(canUpdateReport || canDeleteReport) && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+                          {canUpdateReport && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => navigate(`/members/service-reports/${report._id}/edit`)}
+                              className="flex-1 text-xs"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                          )}
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => generatePdf(report._id, e)}
+                            className="flex-1 text-xs"
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            PDF
+                          </Button>
+                          {canDeleteReport && (
+                            <button
+                              onClick={(e) => handleDelete(report._id, e)}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </motion.div>
                   ))}
 
@@ -546,11 +559,15 @@ export default function ServiceReports() {
                         <FileText className="w-6 h-6 text-gray-400" />
                       </div>
                       <h3 className="text-base font-medium text-gray-900 mb-1">No reports found</h3>
-                      <p className="text-gray-500 text-sm mb-5">Create your first service report to start tracking.</p>
-                      <Button onClick={() => setShowQuickCreateModal(true)} size="sm">
-                        <Plus className="w-4 h-4 mr-1" />
-                        New Report
-                      </Button>
+                      <p className="text-gray-500 text-sm mb-5">
+                        {canCreateReport ? 'Create your first service report to start tracking.' : 'No service reports available.'}
+                      </p>
+                      {canCreateReport && (
+                        <Button onClick={() => setShowQuickCreateModal(true)} size="sm">
+                          <Plus className="w-4 h-4 mr-1" />
+                          New Report
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -639,13 +656,15 @@ export default function ServiceReports() {
                           </td>
                           <td className="px-4 py-3.5 text-right">
                             <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); navigate(`/members/service-reports/${report._id}/edit`); }}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
+                              {canUpdateReport && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/members/service-reports/${report._id}/edit`); }}
+                                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => generatePdf(report._id, e)}
                                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
@@ -653,13 +672,15 @@ export default function ServiceReports() {
                               >
                                 <Download className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={(e) => handleDelete(report._id, e)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {canDeleteReport && (
+                                <button
+                                  onClick={(e) => handleDelete(report._id, e)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </motion.tr>

@@ -25,7 +25,14 @@ const typeOptions = [
 
 export default function RolesListPage() {
   const navigate = useNavigate()
-  const { hasPermission } = useAuth()
+  const { hasPermission, member: currentUser } = useAuth()
+
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+  }
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -164,6 +171,16 @@ export default function RolesListPage() {
   return (
     <Layout title="Roles" subtitle="Manage roles and permissions">
       <div className="space-y-4">
+        {/* Header with Greeting */}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            {getGreeting()}, {currentUser?.firstName || 'there'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Manage roles and permissions
+          </p>
+        </div>
+
         <PageToolbar
           searchValue={searchTerm}
           onSearchChange={setSearchTerm}

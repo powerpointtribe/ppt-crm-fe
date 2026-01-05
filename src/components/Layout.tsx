@@ -1,5 +1,6 @@
-import { ReactNode, useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState, memo, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import ConnectionStatus from './ConnectionStatus'
@@ -16,8 +17,20 @@ interface LayoutProps {
   actions?: ReactNode
 }
 
+// Memoize Sidebar to prevent re-renders
+const MemoizedSidebar = memo(Sidebar)
+
+// Fast page transition variants
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 }
+}
+
 export default function Layout({ children, title = 'Dashboard', subtitle, searchSection, actions }: LayoutProps) {
   const [isMobile, setIsMobile] = useState(false)
+  const location = useLocation()
+  const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -29,24 +42,38 @@ export default function Layout({ children, title = 'Dashboard', subtitle, search
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // Smooth scroll to top on route change
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: 'instant' })
+    }
+  }, [location.pathname])
+
   return (
-    <div className="min-h-screen bg-gray-50 relative overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 relative overflow-x-hidden">
       <ConnectionStatus />
-      <Sidebar />
+      <MemoizedSidebar />
 
       <main
         className={cn(
-          'flex flex-col min-h-screen transition-all duration-300',
+          'flex flex-col min-h-screen transition-[margin] duration-200 ease-out',
           isMobile ? 'ml-0' : 'md:ml-[240px]'
         )}
       >
         <Header title={title} subtitle={subtitle} searchSection={searchSection} actions={actions} />
 
         <motion.div
+          ref={contentRef}
+          key={location.pathname}
           className="flex-1 p-4 md:p-6 overflow-x-hidden"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          variants={pageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={{
+            duration: 0.15,
+            ease: [0.25, 0.46, 0.45, 0.94]
+          }}
         >
           {children}
         </motion.div>

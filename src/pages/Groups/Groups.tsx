@@ -25,7 +25,14 @@ export default function Groups() {
   const navigate = useNavigate()
   const [urlSearchParams, setUrlSearchParams] = useSearchParams()
   const { selectedBranch, branches } = useAppStore()
-  const { hasPermission } = useAuth()
+  const { hasPermission, member: currentUser } = useAuth()
+
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+  }
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -653,6 +660,16 @@ export default function Groups() {
       searchSection={searchSection}
     >
       <div className="space-y-3">
+        {/* Header with Greeting */}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            {getGreeting()}, {currentUser?.firstName || 'there'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Manage your church groups and units
+          </p>
+        </div>
+
         {/* Bulk Actions Bar */}
         <BulkActions
           selectedCount={bulkSelection.getSelectedCount()}

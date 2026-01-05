@@ -1,401 +1,483 @@
-import { Routes, Route, BrowserRouter } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import Layout from '@/components/Layout'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { ModuleAccessGuard } from '@/guards'
 import GlobalLoadingIndicator from '@/components/GlobalLoadingIndicator'
+import PageLoader from '@/components/PageLoader'
+import { preloadCommonRoutes } from '@/utils/routePreloader'
 
-// Auth Pages
+// Auth Pages - Load immediately (critical path)
 import Login from '@/pages/auth/Login'
 import ForgotPassword from '@/pages/auth/ForgotPassword'
 import ResetPassword from '@/pages/auth/ResetPassword'
 
-// Public Pages
+// Public Pages - Load immediately
 import LandingPage from '@/pages/LandingPage'
-
-// Protected Pages
-import Dashboard from '@/pages/Dashboard'
-import Members from '@/pages/Members/Members'
-import MemberNew from '@/pages/Members/MemberNew'
-import MemberEdit from '@/pages/Members/MemberEdit'
-import MemberDetail from '@/pages/Members/MemberDetail'
-import MemberAnalytics from '@/pages/Members/MemberAnalytics'
-import MemberReports from '@/pages/Members/MemberReports'
-import Groups from '@/pages/Groups/Groups'
-import GroupNew from '@/pages/Groups/GroupNew'
-import GroupDetail from '@/pages/Groups/GroupDetail'
-import GroupEdit from '@/pages/Groups/GroupEdit'
-import FirstTimers from '@/pages/FirstTimers/FirstTimers'
-import FirstTimerNew from '@/pages/FirstTimers/FirstTimerNew'
-import FirstTimerDetail from '@/pages/FirstTimers/FirstTimerDetail'
-import FirstTimerEdit from '@/pages/FirstTimers/FirstTimerEdit'
-import AssignedFirstTimers from '@/pages/FirstTimers/AssignedFirstTimers'
-import CallReports from '@/pages/FirstTimers/CallReports'
-import MessageDrafts from '@/pages/FirstTimers/MessageDrafts'
-import MessageDraftForm from '@/pages/FirstTimers/MessageDraftForm'
-import MessageDraftDetail from '@/pages/FirstTimers/MessageDraftDetail'
-import ServiceReports from '@/pages/ServiceReports/ServiceReports'
-import ServiceReportNew from '@/pages/ServiceReports/ServiceReportNew'
-import ServiceReportDetail from '@/pages/ServiceReports/ServiceReportDetail'
-import ServiceReportEdit from '@/pages/ServiceReports/ServiceReportEdit'
 import PublicVisitorRegistration from '@/pages/PublicVisitorRegistration'
-import Settings from '@/pages/Settings'
-import UserSettings from '@/pages/UserSettings'
-
-// Bulk Operations Module
-import BulkOperationsDashboard from '@/pages/BulkOperations/BulkOperationsDashboard'
-import BulkUpload from '@/pages/BulkOperations/BulkUpload'
-import BulkUpdate from '@/pages/BulkOperations/BulkUpdate'
-
-// Additional Pages
-import QueueManagement from '@/pages/Queue/QueueManagement'
-import Analytics from '@/pages/Reports/Analytics'
-
-// Workers Training Pages
-import WorkersTraining from '@/pages/WorkersTraining/WorkersTraining'
-import CohortManagement from '@/pages/WorkersTraining/CohortManagement'
-import TraineeAssignment from '@/pages/WorkersTraining/TraineeAssignment'
 import WorkersTrainingRegistration from '@/pages/WorkersTrainingRegistration'
 
-// Inventory Management Pages
-import InventoryDashboard from '@/pages/Inventory/InventoryDashboard'
-import InventoryItems from '@/pages/Inventory/InventoryItems'
+// Dashboard - Load immediately (most visited)
+import Dashboard from '@/pages/Dashboard'
 
-// Audit Management Pages
-import AuditDashboard from '@/pages/Audit/AuditDashboard'
-import AuditLogs from '@/pages/Audit/AuditLogs'
+// Lazy loaded pages with prefetch support
+const Members = lazy(() => import('@/pages/Members/Members'))
+const MemberNew = lazy(() => import('@/pages/Members/MemberNew'))
+const MemberEdit = lazy(() => import('@/pages/Members/MemberEdit'))
+const MemberDetail = lazy(() => import('@/pages/Members/MemberDetail'))
+const MemberAnalytics = lazy(() => import('@/pages/Members/MemberAnalytics'))
+const MemberReports = lazy(() => import('@/pages/Members/MemberReports'))
 
-// Roles Management Pages
-import { RolesListPage, CreateRolePage, EditRolePage, RoleDetailsPage } from '@/pages/roles'
+const Groups = lazy(() => import('@/pages/Groups/Groups'))
+const GroupNew = lazy(() => import('@/pages/Groups/GroupNew'))
+const GroupDetail = lazy(() => import('@/pages/Groups/GroupDetail'))
+const GroupEdit = lazy(() => import('@/pages/Groups/GroupEdit'))
 
-// User Management Pages
-import UserManagement from '@/pages/UserManagement'
+const FirstTimers = lazy(() => import('@/pages/FirstTimers/FirstTimers'))
+const FirstTimerNew = lazy(() => import('@/pages/FirstTimers/FirstTimerNew'))
+const FirstTimerDetail = lazy(() => import('@/pages/FirstTimers/FirstTimerDetail'))
+const FirstTimerEdit = lazy(() => import('@/pages/FirstTimers/FirstTimerEdit'))
+const AssignedFirstTimers = lazy(() => import('@/pages/FirstTimers/AssignedFirstTimers'))
+const CallReports = lazy(() => import('@/pages/FirstTimers/CallReports'))
+const FirstTimerReports = lazy(() => import('@/pages/FirstTimers/FirstTimerReports'))
+const MessageDrafts = lazy(() => import('@/pages/FirstTimers/MessageDrafts'))
+const MessageDraftForm = lazy(() => import('@/pages/FirstTimers/MessageDraftForm'))
+const MessageDraftDetail = lazy(() => import('@/pages/FirstTimers/MessageDraftDetail'))
 
-// Branches Management Pages
-import { Branches, BranchForm, BranchDetail } from '@/pages/Branches'
+const ServiceReports = lazy(() => import('@/pages/ServiceReports/ServiceReports'))
+const ServiceReportNew = lazy(() => import('@/pages/ServiceReports/ServiceReportNew'))
+const ServiceReportDetail = lazy(() => import('@/pages/ServiceReports/ServiceReportDetail'))
+const ServiceReportEdit = lazy(() => import('@/pages/ServiceReports/ServiceReportEdit'))
+
+const Settings = lazy(() => import('@/pages/Settings'))
+const UserSettings = lazy(() => import('@/pages/UserSettings'))
+
+const BulkOperationsDashboard = lazy(() => import('@/pages/BulkOperations/BulkOperationsDashboard'))
+const BulkUpload = lazy(() => import('@/pages/BulkOperations/BulkUpload'))
+const BulkUpdate = lazy(() => import('@/pages/BulkOperations/BulkUpdate'))
+
+const QueueManagement = lazy(() => import('@/pages/Queue/QueueManagement'))
+const Analytics = lazy(() => import('@/pages/Reports/Analytics'))
+
+const WorkersTraining = lazy(() => import('@/pages/WorkersTraining/WorkersTraining'))
+const CohortManagement = lazy(() => import('@/pages/WorkersTraining/CohortManagement'))
+const TraineeAssignment = lazy(() => import('@/pages/WorkersTraining/TraineeAssignment'))
+
+const InventoryDashboard = lazy(() => import('@/pages/Inventory/InventoryDashboard'))
+const InventoryItems = lazy(() => import('@/pages/Inventory/InventoryItems'))
+
+const AuditDashboard = lazy(() => import('@/pages/Audit/AuditDashboard'))
+const AuditLogs = lazy(() => import('@/pages/Audit/AuditLogs'))
+
+const RolesListPage = lazy(() => import('@/pages/roles').then(m => ({ default: m.RolesListPage })))
+const CreateRolePage = lazy(() => import('@/pages/roles').then(m => ({ default: m.CreateRolePage })))
+const EditRolePage = lazy(() => import('@/pages/roles').then(m => ({ default: m.EditRolePage })))
+const RoleDetailsPage = lazy(() => import('@/pages/roles').then(m => ({ default: m.RoleDetailsPage })))
+
+const UserManagement = lazy(() => import('@/pages/UserManagement'))
+
+const Branches = lazy(() => import('@/pages/Branches').then(m => ({ default: m.Branches })))
+const BranchForm = lazy(() => import('@/pages/Branches').then(m => ({ default: m.BranchForm })))
+const BranchDetail = lazy(() => import('@/pages/Branches').then(m => ({ default: m.BranchDetail })))
+
+const FinanceDashboard = lazy(() => import('@/pages/Finance/FinanceDashboard'))
+const RequisitionNew = lazy(() => import('@/pages/Finance/RequisitionNew'))
+const RequisitionsList = lazy(() => import('@/pages/Finance/RequisitionsList'))
+const RequisitionDetail = lazy(() => import('@/pages/Finance/RequisitionDetail'))
+const PendingApprovals = lazy(() => import('@/pages/Finance/PendingApprovals'))
+const PendingDisbursements = lazy(() => import('@/pages/Finance/PendingDisbursements'))
+const FormFieldsSettings = lazy(() => import('@/pages/Finance/FormFieldsSettings'))
+
+// Wrapper for lazy components with smooth loading
+function LazyPage({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      {children}
+    </Suspense>
+  )
+}
+
+// Scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname])
+
+  return null
+}
 
 function App() {
+  // Preload common routes after initial render
+  useEffect(() => {
+    preloadCommonRoutes()
+  }, [])
+
   return (
     <>
       <GlobalLoadingIndicator />
+      <ScrollToTop />
       <AnimatePresence mode="wait">
         <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/visitor-registration" element={<PublicVisitorRegistration />} />
-        <Route path="/visitor-registration/:branchSlug" element={<PublicVisitorRegistration />} />
-        <Route path="/workers-training-registration" element={<WorkersTrainingRegistration />} />
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/visitor-registration" element={<PublicVisitorRegistration />} />
+          <Route path="/visitor-registration/:branchSlug" element={<PublicVisitorRegistration />} />
+          <Route path="/workers-training-registration" element={<WorkersTrainingRegistration />} />
 
-        {/* Dashboard - Requires Login Only */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
+          {/* Dashboard - Requires Login Only */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
 
-        {/* Members */}
-        <Route path="/members" element={
-          <ProtectedRoute>
-            <Members />
-          </ProtectedRoute>
-        } />
-        <Route path="/members/analytics" element={
-          <ProtectedRoute>
-            <MemberAnalytics />
-          </ProtectedRoute>
-        } />
-        <Route path="/members/reports" element={
-          <ProtectedRoute>
-            <MemberReports />
-          </ProtectedRoute>
-        } />
-        <Route path="/members/new" element={
-          <ProtectedRoute>
-            <MemberNew />
-          </ProtectedRoute>
-        } />
-        <Route path="/members/:id" element={
-          <ProtectedRoute>
-            <MemberDetail />
-          </ProtectedRoute>
-        } />
-        <Route path="/members/:id/edit" element={
-          <ProtectedRoute>
-            <MemberEdit />
-          </ProtectedRoute>
-        } />
+          {/* Members */}
+          <Route path="/members" element={
+            <ProtectedRoute>
+              <LazyPage><Members /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/analytics" element={
+            <ProtectedRoute>
+              <LazyPage><MemberAnalytics /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/reports" element={
+            <ProtectedRoute>
+              <LazyPage><MemberReports /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/new" element={
+            <ProtectedRoute>
+              <LazyPage><MemberNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/:id" element={
+            <ProtectedRoute>
+              <LazyPage><MemberDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><MemberEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Groups */}
-        <Route path="/groups" element={
-          <ProtectedRoute>
-            <Groups />
-          </ProtectedRoute>
-        } />
-        <Route path="/groups/new" element={
-          <ProtectedRoute>
-            <GroupNew />
-          </ProtectedRoute>
-        } />
-        <Route path="/groups/:id" element={
-          <ProtectedRoute>
-            <GroupDetail />
-          </ProtectedRoute>
-        } />
-        <Route path="/groups/:id/edit" element={
-          <ProtectedRoute>
-            <GroupEdit />
-          </ProtectedRoute>
-        } />
+          {/* Groups */}
+          <Route path="/groups" element={
+            <ProtectedRoute>
+              <LazyPage><Groups /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/groups/new" element={
+            <ProtectedRoute>
+              <LazyPage><GroupNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/groups/:id" element={
+            <ProtectedRoute>
+              <LazyPage><GroupDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/groups/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><GroupEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* First Timers */}
-        <Route path="/first-timers" element={
-          <ProtectedRoute>
-            <FirstTimers />
-          </ProtectedRoute>
-        } />
-        <Route path="/first-timers/new" element={
-          <ProtectedRoute>
-            <FirstTimerNew />
-          </ProtectedRoute>
-        } />
-        <Route path="/first-timers/:id" element={
-          <ProtectedRoute>
-            <FirstTimerDetail />
-          </ProtectedRoute>
-        } />
-        <Route path="/first-timers/:id/edit" element={
-          <ProtectedRoute>
-            <FirstTimerEdit />
-          </ProtectedRoute>
-        } />
-        <Route path="/my-assigned-first-timers" element={
-          <ProtectedRoute>
-            <AssignedFirstTimers />
-          </ProtectedRoute>
-        } />
-        <Route path="/first-timers/call-reports" element={
-          <ProtectedRoute>
-            <CallReports />
-          </ProtectedRoute>
-        } />
-        <Route path="/first-timers/message-drafts" element={
-          <ProtectedRoute>
-            <MessageDrafts />
-          </ProtectedRoute>
-        } />
-        <Route path="/first-timers/message-drafts/new" element={
-          <ProtectedRoute>
-            <MessageDraftForm />
-          </ProtectedRoute>
-        } />
-        <Route path="/first-timers/message-drafts/:id" element={
-          <ProtectedRoute>
-            <MessageDraftDetail />
-          </ProtectedRoute>
-        } />
-        <Route path="/first-timers/message-drafts/:id/edit" element={
-          <ProtectedRoute>
-            <MessageDraftForm />
-          </ProtectedRoute>
-        } />
+          {/* First Timers */}
+          <Route path="/first-timers" element={
+            <ProtectedRoute>
+              <LazyPage><FirstTimers /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/new" element={
+            <ProtectedRoute>
+              <LazyPage><FirstTimerNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/:id" element={
+            <ProtectedRoute>
+              <LazyPage><FirstTimerDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><FirstTimerEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/my-assigned-first-timers" element={
+            <ProtectedRoute>
+              <LazyPage><AssignedFirstTimers /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/call-reports" element={
+            <ProtectedRoute>
+              <LazyPage><CallReports /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/reports" element={
+            <ProtectedRoute>
+              <LazyPage><FirstTimerReports /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/message-drafts" element={
+            <ProtectedRoute>
+              <LazyPage><MessageDrafts /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/message-drafts/new" element={
+            <ProtectedRoute>
+              <LazyPage><MessageDraftForm /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/message-drafts/:id" element={
+            <ProtectedRoute>
+              <LazyPage><MessageDraftDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/message-drafts/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><MessageDraftForm /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Service Reports - Under Members section */}
-        <Route path="/members/service-reports" element={
-          <ProtectedRoute>
-            <ServiceReports />
-          </ProtectedRoute>
-        } />
-        <Route path="/members/service-reports/new" element={
-          <ProtectedRoute>
-            <ServiceReportNew />
-          </ProtectedRoute>
-        } />
-        <Route path="/members/service-reports/:id" element={
-          <ProtectedRoute>
-            <ServiceReportDetail />
-          </ProtectedRoute>
-        } />
-        <Route path="/members/service-reports/:id/edit" element={
-          <ProtectedRoute>
-            <ServiceReportEdit />
-          </ProtectedRoute>
-        } />
+          {/* Service Reports - Under Members section */}
+          <Route path="/members/service-reports" element={
+            <ProtectedRoute>
+              <LazyPage><ServiceReports /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/service-reports/new" element={
+            <ProtectedRoute>
+              <LazyPage><ServiceReportNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/service-reports/:id" element={
+            <ProtectedRoute>
+              <LazyPage><ServiceReportDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/service-reports/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><ServiceReportEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Bulk Operations */}
-        <Route path="/bulk-operations" element={
-          <ProtectedRoute>
-            <BulkOperationsDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/bulk-operations/upload" element={
-          <ProtectedRoute>
-            <BulkUpload />
-          </ProtectedRoute>
-        } />
-        <Route path="/bulk-operations/update" element={
-          <ProtectedRoute>
-            <BulkUpdate />
-          </ProtectedRoute>
-        } />
+          {/* Bulk Operations */}
+          <Route path="/bulk-operations" element={
+            <ProtectedRoute>
+              <LazyPage><BulkOperationsDashboard /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-operations/upload" element={
+            <ProtectedRoute>
+              <LazyPage><BulkUpload /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-operations/update" element={
+            <ProtectedRoute>
+              <LazyPage><BulkUpdate /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* User Settings - Personal preferences for all users */}
-        <Route path="/my-settings" element={
-          <ProtectedRoute>
-            <UserSettings />
-          </ProtectedRoute>
-        } />
+          {/* User Settings - Personal preferences for all users */}
+          <Route path="/my-settings" element={
+            <ProtectedRoute>
+              <LazyPage><UserSettings /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Admin Settings - System-wide configuration */}
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        } />
+          {/* Admin Settings - System-wide configuration */}
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <LazyPage><Settings /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Queue Management */}
-        <Route path="/queue" element={
-          <ProtectedRoute>
-            <QueueManagement />
-          </ProtectedRoute>
-        } />
+          {/* Queue Management */}
+          <Route path="/queue" element={
+            <ProtectedRoute>
+              <LazyPage><QueueManagement /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Analytics & Reports */}
-        <Route path="/analytics" element={
-          <ProtectedRoute>
-            <Analytics />
-          </ProtectedRoute>
-        } />
-        <Route path="/reports" element={
-          <ProtectedRoute>
-            <Analytics />
-          </ProtectedRoute>
-        } />
+          {/* Analytics & Reports */}
+          <Route path="/analytics" element={
+            <ProtectedRoute>
+              <LazyPage><Analytics /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/reports" element={
+            <ProtectedRoute>
+              <LazyPage><Analytics /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Workers Training */}
-        <Route path="/workers-training" element={
-          <ProtectedRoute>
-            <WorkersTraining />
-          </ProtectedRoute>
-        } />
-        <Route path="/workers-training/cohorts" element={
-          <ProtectedRoute>
-            <CohortManagement />
-          </ProtectedRoute>
-        } />
-        <Route path="/workers-training/trainees/assignment" element={
-          <ProtectedRoute>
-            <TraineeAssignment />
-          </ProtectedRoute>
-        } />
-        <Route path="/workers-training/cohorts/:cohortId/assignment" element={
-          <ProtectedRoute>
-            <TraineeAssignment />
-          </ProtectedRoute>
-        } />
+          {/* Workers Training */}
+          <Route path="/workers-training" element={
+            <ProtectedRoute>
+              <LazyPage><WorkersTraining /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/workers-training/cohorts" element={
+            <ProtectedRoute>
+              <LazyPage><CohortManagement /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/workers-training/trainees/assignment" element={
+            <ProtectedRoute>
+              <LazyPage><TraineeAssignment /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/workers-training/cohorts/:cohortId/assignment" element={
+            <ProtectedRoute>
+              <LazyPage><TraineeAssignment /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Inventory Management */}
-        <Route path="/inventory" element={
-          <ProtectedRoute>
-            <InventoryDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/inventory/dashboard" element={
-          <ProtectedRoute>
-            <InventoryDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/inventory/items" element={
-          <ProtectedRoute>
-            <InventoryItems />
-          </ProtectedRoute>
-        } />
+          {/* Inventory Management */}
+          <Route path="/inventory" element={
+            <ProtectedRoute>
+              <LazyPage><InventoryDashboard /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/inventory/dashboard" element={
+            <ProtectedRoute>
+              <LazyPage><InventoryDashboard /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/inventory/items" element={
+            <ProtectedRoute>
+              <LazyPage><InventoryItems /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Audit Management */}
-        <Route path="/audit" element={
-          <ProtectedRoute>
-            <AuditDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/audit/dashboard" element={
-          <ProtectedRoute>
-            <AuditDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/audit/logs" element={
-          <ProtectedRoute>
-            <AuditLogs />
-          </ProtectedRoute>
-        } />
+          {/* Audit Management */}
+          <Route path="/audit" element={
+            <ProtectedRoute>
+              <LazyPage><AuditDashboard /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/audit/dashboard" element={
+            <ProtectedRoute>
+              <LazyPage><AuditDashboard /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/audit/logs" element={
+            <ProtectedRoute>
+              <LazyPage><AuditLogs /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Roles Management - Protected by module access guard */}
-        <Route path="/roles" element={
-          <ProtectedRoute>
-            <ModuleAccessGuard module="roles">
-              <RolesListPage />
-            </ModuleAccessGuard>
-          </ProtectedRoute>
-        } />
-        <Route path="/roles/create" element={
-          <ProtectedRoute>
-            <ModuleAccessGuard module="roles">
-              <CreateRolePage />
-            </ModuleAccessGuard>
-          </ProtectedRoute>
-        } />
-        <Route path="/roles/:id" element={
-          <ProtectedRoute>
-            <ModuleAccessGuard module="roles">
-              <RoleDetailsPage />
-            </ModuleAccessGuard>
-          </ProtectedRoute>
-        } />
-        <Route path="/roles/:id/edit" element={
-          <ProtectedRoute>
-            <ModuleAccessGuard module="roles">
-              <EditRolePage />
-            </ModuleAccessGuard>
-          </ProtectedRoute>
-        } />
+          {/* Roles Management - Protected by module access guard */}
+          <Route path="/roles" element={
+            <ProtectedRoute>
+              <ModuleAccessGuard module="roles">
+                <LazyPage><RolesListPage /></LazyPage>
+              </ModuleAccessGuard>
+            </ProtectedRoute>
+          } />
+          <Route path="/roles/create" element={
+            <ProtectedRoute>
+              <ModuleAccessGuard module="roles">
+                <LazyPage><CreateRolePage /></LazyPage>
+              </ModuleAccessGuard>
+            </ProtectedRoute>
+          } />
+          <Route path="/roles/:id" element={
+            <ProtectedRoute>
+              <ModuleAccessGuard module="roles">
+                <LazyPage><RoleDetailsPage /></LazyPage>
+              </ModuleAccessGuard>
+            </ProtectedRoute>
+          } />
+          <Route path="/roles/:id/edit" element={
+            <ProtectedRoute>
+              <ModuleAccessGuard module="roles">
+                <LazyPage><EditRolePage /></LazyPage>
+              </ModuleAccessGuard>
+            </ProtectedRoute>
+          } />
 
-        {/* User Management - Protected by permission guard */}
-        <Route path="/user-management" element={
-          <ProtectedRoute>
-            <UserManagement />
-          </ProtectedRoute>
-        } />
+          {/* User Management - Protected by permission guard */}
+          <Route path="/user-management" element={
+            <ProtectedRoute>
+              <LazyPage><UserManagement /></LazyPage>
+            </ProtectedRoute>
+          } />
 
-        {/* Branches Management - Protected by module access guard */}
-        <Route path="/branches" element={
-          <ProtectedRoute>
-            <ModuleAccessGuard module="branches">
-              <Branches />
-            </ModuleAccessGuard>
-          </ProtectedRoute>
-        } />
-        <Route path="/branches/new" element={
-          <ProtectedRoute>
-            <ModuleAccessGuard module="branches">
-              <BranchForm mode="create" />
-            </ModuleAccessGuard>
-          </ProtectedRoute>
-        } />
-        <Route path="/branches/:id" element={
-          <ProtectedRoute>
-            <ModuleAccessGuard module="branches">
-              <BranchDetail />
-            </ModuleAccessGuard>
-          </ProtectedRoute>
-        } />
-        <Route path="/branches/:id/edit" element={
-          <ProtectedRoute>
-            <ModuleAccessGuard module="branches">
-              <BranchForm mode="edit" />
-            </ModuleAccessGuard>
-          </ProtectedRoute>
-        } />
+          {/* Branches Management - Protected by module access guard */}
+          <Route path="/branches" element={
+            <ProtectedRoute>
+              <ModuleAccessGuard module="branches">
+                <LazyPage><Branches /></LazyPage>
+              </ModuleAccessGuard>
+            </ProtectedRoute>
+          } />
+          <Route path="/branches/new" element={
+            <ProtectedRoute>
+              <ModuleAccessGuard module="branches">
+                <LazyPage><BranchForm mode="create" /></LazyPage>
+              </ModuleAccessGuard>
+            </ProtectedRoute>
+          } />
+          <Route path="/branches/:id" element={
+            <ProtectedRoute>
+              <ModuleAccessGuard module="branches">
+                <LazyPage><BranchDetail /></LazyPage>
+              </ModuleAccessGuard>
+            </ProtectedRoute>
+          } />
+          <Route path="/branches/:id/edit" element={
+            <ProtectedRoute>
+              <ModuleAccessGuard module="branches">
+                <LazyPage><BranchForm mode="edit" /></LazyPage>
+              </ModuleAccessGuard>
+            </ProtectedRoute>
+          } />
+
+          {/* Finance Management */}
+          <Route path="/finance" element={
+            <ProtectedRoute>
+              <LazyPage><FinanceDashboard /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/finance/requisitions" element={
+            <ProtectedRoute>
+              <LazyPage><RequisitionsList /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/finance/requisitions/new" element={
+            <ProtectedRoute>
+              <LazyPage><RequisitionNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/finance/requisitions/:id" element={
+            <ProtectedRoute>
+              <LazyPage><RequisitionDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/finance/approvals" element={
+            <ProtectedRoute>
+              <LazyPage><PendingApprovals /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/finance/disbursements" element={
+            <ProtectedRoute>
+              <LazyPage><PendingDisbursements /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/finance/settings/form-fields" element={
+            <ProtectedRoute>
+              <LazyPage><FormFieldsSettings /></LazyPage>
+            </ProtectedRoute>
+          } />
         </Routes>
       </AnimatePresence>
     </>

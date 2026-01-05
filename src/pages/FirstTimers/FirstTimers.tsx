@@ -27,7 +27,14 @@ export default function FirstTimers() {
   const navigate = useNavigate()
   const toast = useToast()
   const { selectedBranch, branches } = useAppStore()
-  const { hasPermission } = useAuth()
+  const { hasPermission, member: currentUser } = useAuth()
+
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+  }
   const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'closed' | 'archived'>('all')
   const [dateRange, setDateRange] = useState<DateRangeFilter>('3months')
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
@@ -819,6 +826,16 @@ export default function FirstTimers() {
   return (
     <Layout title="First Timers" subtitle="Manage visitors and follow-ups">
       <div className="space-y-6">
+        {/* Header with Greeting */}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            {getGreeting()}, {currentUser?.firstName || 'there'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Manage visitors and follow-ups
+          </p>
+        </div>
+
         {/* Overview Stats - show on all tabs */}
         {(stats || statsLoading) && (
           <div className="relative">

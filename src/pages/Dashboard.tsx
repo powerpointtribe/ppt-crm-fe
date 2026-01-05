@@ -440,9 +440,28 @@ export default function Dashboard() {
     )
   }
 
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+  }
+
   return (
     <Layout title="Dashboard">
       <div className="space-y-6">
+        {/* Header with Greeting */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              {getGreeting()}, {member?.firstName || 'there'}
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Here's an overview of your church management system
+            </p>
+          </div>
+        </div>
+
         {/* Scope Indicator & Date Range Filter */}
         <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4">
           {/* Scope Indicator */}

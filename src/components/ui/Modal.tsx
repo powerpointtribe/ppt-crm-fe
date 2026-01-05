@@ -72,7 +72,7 @@ export default function Modal({
           {/* Modal */}
           <motion.div
             className={cn(
-              'relative w-full bg-background border border-border rounded-lg shadow-lg',
+              'relative w-full bg-background border border-border rounded-lg shadow-lg max-h-[90vh] flex flex-col',
               sizes[size]
             )}
             initial={{ scale: 0.95, opacity: 0 }}
@@ -82,7 +82,7 @@ export default function Modal({
           >
             {/* Header */}
             {title && (
-              <div className="flex items-center justify-between p-6 border-b border-border">
+              <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
                 <h2 className="text-lg font-semibold">{title}</h2>
                 <button
                   onClick={onClose}
@@ -94,7 +94,7 @@ export default function Modal({
             )}
 
             {/* Content */}
-            <div className={title ? 'p-6' : 'p-6'}>
+            <div className="p-6 overflow-y-auto flex-1">
               {children}
             </div>
           </motion.div>

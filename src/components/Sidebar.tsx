@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { PreloadLink } from './PreloadLink'
+import { routePreloader } from '@/utils/routePreloader'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users,
@@ -31,6 +33,9 @@ import {
   Check,
   Globe,
   Plus,
+  DollarSign,
+  CheckCircle,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -114,6 +119,12 @@ const menuGroups: MenuGroup[] = [
             path: '/first-timers/message-drafts',
             requiredPermission: 'first-timers:view',
           },
+          {
+            icon: BarChart3,
+            label: 'Analytics',
+            path: '/first-timers/reports',
+            requiredPermission: 'first-timers:view-stats',
+          },
         ],
       },
     ],
@@ -189,6 +200,38 @@ const menuGroups: MenuGroup[] = [
             label: 'Reports',
             path: '/inventory/reports',
             requiredPermission: 'inventory:view-stats',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Finance',
+    items: [
+      {
+        icon: DollarSign,
+        label: 'Finance',
+        path: '/finance',
+        requiredPermission: 'finance:view-requisitions',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: FileText,
+            label: 'My Requisitions',
+            path: '/finance/requisitions',
+            requiredPermission: 'finance:create-requisition',
+          },
+          {
+            icon: CheckCircle,
+            label: 'Approvals',
+            path: '/finance/approvals',
+            requiredPermission: 'finance:approve-requisition',
+          },
+          {
+            icon: Wallet,
+            label: 'Disbursements',
+            path: '/finance/disbursements',
+            requiredPermission: 'finance:disburse',
           },
         ],
       },
@@ -482,7 +525,7 @@ export default function Sidebar() {
     return (
       <div>
         <div className="flex items-center">
-          <Link
+          <PreloadLink
             to={item.path}
             onClick={onNavigate}
             className={cn(
@@ -499,7 +542,7 @@ export default function Sidebar() {
               )}
             />
             <span className="font-medium truncate">{item.label}</span>
-          </Link>
+          </PreloadLink>
           {hasSubItems && (
             <button
               onClick={() => toggleDropdown(item.path)}
@@ -532,7 +575,7 @@ export default function Sidebar() {
                 {item.subItems?.map((subItem) => {
                   const isSubActive = isPathActive(subItem.path)
                   return (
-                    <Link
+                    <PreloadLink
                       key={subItem.path}
                       to={subItem.path}
                       onClick={onNavigate}
@@ -545,7 +588,7 @@ export default function Sidebar() {
                     >
                       <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" />
                       <span className="truncate">{subItem.label}</span>
-                    </Link>
+                    </PreloadLink>
                   )
                 })}
               </div>

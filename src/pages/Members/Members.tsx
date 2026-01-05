@@ -64,7 +64,14 @@ const maritalStatusOptions = [
 export default function Members() {
   const navigate = useNavigate()
   const { selectedBranch, branches } = useAppStore()
-  const { hasPermission } = useAuth()
+  const { hasPermission, member: currentUser } = useAuth()
+
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good morning'
+    if (hour < 17) return 'Good afternoon'
+    return 'Good evening'
+  }
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -803,6 +810,16 @@ export default function Members() {
   return (
     <Layout title="Members" subtitle="Manage church members">
       <div className="space-y-6 max-w-full overflow-hidden">
+        {/* Header with Greeting */}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            {getGreeting()}, {currentUser?.firstName || 'there'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Manage and view your church members
+          </p>
+        </div>
+
         {/* Page Toolbar with Search and Actions */}
         <PageToolbar
           searchValue={searchTerm}

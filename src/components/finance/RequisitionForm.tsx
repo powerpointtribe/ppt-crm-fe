@@ -11,6 +11,7 @@ import { groupsService } from '@/services/groups'
 import { requisitionSchema, type RequisitionFormData } from '@/schemas/requisition'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import type { ExpenseCategory, Requisition, FormFieldConfig } from '@/types/finance'
+import { EVENT_DESCRIPTION_OPTIONS } from '@/types/finance'
 
 interface RequisitionFormProps {
   requisition?: Requisition
@@ -35,6 +36,8 @@ export default function RequisitionForm({
   const [formFields, setFormFields] = useState<FormFieldConfig[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [showFieldManager, setShowFieldManager] = useState(false)
+  const [eventDescriptionType, setEventDescriptionType] = useState<string>('')
+  const [customEventDescription, setCustomEventDescription] = useState<string>('')
 
   const defaultCostItem = { item: '', quantity: 1, unitCost: 0, total: 0 }
 
@@ -100,22 +103,97 @@ export default function RequisitionForm({
     loadFormData()
   }, [])
 
+  // Initialize event description state when editing
+  useEffect(() => {
+    if (requisition?.eventDescription) {
+      const matchingOption = EVENT_DESCRIPTION_OPTIONS.find(
+        opt => opt.label === requisition.eventDescription
+      )
+      if (matchingOption) {
+        setEventDescriptionType(matchingOption.value)
+        setCustomEventDescription('')
+      } else {
+        setEventDescriptionType('other')
+        setCustomEventDescription(requisition.eventDescription)
+      }
+    }
+  }, [requisition])
+
   const loadFormData = async () => {
     try {
       setLoadingData(true)
-      const [categoriesData, unitsData, fieldsData] = await Promise.all([
+
+      // Load each resource independently to prevent one failure from blocking others
+      const [categoriesResult, unitsResult, fieldsResult] = await Promise.allSettled([
         financeService.getExpenseCategories(),
         groupsService.getUnits(),
-        financeService.getFormFields('requisition').catch(() => []),
+        financeService.getFormFields('requisition'),
       ])
-      setCategories(categoriesData)
-      setUnits(unitsData.items || [])
-      setFormFields(fieldsData)
+
+      // Handle categories
+      if (categoriesResult.status === 'fulfilled') {
+        let loadedCategories = categoriesResult.value || []
+
+        // Auto-initialize if no categories exist
+        if (loadedCategories.length === 0) {
+          console.log('No categories found, attempting to initialize...')
+          try {
+            const initResult = await financeService.initializeExpenseCategories()
+            console.log('Initialize result:', initResult)
+            if (initResult.created) {
+              // Fetch the newly created categories
+              loadedCategories = await financeService.getExpenseCategories()
+            }
+          } catch (initErr) {
+            console.error('Failed to initialize categories:', initErr)
+          }
+        }
+
+        setCategories(loadedCategories)
+        console.log('Loaded categories:', loadedCategories)
+      } else {
+        console.error('Failed to load categories:', categoriesResult.reason)
+        setCategories([])
+      }
+
+      // Handle units
+      if (unitsResult.status === 'fulfilled') {
+        setUnits(unitsResult.value?.items || [])
+      } else {
+        console.error('Failed to load units:', unitsResult.reason)
+        setUnits([])
+      }
+
+      // Handle form fields
+      if (fieldsResult.status === 'fulfilled') {
+        setFormFields(fieldsResult.value || [])
+      } else {
+        console.error('Failed to load form fields:', fieldsResult.reason)
+        setFormFields([])
+      }
     } catch (err) {
       console.error('Failed to load form data:', err)
     } finally {
       setLoadingData(false)
     }
+  }
+
+  // Handle event description type change
+  const handleEventDescriptionTypeChange = (value: string) => {
+    setEventDescriptionType(value)
+    if (value !== 'other') {
+      const option = EVENT_DESCRIPTION_OPTIONS.find(opt => opt.value === value)
+      setValue('eventDescription', option?.label || '')
+      setCustomEventDescription('')
+    } else {
+      setValue('eventDescription', customEventDescription)
+    }
+  }
+
+  // Handle custom event description change
+  const handleCustomEventDescriptionChange = (value: string) => {
+    setCustomEventDescription(value)
+    setValue('eventDescription', value)
   }
 
   const onFormSubmit = handleSubmit(async (data) => {
@@ -180,14 +258,16 @@ export default function RequisitionForm({
             {/* Category */}
             <div>
               <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                Category <span className="text-red-500">*</span>
+                Expense Category <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
                   {...register('expenseCategory')}
                   className="w-full px-4 py-2.5 pr-10 text-sm bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-900/20 dark:to-indigo-900/10 border border-blue-200/60 dark:border-blue-800/40 rounded-xl focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/60 transition-all appearance-none cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 shadow-sm hover:shadow-md"
                 >
-                  <option value="">Select category</option>
+                  <option value="">
+                    {categories.length === 0 ? 'No categories available' : 'Select expense category'}
+                  </option>
                   {categories.map((cat) => (
                     <option key={cat._id} value={cat._id}>{cat.name}</option>
                   ))}
@@ -195,6 +275,9 @@ export default function RequisitionForm({
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
               </div>
               {errors.expenseCategory && <p className="text-red-500 text-xs mt-1">{errors.expenseCategory.message}</p>}
+              {categories.length === 0 && (
+                <p className="text-amber-600 text-xs mt-1">No expense categories found. Please contact an administrator.</p>
+              )}
             </div>
 
             {/* Unit */}
@@ -242,19 +325,50 @@ export default function RequisitionForm({
             </div>
           </div>
 
-          {/* Description */}
-          <div>
+          {/* Event Description Dropdown */}
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-              Purpose <span className="text-red-500">*</span>
+              Event Description <span className="text-red-500">*</span>
             </label>
-            <textarea
-              {...register('eventDescription')}
-              rows={2}
-              className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary/50 resize-none transition-all"
-              placeholder="Describe the purpose of this requisition..."
-            />
-            {errors.eventDescription && <p className="text-red-500 text-xs mt-1">{errors.eventDescription.message}</p>}
+            <div className="relative">
+              <select
+                value={eventDescriptionType}
+                onChange={(e) => handleEventDescriptionTypeChange(e.target.value)}
+                className="w-full px-4 py-2.5 pr-10 text-sm bg-gradient-to-br from-purple-50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/10 border border-purple-200/60 dark:border-purple-800/40 rounded-xl focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500/60 transition-all appearance-none cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 shadow-sm hover:shadow-md"
+              >
+                <option value="">Select event description</option>
+                {EVENT_DESCRIPTION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400 pointer-events-none" />
+            </div>
+            {errors.eventDescription && !eventDescriptionType && (
+              <p className="text-red-500 text-xs mt-1">{errors.eventDescription.message}</p>
+            )}
           </div>
+
+          {/* Custom Event Description (shown when "Other" is selected) */}
+          {eventDescriptionType === 'other' && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                Describe the Event <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={customEventDescription}
+                onChange={(e) => handleCustomEventDescriptionChange(e.target.value)}
+                rows={2}
+                className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary/50 resize-none transition-all"
+                placeholder="Describe the purpose of this requisition..."
+              />
+              {errors.eventDescription && (
+                <p className="text-red-500 text-xs mt-1">{errors.eventDescription.message}</p>
+              )}
+            </div>
+          )}
+
+          {/* Hidden field to store the actual eventDescription value */}
+          <input type="hidden" {...register('eventDescription')} />
         </div>
 
         {/* Cost Breakdown Section */}

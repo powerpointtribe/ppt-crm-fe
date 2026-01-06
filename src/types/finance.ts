@@ -242,6 +242,21 @@ export interface FinanceStatistics {
   }[]
 }
 
+// Event Description Options
+export const EVENT_DESCRIPTION_OPTIONS = [
+  { value: 'monthly_budget', label: 'Monthly Budget' },
+  { value: 'anniversary', label: 'Anniversary' },
+  { value: 'tnt', label: 'TnT' },
+  { value: 'life_questions', label: 'Life Questions' },
+  { value: 'paid_event_garrison', label: 'Paid Event at the Garrison' },
+  { value: 'themed_services', label: 'Themed Services' },
+  { value: 'special_events', label: 'Special Events' },
+  { value: 'not_an_event', label: 'Not an Event' },
+  { value: 'other', label: 'Other' },
+] as const
+
+export type EventDescriptionValue = typeof EVENT_DESCRIPTION_OPTIONS[number]['value']
+
 // Status configuration for display
 export const requisitionStatusConfig: Record<
   RequisitionStatus,

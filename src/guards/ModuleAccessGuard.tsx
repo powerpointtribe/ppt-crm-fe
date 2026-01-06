@@ -25,6 +25,7 @@ const modulePermissionMap: Record<string, string> = {
   'service-reports': 'service-reports:view',
   'workers-training': 'workers-training:view',
   'activity-tracker': 'activity-tracker:view',
+  'finance': 'finance:view-requisitions',
 }
 
 /**

@@ -242,6 +242,33 @@ export const financeService = {
     await apiService.delete(`/finance/expense-categories/${id}`)
   },
 
+  /**
+   * Initialize default expense categories for the branch
+   */
+  initializeExpenseCategories: async (): Promise<{ created: boolean; count: number; message: string }> => {
+    const response = await apiService.post<ApiResponse<{ created: boolean; count: number }>>(
+      '/finance/expense-categories/initialize'
+    )
+    return {
+      created: response.data?.created ?? false,
+      count: response.data?.count ?? 0,
+      message: response.message,
+    }
+  },
+
+  /**
+   * Reset and reinitialize expense categories
+   */
+  resetExpenseCategories: async (): Promise<{ count: number; message: string }> => {
+    const response = await apiService.post<ApiResponse<{ count: number }>>(
+      '/finance/expense-categories/reset'
+    )
+    return {
+      count: response.data?.count ?? 0,
+      message: response.message,
+    }
+  },
+
   // ============== Form Field Configuration ==============
 
   /**

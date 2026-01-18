@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { apiService } from './api'
 import type {
   Requisition,
@@ -17,6 +18,43 @@ import type {
   UpdateFormFieldConfigDto,
   BulkUpdateSortOrderDto,
 } from '@/types/finance'
+import type { PublicRequisitionFormData, PublicApproveFormData, PublicRejectFormData, PublicDisburseFormData } from '@/schemas/publicRequisition'
+
+// Public API client (no auth header)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const publicApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Public types
+export interface PublicBranch {
+  _id: string
+  name: string
+  slug: string
+  description?: string
+  address?: {
+    city?: string
+    state?: string
+  }
+}
+
+export interface PublicExpenseCategory {
+  _id: string
+  name: string
+  description?: string
+}
+
+export interface TokenVerificationResponse {
+  valid: boolean
+  actionType?: 'approve' | 'reject' | 'disburse'
+  requisition?: Requisition
+  error?: string
+  expiresAt?: string
+  recipientEmail?: string
+}
 
 interface ApiResponse<T> {
   success: boolean
@@ -362,5 +400,91 @@ export const financeService = {
       count: response.data?.count ?? 0,
       message: response.message,
     }
+  },
+
+  // ============== Public API Methods (No Auth Required) ==============
+
+  /**
+   * Create a public requisition (no authentication required)
+   */
+  createPublicRequisition: async (data: PublicRequisitionFormData): Promise<Requisition> => {
+    const response = await publicApi.post<ApiResponse<Requisition>>(
+      '/public/finance/requisitions',
+      data
+    )
+    return response.data.data
+  },
+
+  /**
+   * Verify an action token and get requisition details
+   */
+  verifyActionToken: async (token: string): Promise<TokenVerificationResponse> => {
+    const response = await publicApi.get<ApiResponse<TokenVerificationResponse>>(
+      `/public/finance/requisitions/verify-token/${token}`
+    )
+    return response.data.data
+  },
+
+  /**
+   * Approve a requisition using token (no auth required)
+   */
+  approveWithToken: async (token: string, data?: PublicApproveFormData): Promise<Requisition> => {
+    const response = await publicApi.post<ApiResponse<Requisition>>(
+      '/public/finance/requisitions/approve',
+      { token, ...data }
+    )
+    return response.data.data
+  },
+
+  /**
+   * Reject a requisition using token (no auth required)
+   */
+  rejectWithToken: async (token: string, data: PublicRejectFormData): Promise<Requisition> => {
+    const response = await publicApi.post<ApiResponse<Requisition>>(
+      '/public/finance/requisitions/reject',
+      { token, ...data }
+    )
+    return response.data.data
+  },
+
+  /**
+   * Disburse a requisition using token (no auth required)
+   */
+  disburseWithToken: async (token: string, data: PublicDisburseFormData): Promise<Requisition> => {
+    const response = await publicApi.post<ApiResponse<Requisition>>(
+      '/public/finance/requisitions/disburse',
+      { token, ...data }
+    )
+    return response.data.data
+  },
+
+  /**
+   * Get expense categories for a branch (public, no auth required)
+   */
+  getPublicExpenseCategories: async (branchSlug: string): Promise<PublicExpenseCategory[]> => {
+    const response = await publicApi.get<ApiResponse<PublicExpenseCategory[]>>(
+      `/public/finance/expense-categories/${branchSlug}`
+    )
+    return response.data.data
+  },
+
+  /**
+   * Get all branches for public requisition form (no auth required)
+   */
+  getPublicBranches: async (): Promise<PublicBranch[]> => {
+    const response = await publicApi.get<ApiResponse<PublicBranch[]>>(
+      '/public/finance/branches'
+    )
+    return response.data.data
+  },
+
+  /**
+   * Get a single branch by slug (no auth required)
+   */
+  getPublicBranchBySlug: async (slug: string): Promise<PublicBranch> => {
+    const response = await publicApi.get<ApiResponse<PublicBranch>>(
+      `/public/finance/branches/${slug}`
+    )
+    return response.data.data
   },
 }

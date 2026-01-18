@@ -5,7 +5,7 @@ import {
   Plus, Phone, Mail, Calendar, User,
   MoreHorizontal, Trash2, UserPlus, Edit,
   Users, Clock, CheckCircle, TrendingUp, UserCheck,
-  X, Filter, RefreshCw, UserCog, Archive, ArchiveRestore
+  X, Filter, RefreshCw, UserCog, Archive, ArchiveRestore, Upload
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -1057,6 +1057,14 @@ export default function FirstTimers() {
                 >
                   <UserCheck className="h-4 w-4 mr-2" />
                   My Assignments
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate('/first-timers/entry-import')}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
                 </Button>
                 <Button
                   size="sm"

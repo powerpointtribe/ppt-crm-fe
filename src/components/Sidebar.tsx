@@ -36,6 +36,7 @@ import {
   DollarSign,
   CheckCircle,
   Wallet,
+  Upload,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -268,6 +269,12 @@ const menuGroups: MenuGroup[] = [
         requiredPermission: 'bulk-operations:view-history',
       },
       {
+        icon: Upload,
+        label: 'Entry Import',
+        path: '/entry-import',
+        requiredPermission: 'entry-import:access',
+      },
+      {
         icon: UserCog,
         label: 'Roles',
         path: '/roles',
@@ -318,10 +325,30 @@ export default function Sidebar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([])
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false)
-  const { member, hasPermission } = useAuth()
+  const { member, hasPermission, hasSystemRole } = useAuth()
 
   const canViewAllBranches = hasPermission('branches:view-all')
   const canCreateBranch = hasPermission('branches:create')
+
+  // Check for super admin - check role slug, systemRoles, or role name
+  const isSuperAdmin = hasSystemRole('super_admin') ||
+    (member?.role as any)?.slug === 'super-admin' ||
+    (member?.role as any)?.name === 'Super Admin' ||
+    member?.systemRoles?.includes('super_admin' as any)
+
+  // Debug: log super admin check
+  useEffect(() => {
+    if (member) {
+      console.log('Sidebar - Super Admin Check:', {
+        isSuperAdmin,
+        role: member.role,
+        roleSlug: (member.role as any)?.slug,
+        roleName: (member.role as any)?.name,
+        systemRoles: member.systemRoles,
+        hasSystemRoleResult: hasSystemRole('super_admin'),
+      })
+    }
+  }, [member, isSuperAdmin, hasSystemRole])
 
   // Fetch branches if user has permission
   useEffect(() => {
@@ -346,6 +373,10 @@ export default function Sidebar() {
         items: group.items
           .filter((item) => {
             if (item.requiredPermission === null) return true
+            // Entry Import is super admin only
+            if (item.requiredPermission === 'entry-import:access') {
+              return isSuperAdmin
+            }
             return hasPermission(item.requiredPermission)
           })
           .map((item) => {
@@ -363,7 +394,7 @@ export default function Sidebar() {
           }),
       }))
       .filter((group) => group.items.length > 0)
-  }, [member, hasPermission])
+  }, [member, hasPermission, isSuperAdmin])
 
   const toggleDropdown = (itemPath: string) => {
     setOpenDropdowns((prev) =>

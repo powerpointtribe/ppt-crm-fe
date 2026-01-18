@@ -235,6 +235,24 @@ export interface BulkStatusUpdateData {
   status: FirstTimer['status']
 }
 
+export interface EntryImportResult {
+  successCount: number
+  errorCount: number
+  totalCount: number
+  successfulRecords: Array<{
+    row: number
+    firstName: string
+    lastName: string
+    phone: string
+  }>
+  failedRecords: Array<{
+    row: number
+    data: any
+    errors: string[]
+  }>
+  message: string
+}
+
 export const firstTimersService = {
   getFirstTimers: async (params?: FirstTimerSearchParams): Promise<PaginatedResponse<FirstTimer>> => {
     // Clean params by removing undefined/null values and ensuring page/limit have valid defaults
@@ -365,6 +383,21 @@ export const firstTimersService = {
 
   getSampleCSV: async (): Promise<any> => {
     const response = await apiService.get<ApiResponse<any>>('/first-timers/sample-csv')
+    return response.data || response
+  },
+
+  // Entry Import - For importing from external CSV formats (Google Forms, Excel, etc.)
+  entryImport: async (formData: FormData): Promise<EntryImportResult> => {
+    const response = await apiService.post<ApiResponse<EntryImportResult>>('/first-timers/entry-import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response.data?.data || response.data
+  },
+
+  getEntryImportSampleCSV: async (): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/entry-import/sample-csv')
     return response.data || response
   },
 

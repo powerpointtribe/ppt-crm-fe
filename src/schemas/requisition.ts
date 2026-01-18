@@ -33,7 +33,9 @@ export const requisitionSchema = z.object({
     .min(1, 'At least one cost item is required'),
   creditAccount: bankAccountSchema,
   documentUrls: z.array(z.string()).optional(),
-  discussedWithPDams: z.boolean(),
+  discussedWithPDams: z.enum(['yes', 'not_required', 'no'], {
+    required_error: 'Please select whether you have discussed this expense with P.Dams',
+  }),
   discussedDate: z.string().optional(),
   isDraft: z.boolean().optional(),
 })

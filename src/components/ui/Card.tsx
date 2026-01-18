@@ -15,11 +15,11 @@ export default function Card({ children, className, hoverable = false, onClick, 
   return (
     <motion.div
       className={cn(
-        'bg-white dark:bg-slate-800 rounded-lg border transition-all duration-200',
+        'bg-white dark:bg-gray-800 rounded-xl border transition-all duration-200',
         elevated
-          ? 'border-gray-200/80 dark:border-slate-600 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15),0_4px_6px_-4px_rgba(0,0,0,0.1)]'
-          : 'border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md',
-        hoverable && 'hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer',
+          ? 'border-gray-100 dark:border-gray-600 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.15),0_4px_6px_-4px_rgba(0,0,0,0.1)]'
+          : 'border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md',
+        hoverable && 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer',
         onClick && 'cursor-pointer',
         className
       )}

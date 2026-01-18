@@ -27,7 +27,7 @@ export const publicVisitorRegistrationSchema = z.object({
   profilePhotoUrl: z.string().optional(),
 
   // How they heard about us
-  howDidYouHear: z.enum(['friend', 'family', 'advertisement', 'online', 'event', 'walkby', 'other']).optional(),
+  howDidYouHear: z.enum(['friend', 'family', 'advertisement', 'online', 'event', 'walkby', 'outreach', 'other']).optional(),
 
   // Service type they attended
   serviceType: z.string().optional(),

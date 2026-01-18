@@ -5,6 +5,8 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import { ModuleAccessGuard } from '@/guards'
 import GlobalLoadingIndicator from '@/components/GlobalLoadingIndicator'
 import PageLoader from '@/components/PageLoader'
+import { PWAPrompt } from '@/components/PWAPrompt'
+import { OfflineBanner } from '@/components/OfflineBanner'
 import { preloadCommonRoutes } from '@/utils/routePreloader'
 
 // Auth Pages - Load immediately (critical path)
@@ -16,6 +18,9 @@ import ResetPassword from '@/pages/auth/ResetPassword'
 import LandingPage from '@/pages/LandingPage'
 import PublicVisitorRegistration from '@/pages/PublicVisitorRegistration'
 import WorkersTrainingRegistration from '@/pages/WorkersTrainingRegistration'
+import PublicRequisitionForm from '@/pages/Finance/PublicRequisitionForm'
+import PublicRequisitionAction from '@/pages/Finance/PublicRequisitionAction'
+import PublicActionResult from '@/pages/Finance/PublicActionResult'
 
 // Dashboard - Load immediately (most visited)
 import Dashboard from '@/pages/Dashboard'
@@ -37,6 +42,7 @@ const FirstTimers = lazy(() => import('@/pages/FirstTimers/FirstTimers'))
 const FirstTimerNew = lazy(() => import('@/pages/FirstTimers/FirstTimerNew'))
 const FirstTimerDetail = lazy(() => import('@/pages/FirstTimers/FirstTimerDetail'))
 const FirstTimerEdit = lazy(() => import('@/pages/FirstTimers/FirstTimerEdit'))
+const FirstTimerEntryImport = lazy(() => import('@/pages/FirstTimers/FirstTimerEntryImport'))
 const AssignedFirstTimers = lazy(() => import('@/pages/FirstTimers/AssignedFirstTimers'))
 const CallReports = lazy(() => import('@/pages/FirstTimers/CallReports'))
 const FirstTimerReports = lazy(() => import('@/pages/FirstTimers/FirstTimerReports'))
@@ -88,6 +94,9 @@ const PendingApprovals = lazy(() => import('@/pages/Finance/PendingApprovals'))
 const PendingDisbursements = lazy(() => import('@/pages/Finance/PendingDisbursements'))
 const FormFieldsSettings = lazy(() => import('@/pages/Finance/FormFieldsSettings'))
 
+const EntryImport = lazy(() => import('@/pages/EntryImport'))
+const ImportDetail = lazy(() => import('@/pages/EntryImport/ImportDetail'))
+
 // Wrapper for lazy components with smooth loading
 function LazyPage({ children }: { children: React.ReactNode }) {
   return (
@@ -116,8 +125,10 @@ function App() {
 
   return (
     <>
+      <OfflineBanner />
       <GlobalLoadingIndicator />
       <ScrollToTop />
+      <PWAPrompt />
       <AnimatePresence mode="wait">
         <Routes>
           {/* Public Routes */}
@@ -128,6 +139,10 @@ function App() {
           <Route path="/visitor-registration" element={<PublicVisitorRegistration />} />
           <Route path="/visitor-registration/:branchSlug" element={<PublicVisitorRegistration />} />
           <Route path="/workers-training-registration" element={<WorkersTrainingRegistration />} />
+          <Route path="/requisition" element={<PublicRequisitionForm />} />
+          <Route path="/requisition/:branchSlug" element={<PublicRequisitionForm />} />
+          <Route path="/requisition-action" element={<PublicRequisitionAction />} />
+          <Route path="/requisition-result" element={<PublicActionResult />} />
 
           {/* Dashboard - Requires Login Only */}
           <Route path="/dashboard" element={
@@ -199,6 +214,11 @@ function App() {
           <Route path="/first-timers/new" element={
             <ProtectedRoute>
               <LazyPage><FirstTimerNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/entry-import" element={
+            <ProtectedRoute>
+              <LazyPage><FirstTimerEntryImport /></LazyPage>
             </ProtectedRoute>
           } />
           <Route path="/first-timers/:id" element={
@@ -476,6 +496,18 @@ function App() {
           <Route path="/finance/settings/form-fields" element={
             <ProtectedRoute>
               <LazyPage><FormFieldsSettings /></LazyPage>
+            </ProtectedRoute>
+          } />
+
+          {/* Entry Import - Super Admin Only */}
+          <Route path="/entry-import" element={
+            <ProtectedRoute>
+              <LazyPage><EntryImport /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/entry-import/:id" element={
+            <ProtectedRoute>
+              <LazyPage><ImportDetail /></LazyPage>
             </ProtectedRoute>
           } />
         </Routes>

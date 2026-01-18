@@ -18,6 +18,7 @@ import {
   QrCode,
   Shield,
   Search,
+  FileText,
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Button from '@/components/ui/Button';
@@ -59,11 +60,18 @@ export default function BranchDetail() {
 
   // Copy link state
   const [copied, setCopied] = useState(false);
+  const [requisitionCopied, setRequisitionCopied] = useState(false);
 
   // Generate first-timer registration link
   const getFirstTimerLink = () => {
     const baseUrl = window.location.origin;
     return `${baseUrl}/visitor-registration/${branch?.slug}`;
+  };
+
+  // Generate requisition form link
+  const getRequisitionLink = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/requisition/${branch?.slug}`;
   };
 
   const copyToClipboard = async () => {
@@ -72,6 +80,17 @@ export default function BranchDetail() {
       await navigator.clipboard.writeText(link);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const copyRequisitionLink = async () => {
+    const link = getRequisitionLink();
+    try {
+      await navigator.clipboard.writeText(link);
+      setRequisitionCopied(true);
+      setTimeout(() => setRequisitionCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
@@ -281,6 +300,54 @@ export default function BranchDetail() {
                   className={`shrink-0 text-xs ${copied ? 'bg-green-600 hover:bg-green-700 border-green-600' : ''}`}
                 >
                   {copied ? (
+                    <>
+                      <Check className="h-3 w-3 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Requisition Form QR Code */}
+        <Card className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* QR Code */}
+            <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+              <QRCodeSVG
+                value={getRequisitionLink()}
+                size={120}
+                level="M"
+                includeMargin={false}
+              />
+            </div>
+            {/* Link and Copy */}
+            <div className="flex-1 text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                <FileText className="h-4 w-4 text-emerald-600" />
+                <h3 className="font-semibold text-foreground text-sm">Requisition Form</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-2">
+                Scan QR or share link to submit requisitions
+              </p>
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <code className="text-xs bg-white px-2 py-1 rounded border border-gray-200 text-emerald-700 break-all max-w-full">
+                  {getRequisitionLink()}
+                </code>
+                <Button
+                  variant={requisitionCopied ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={copyRequisitionLink}
+                  className={`shrink-0 text-xs ${requisitionCopied ? 'bg-green-600 hover:bg-green-700 border-green-600' : ''}`}
+                >
+                  {requisitionCopied ? (
                     <>
                       <Check className="h-3 w-3 mr-1" />
                       Copied

@@ -21,7 +21,7 @@ import type {
 import type { PublicRequisitionFormData, PublicApproveFormData, PublicRejectFormData, PublicDisburseFormData } from '@/schemas/publicRequisition'
 
 // Public API client (no auth header)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const publicApi = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -54,6 +54,13 @@ export interface TokenVerificationResponse {
   error?: string
   expiresAt?: string
   recipientEmail?: string
+}
+
+export interface LxlEligibilityResponse {
+  eligible: boolean
+  memberName?: string
+  reason?: string
+  leadershipRole?: string
 }
 
 interface ApiResponse<T> {
@@ -405,12 +412,44 @@ export const financeService = {
   // ============== Public API Methods (No Auth Required) ==============
 
   /**
+   * Check if a member is eligible to raise requisitions (LXL status)
+   */
+  checkLxlEligibility: async (email: string, branchSlug: string): Promise<LxlEligibilityResponse> => {
+    const response = await publicApi.post<ApiResponse<LxlEligibilityResponse>>(
+      '/public/finance/check-eligibility',
+      { email, branchSlug }
+    )
+    return response.data.data
+  },
+
+  /**
    * Create a public requisition (no authentication required)
    */
   createPublicRequisition: async (data: PublicRequisitionFormData): Promise<Requisition> => {
+    // Clean up the data - remove empty strings from optional fields
+    // Backend validation fails if empty strings are sent for optional MongoId or DateString fields
+    const cleanedData: Record<string, unknown> = { ...data }
+
+    // Remove empty optional fields that would fail backend validation
+    if (!cleanedData.unit || cleanedData.unit === '') {
+      delete cleanedData.unit
+    }
+    if (!cleanedData.lastRequestDate || cleanedData.lastRequestDate === '') {
+      delete cleanedData.lastRequestDate
+    }
+    if (!cleanedData.submitterPhone || cleanedData.submitterPhone === '') {
+      delete cleanedData.submitterPhone
+    }
+    if (!cleanedData.discussedDate || cleanedData.discussedDate === '') {
+      delete cleanedData.discussedDate
+    }
+    if (!cleanedData.documentUrls || (Array.isArray(cleanedData.documentUrls) && cleanedData.documentUrls.length === 0)) {
+      delete cleanedData.documentUrls
+    }
+
     const response = await publicApi.post<ApiResponse<Requisition>>(
       '/public/finance/requisitions',
-      data
+      cleanedData
     )
     return response.data.data
   },

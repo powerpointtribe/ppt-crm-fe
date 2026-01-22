@@ -19,6 +19,7 @@ import { Group, groupsService } from '@/services/groups'
 import { membersService, Member } from '@/services/members'
 import { formatDate } from '@/utils/formatters'
 import { cn } from '@/utils/cn'
+import { useAuth } from '@/contexts/AuthContext-unified'
 
 type TabType = 'overview' | 'followups' | 'details'
 
@@ -26,6 +27,9 @@ export default function FirstTimerDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const toast = useToast()
+  const { hasPermission } = useAuth()
+
+  const canAssign = hasPermission('first-timers:assign')
   const [firstTimer, setFirstTimer] = useState<FirstTimer | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -526,7 +530,7 @@ export default function FirstTimerDetail() {
                           className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
                         >
                           {/* NEW status - only assign */}
-                          {firstTimer.status === 'NEW' && (
+                          {firstTimer.status === 'NEW' && canAssign && (
                             <button
                               onClick={openAssignModal}
                               className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
@@ -539,13 +543,15 @@ export default function FirstTimerDetail() {
                           {/* ENGAGED status - ready for integration, archive, close */}
                           {firstTimer.status === 'ENGAGED' && (
                             <>
-                              <button
-                                onClick={openAssignModal}
-                                className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                <User className="h-4 w-4 mr-3 text-blue-600" />
-                                <span>{firstTimer.assignedTo ? 'Reassign' : 'Assign to Someone'}</span>
-                              </button>
+                              {canAssign && (
+                                <button
+                                  onClick={openAssignModal}
+                                  className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                  <User className="h-4 w-4 mr-3 text-blue-600" />
+                                  <span>{firstTimer.assignedTo ? 'Reassign' : 'Assign to Someone'}</span>
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   setShowStatusDropdown(false)

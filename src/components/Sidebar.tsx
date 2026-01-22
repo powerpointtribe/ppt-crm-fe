@@ -37,6 +37,7 @@ import {
   CheckCircle,
   Wallet,
   Upload,
+  Calendar,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -165,6 +166,12 @@ const menuGroups: MenuGroup[] = [
         label: 'Campuses',
         path: '/branches',
         requiredPermission: 'branches:view',
+      },
+      {
+        icon: Calendar,
+        label: 'Events',
+        path: '/events',
+        requiredPermission: 'events:view',
       },
     ],
   },

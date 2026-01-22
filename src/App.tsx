@@ -21,6 +21,7 @@ import WorkersTrainingRegistration from '@/pages/WorkersTrainingRegistration'
 import PublicRequisitionForm from '@/pages/Finance/PublicRequisitionForm'
 import PublicRequisitionAction from '@/pages/Finance/PublicRequisitionAction'
 import PublicActionResult from '@/pages/Finance/PublicActionResult'
+import PublicEventRegistration from '@/pages/PublicEventRegistration'
 
 // Dashboard - Load immediately (most visited)
 import Dashboard from '@/pages/Dashboard'
@@ -97,6 +98,11 @@ const FormFieldsSettings = lazy(() => import('@/pages/Finance/FormFieldsSettings
 const EntryImport = lazy(() => import('@/pages/EntryImport'))
 const ImportDetail = lazy(() => import('@/pages/EntryImport/ImportDetail'))
 
+const Events = lazy(() => import('@/pages/Events/Events'))
+const EventNew = lazy(() => import('@/pages/Events/EventNew'))
+const EventDetail = lazy(() => import('@/pages/Events/EventDetail'))
+const EventEdit = lazy(() => import('@/pages/Events/EventEdit'))
+
 // Wrapper for lazy components with smooth loading
 function LazyPage({ children }: { children: React.ReactNode }) {
   return (
@@ -143,6 +149,7 @@ function App() {
           <Route path="/requisition/:branchSlug" element={<PublicRequisitionForm />} />
           <Route path="/requisition-action" element={<PublicRequisitionAction />} />
           <Route path="/requisition-result" element={<PublicActionResult />} />
+          <Route path="/event-registration/:slug" element={<PublicEventRegistration />} />
 
           {/* Dashboard - Requires Login Only */}
           <Route path="/dashboard" element={
@@ -508,6 +515,28 @@ function App() {
           <Route path="/entry-import/:id" element={
             <ProtectedRoute>
               <LazyPage><ImportDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+
+          {/* Events Management */}
+          <Route path="/events" element={
+            <ProtectedRoute>
+              <LazyPage><Events /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/events/new" element={
+            <ProtectedRoute>
+              <LazyPage><EventNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/events/:id" element={
+            <ProtectedRoute>
+              <LazyPage><EventDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/events/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><EventEdit /></LazyPage>
             </ProtectedRoute>
           } />
         </Routes>

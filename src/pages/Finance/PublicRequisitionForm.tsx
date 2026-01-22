@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef } from 'react'
+import { useState, useEffect, forwardRef, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,6 +20,7 @@ import {
   Send,
   BadgeCheck,
   CircleDot,
+  FileSpreadsheet,
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
@@ -137,10 +138,12 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 export default function PublicRequisitionForm() {
   const { branchSlug } = useParams<{ branchSlug?: string }>()
+  const csvInputRef = useRef<HTMLInputElement>(null)
 
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [csvError, setCsvError] = useState<string | null>(null)
 
   const [branch, setBranch] = useState<PublicBranch | null>(null)
   const [branches, setBranches] = useState<PublicBranch[]>([])
@@ -197,6 +200,76 @@ export default function PublicRequisitionForm() {
   const discussedWithPDams = watch('discussedWithPDams')
 
   const totalAmount = costBreakdown.reduce((sum, item) => sum + (item.total || 0), 0)
+
+  // Parse CSV and populate cost breakdown
+  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setCsvError(null)
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string
+        const lines = text.split('\n').filter(line => line.trim())
+
+        if (lines.length < 2) {
+          setCsvError('CSV file must have a header row and at least one data row')
+          return
+        }
+
+        // Parse header to find column indices
+        const header = lines[0].toLowerCase().split(',').map(h => h.trim())
+        const itemIdx = header.findIndex(h => h === 'item' || h === 'description' || h === 'name')
+        const qtyIdx = header.findIndex(h => h === 'qty' || h === 'quantity')
+        const totalIdx = header.findIndex(h => h === 'total' || h === 'amount' || h === 'cost' || h === 'unit cost' || h === 'unitcost' || h === 'price')
+
+        if (itemIdx === -1 || totalIdx === -1) {
+          setCsvError('CSV must have columns: Item (or Description/Name) and Total (or Amount/Cost/Price)')
+          return
+        }
+
+        // Parse data rows
+        const items = lines.slice(1).map(line => {
+          const cols = line.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''))
+          const quantity = qtyIdx !== -1 ? (parseInt(cols[qtyIdx], 10) || 1) : 1
+          const total = parseFloat(cols[totalIdx].replace(/[^0-9.]/g, '')) || 0
+          return {
+            item: cols[itemIdx] || '',
+            quantity,
+            unitCost: quantity > 1 ? total / quantity : total,
+            total
+          }
+        }).filter(item => item.item) // Remove empty rows
+
+        if (items.length === 0) {
+          setCsvError('No valid items found in CSV')
+          return
+        }
+
+        // Clear existing items and add new ones
+        while (fields.length > 0) {
+          remove(0)
+        }
+        items.forEach(item => append(item))
+
+        // Reset file input
+        if (csvInputRef.current) {
+          csvInputRef.current.value = ''
+        }
+      } catch (err) {
+        setCsvError('Failed to parse CSV file. Please check the format.')
+        console.error('CSV parse error:', err)
+      }
+    }
+
+    reader.onerror = () => {
+      setCsvError('Failed to read CSV file')
+    }
+
+    reader.readAsText(file)
+  }
 
   const handleEligibilityCheck = async () => {
     const branchSlugToCheck = branch?.slug || eligibilityBranchSlug
@@ -696,12 +769,49 @@ export default function PublicRequisitionForm() {
                 error={errors.submitterPhone?.message}
                 {...register('submitterPhone')}
               />
+
+              <Input
+                label="Last Similar Request (optional)"
+                type="date"
+                icon={Calendar}
+                hint="When was a similar expense last requested?"
+                {...register('lastRequestDate')}
+              />
             </div>
           </div>
 
           {/* Cost Breakdown */}
           <div>
-            <SectionLabel>Cost Breakdown</SectionLabel>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold text-gray-900">Cost Breakdown</h3>
+                <div className="flex-1 h-px bg-gray-100" />
+              </div>
+              {/* Hidden CSV input */}
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCsvUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => csvInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" /> Upload CSV
+              </button>
+            </div>
+
+            {/* CSV Error */}
+            {csvError && (
+              <div className="mb-3 p-2 bg-red-50 border border-red-100 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-700">{csvError}</p>
+              </div>
+            )}
+
             <div className="space-y-3">
               {fields.map((field, index) => (
                 <div
@@ -932,8 +1042,8 @@ export default function PublicRequisitionForm() {
           <div className="pt-2">
             <Button
               type="submit"
-              disabled={loading || !discussedWithPDams}
-              className="w-full h-11 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors"
+              disabled={loading || !discussedWithPDams || discussedWithPDams === 'no'}
+              className="w-full h-11 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

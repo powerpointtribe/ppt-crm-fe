@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
-import { Plus, Upload, Settings, X, FileText, CreditCard, Wallet, MessageSquare, ChevronDown } from 'lucide-react'
+import { Plus, Upload, Settings, X, FileText, CreditCard, Wallet, MessageSquare, ChevronDown, FileSpreadsheet } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import FormFieldManager from './FormFieldManager'
@@ -30,6 +30,7 @@ export default function RequisitionForm({
 }: RequisitionFormProps) {
   const { member, hasPermission } = useAuth()
   const canManageFields = hasPermission('finance:manage-form-fields')
+  const csvInputRef = useRef<HTMLInputElement>(null)
 
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
   const [units, setUnits] = useState<any[]>([])
@@ -38,6 +39,7 @@ export default function RequisitionForm({
   const [showFieldManager, setShowFieldManager] = useState(false)
   const [eventDescriptionType, setEventDescriptionType] = useState<string>('')
   const [customEventDescription, setCustomEventDescription] = useState<string>('')
+  const [csvError, setCsvError] = useState<string | null>(null)
 
   const defaultCostItem = { item: '', quantity: 1, unitCost: 0, total: 0 }
 
@@ -77,7 +79,7 @@ export default function RequisitionForm({
             accountNumber: '',
           },
           documentUrls: [],
-          discussedWithPDams: false,
+          discussedWithPDams: '' as any,
         },
   })
 
@@ -97,6 +99,76 @@ export default function RequisitionForm({
     const quantity = costBreakdown[index]?.quantity || 0
     const unitCost = costBreakdown[index]?.unitCost || 0
     setValue(`costBreakdown.${index}.total`, quantity * unitCost)
+  }
+
+  // Parse CSV and populate cost breakdown
+  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setCsvError(null)
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string
+        const lines = text.split('\n').filter(line => line.trim())
+
+        if (lines.length < 2) {
+          setCsvError('CSV file must have a header row and at least one data row')
+          return
+        }
+
+        // Parse header to find column indices
+        const header = lines[0].toLowerCase().split(',').map(h => h.trim())
+        const itemIdx = header.findIndex(h => h === 'item' || h === 'description' || h === 'name')
+        const qtyIdx = header.findIndex(h => h === 'qty' || h === 'quantity')
+        const unitCostIdx = header.findIndex(h => h === 'unit cost' || h === 'unitcost' || h === 'unit_cost' || h === 'price' || h === 'unit price')
+
+        if (itemIdx === -1 || qtyIdx === -1 || unitCostIdx === -1) {
+          setCsvError('CSV must have columns: Item (or Description/Name), Qty (or Quantity), and Unit Cost (or Price)')
+          return
+        }
+
+        // Parse data rows
+        const items = lines.slice(1).map(line => {
+          const cols = line.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''))
+          const quantity = parseInt(cols[qtyIdx], 10) || 1
+          const unitCost = parseFloat(cols[unitCostIdx].replace(/[^0-9.]/g, '')) || 0
+          return {
+            item: cols[itemIdx] || '',
+            quantity,
+            unitCost,
+            total: quantity * unitCost
+          }
+        }).filter(item => item.item) // Remove empty rows
+
+        if (items.length === 0) {
+          setCsvError('No valid items found in CSV')
+          return
+        }
+
+        // Clear existing items and add new ones
+        while (fields.length > 0) {
+          remove(0)
+        }
+        items.forEach(item => append(item))
+
+        // Reset file input
+        if (csvInputRef.current) {
+          csvInputRef.current.value = ''
+        }
+      } catch (err) {
+        setCsvError('Failed to parse CSV file. Please check the format.')
+        console.error('CSV parse error:', err)
+      }
+    }
+
+    reader.onerror = () => {
+      setCsvError('Failed to read CSV file')
+    }
+
+    reader.readAsText(file)
   }
 
   useEffect(() => {
@@ -373,21 +445,50 @@ export default function RequisitionForm({
 
         {/* Cost Breakdown Section */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                 <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Cost Breakdown</span>
             </div>
-            <button
-              type="button"
-              onClick={() => append(defaultCostItem)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Add Item
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Hidden CSV input */}
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCsvUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => csvInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
+              >
+                <FileSpreadsheet className="w-4 h-4" /> Upload CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => append(defaultCostItem)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Add Item
+              </button>
+            </div>
           </div>
+
+          {/* CSV Format Hint */}
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            CSV format: Item, Qty, Unit Cost (headers required)
+          </p>
+
+          {/* CSV Error Message */}
+          {csvError && (
+            <div className="text-red-500 text-xs bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
+              {csvError}
+            </div>
+          )}
 
           <div className="space-y-2">
             {fields.map((field, index) => (
@@ -521,30 +622,42 @@ export default function RequisitionForm({
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">P.Dams Discussion</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 px-4 py-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-xl">
-            <label className="flex items-center gap-3 cursor-pointer group">
+          <div className="px-4 py-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-xl space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                Has this expense been discussed with P.Dams? <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
-                <input
-                  type="checkbox"
+                <select
                   {...register('discussedWithPDams')}
-                  className="w-5 h-5 text-amber-500 focus:ring-amber-500/20 rounded-md border-amber-300 dark:border-amber-700 transition-all"
-                />
+                  className="w-full px-4 py-2.5 pr-10 text-sm bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/60 transition-all appearance-none cursor-pointer hover:border-amber-300 dark:hover:border-amber-600"
+                >
+                  <option value="">Select an option</option>
+                  <option value="yes">Yes, I have discussed this with P.Dams</option>
+                  <option value="not_required">Not Required - This expense doesn't require P.Dams approval</option>
+                  <option value="no">No, I have not discussed this yet</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400 pointer-events-none" />
               </div>
-              <span className="text-sm font-medium text-amber-800 dark:text-amber-200 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
-                Has this been discussed with P.Dams?
-              </span>
-            </label>
-            {discussedWithPDams && (
+              {errors.discussedWithPDams && (
+                <p className="text-red-500 text-xs mt-1">{errors.discussedWithPDams.message}</p>
+              )}
+              {discussedWithPDams === 'no' && (
+                <p className="text-red-500 text-xs mt-2 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
+                  Note: Requisitions cannot be submitted without discussing with P.Dams. Please select "Yes" or "Not Required" to submit.
+                </p>
+              )}
+            </div>
+            {discussedWithPDams === 'yes' && (
               <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
               >
-                <span className="text-xs text-amber-600 dark:text-amber-400">Date:</span>
+                <label className="block text-xs text-amber-600 dark:text-amber-400 mb-1">Discussion Date</label>
                 <input
                   type="date"
                   {...register('discussedDate')}
-                  className="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/50 transition-all"
+                  className="w-full md:w-48 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-lg focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/50 transition-all"
                 />
               </motion.div>
             )}

@@ -41,12 +41,14 @@ export default function RequisitionsList() {
   const [successMessage, setSuccessMessage] = useState<string | null>(
     location.state?.message || null
   )
+  const [viewMode, setViewMode] = useState<'my' | 'all'>('my')
 
   const canCreate = hasPermission('finance:create-requisition')
+  const canViewAll = hasPermission('finance:view-all-requisitions')
 
   useEffect(() => {
     loadRequisitions()
-  }, [pagination.page, statusFilter])
+  }, [pagination.page, statusFilter, viewMode])
 
   useEffect(() => {
     if (successMessage) {
@@ -64,7 +66,9 @@ export default function RequisitionsList() {
         search: searchTerm || undefined,
         status: statusFilter || undefined,
       }
-      const response = await financeService.getMyRequisitions(params)
+      const response = viewMode === 'all' && canViewAll
+        ? await financeService.getRequisitions(params)
+        : await financeService.getMyRequisitions(params)
       setRequisitions(response.data)
       setPagination((prev) => ({ ...prev, total: response.total }))
     } catch (err: any) {
@@ -140,6 +144,38 @@ export default function RequisitionsList() {
           </div>
         )}
 
+        {/* View Mode Toggle */}
+        {canViewAll && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setViewMode('my')
+                setPagination((prev) => ({ ...prev, page: 1 }))
+              }}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                viewMode === 'my'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
+              }`}
+            >
+              My Requisitions
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('all')
+                setPagination((prev) => ({ ...prev, page: 1 }))
+              }}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                viewMode === 'all'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
+              }`}
+            >
+              All Requisitions
+            </button>
+          </div>
+        )}
+
         {/* Filters */}
         <Card className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -147,7 +183,7 @@ export default function RequisitionsList() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="Search requisitions..."
+                  placeholder="Search by description or reference number..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -195,6 +231,9 @@ export default function RequisitionsList() {
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
+                      Reference
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
                       Description
                     </th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">
@@ -222,6 +261,15 @@ export default function RequisitionsList() {
                         key={req._id}
                         className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
+                        <td className="py-3 px-4">
+                          {req.referenceNumber ? (
+                            <code className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded dark:bg-blue-900/30 dark:text-blue-300">
+                              {req.referenceNumber}
+                            </code>
+                          ) : (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4">
                           <p className="font-medium text-gray-900 dark:text-white">
                             {req.eventDescription.substring(0, 50)}

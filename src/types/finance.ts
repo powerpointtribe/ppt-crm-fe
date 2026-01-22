@@ -116,9 +116,13 @@ export type RequisitionStatus =
   | 'pending_disbursement'
   | 'disbursed'
 
+// P.Dams discussion status
+export type DiscussedWithPDamsStatus = 'yes' | 'not_required' | 'no'
+
 // Requisition interface
 export interface Requisition {
   _id: string
+  referenceNumber?: string
   branch: string | { _id: string; name: string }
   requestor: string | Member
   unit?: string | { _id: string; name: string }
@@ -131,7 +135,7 @@ export interface Requisition {
   costBreakdown: CostBreakdownItem[]
   creditAccount: BankAccount
   documentUrls: string[]
-  discussedWithPDams: boolean
+  discussedWithPDams: DiscussedWithPDamsStatus
   discussedDate?: string
   status: RequisitionStatus
   submittedAt?: string
@@ -160,7 +164,7 @@ export interface CreateRequisitionDto {
   costBreakdown: CostBreakdownItem[]
   creditAccount: BankAccount
   documentUrls?: string[]
-  discussedWithPDams: boolean
+  discussedWithPDams: DiscussedWithPDamsStatus
   discussedDate?: string
   isDraft?: boolean
 }

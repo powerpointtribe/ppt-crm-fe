@@ -2,26 +2,29 @@ import React, { useState, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  AlertCircle,
   Calendar,
   MapPin,
   Users,
-  Settings,
   Plus,
   Trash2,
-  Clock,
-  Link,
   Mail,
   Phone,
   Image,
   Tag,
+  Globe,
+  Video,
+  Clock,
+  FileText,
+  ChevronDown,
+  Sparkles,
+  Save,
+  X,
+  Loader2,
+  Building,
+  Hash,
+  Link,
 } from 'lucide-react'
-import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
 import { cn } from '@/utils/cn'
 import {
   Event,
@@ -29,10 +32,17 @@ import {
   UpdateEventData,
   EventType,
   EventStatus,
-  CustomField,
+  FormSection,
+  FormHeader,
+  SuccessMessage,
+  TermsAndConditions,
+  FormLayout,
+  FormStatus,
 } from '@/types/event'
+import { EnhancedCustomField } from '@/types/registration-form'
 import { membersService } from '@/services/members-unified'
 import { Member } from '@/types'
+import { FormBuilderStep } from './event'
 
 interface EventFormProps {
   event?: Event
@@ -43,32 +53,132 @@ interface EventFormProps {
   branchId: string
 }
 
-const eventTypes: { value: EventType; label: string }[] = [
-  { value: 'conference', label: 'Conference' },
-  { value: 'workshop', label: 'Workshop' },
-  { value: 'seminar', label: 'Seminar' },
-  { value: 'retreat', label: 'Retreat' },
-  { value: 'service', label: 'Service' },
-  { value: 'outreach', label: 'Outreach' },
-  { value: 'meeting', label: 'Meeting' },
-  { value: 'celebration', label: 'Celebration' },
-  { value: 'training', label: 'Training' },
-  { value: 'other', label: 'Other' },
+const eventTypes: { value: EventType; label: string; icon: string }[] = [
+  { value: 'conference', label: 'Conference', icon: '🎤' },
+  { value: 'workshop', label: 'Workshop', icon: '🛠️' },
+  { value: 'seminar', label: 'Seminar', icon: '📚' },
+  { value: 'retreat', label: 'Retreat', icon: '🏕️' },
+  { value: 'service', label: 'Service', icon: '⛪' },
+  { value: 'outreach', label: 'Outreach', icon: '🤝' },
+  { value: 'meeting', label: 'Meeting', icon: '👥' },
+  { value: 'celebration', label: 'Celebration', icon: '🎉' },
+  { value: 'training', label: 'Training', icon: '🎓' },
+  { value: 'other', label: 'Other', icon: '📋' },
 ]
 
-const eventStatuses: { value: EventStatus; label: string }[] = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'published', label: 'Published' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'completed', label: 'Completed' },
+const eventStatuses: { value: EventStatus; label: string; color: string }[] = [
+  { value: 'draft', label: 'Draft', color: 'bg-gray-100 text-gray-700' },
+  { value: 'published', label: 'Published', color: 'bg-green-100 text-green-700' },
+  { value: 'cancelled', label: 'Cancelled', color: 'bg-red-100 text-red-700' },
+  { value: 'completed', label: 'Completed', color: 'bg-blue-100 text-blue-700' },
 ]
 
-const stepConfig = [
-  { title: 'Basic Info', icon: Calendar, fields: ['title', 'type', 'description', 'startDate', 'endDate', 'startTime', 'endTime'] },
-  { title: 'Location', icon: MapPin, fields: ['location'] },
-  { title: 'Registration', icon: Settings, fields: ['registrationSettings', 'registrationSlug'] },
-  { title: 'Committee & Contact', icon: Users, fields: ['committee', 'contactEmail', 'contactPhone', 'bannerImage', 'tags'] },
+type TabId = 'details' | 'registration'
+
+const tabs: { id: TabId; label: string; icon: React.ElementType; description: string }[] = [
+  { id: 'details', label: 'Event Details', icon: Calendar, description: 'Basic info, schedule & location' },
+  { id: 'registration', label: 'Registration', icon: FileText, description: 'Form builder & settings' },
 ]
+
+// Collapsible Section Component
+function CollapsibleSection({
+  title,
+  icon: Icon,
+  children,
+  defaultOpen = true,
+  badge,
+}: {
+  title: string
+  icon: React.ElementType
+  children: React.ReactNode
+  defaultOpen?: boolean
+  badge?: string | number
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  return (
+    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary-50 rounded-lg">
+            <Icon className="h-4 w-4 text-primary-600" />
+          </div>
+          <span className="font-medium text-gray-900">{title}</span>
+          {badge !== undefined && (
+            <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+              {badge}
+            </span>
+          )}
+        </div>
+        <ChevronDown className={cn(
+          "h-5 w-5 text-gray-400 transition-transform duration-200",
+          isOpen && "rotate-180"
+        )} />
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="px-4 pb-4 pt-2 border-t border-gray-100">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// Compact Input with Icon
+function IconInput({
+  icon: Icon,
+  label,
+  error,
+  className,
+  ...props
+}: {
+  icon?: React.ElementType
+  label?: string
+  error?: string
+  className?: string
+} & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className={className}>
+      {label && (
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          {label}
+        </label>
+      )}
+      <div className="relative">
+        {Icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+        <input
+          {...props}
+          className={cn(
+            "w-full rounded-lg border border-gray-300 bg-white transition-all duration-200",
+            "focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500",
+            "placeholder:text-gray-400",
+            Icon ? "pl-10 pr-3 py-2.5" : "px-3 py-2.5",
+            error && "border-red-300 focus:ring-red-500/20 focus:border-red-500",
+            props.disabled && "bg-gray-50 text-gray-500"
+          )}
+        />
+      </div>
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
+  )
+}
 
 export default function EventForm({
   event,
@@ -78,8 +188,7 @@ export default function EventForm({
   mode,
   branchId,
 }: EventFormProps) {
-  const [currentStep, setCurrentStep] = useState(1)
-  const totalSteps = 4
+  const [activeTab, setActiveTab] = useState<TabId>('details')
   const [members, setMembers] = useState<Member[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [tagInput, setTagInput] = useState('')
@@ -89,9 +198,7 @@ export default function EventForm({
     handleSubmit,
     watch,
     control,
-    trigger,
     setValue,
-    getValues,
     formState: { errors },
   } = useForm<any>({
     defaultValues: event
@@ -128,6 +235,7 @@ export default function EventForm({
           bannerImage: event.bannerImage || '',
           contactEmail: event.contactEmail || '',
           contactPhone: event.contactPhone || '',
+          websiteUrl: event.websiteUrl || '',
           tags: event.tags || [],
         }
       : {
@@ -160,6 +268,7 @@ export default function EventForm({
           bannerImage: '',
           contactEmail: '',
           contactPhone: '',
+          websiteUrl: '',
           tags: [],
         },
   })
@@ -173,17 +282,37 @@ export default function EventForm({
     name: 'committee',
   })
 
-  const {
-    fields: customFieldsArray,
-    append: appendCustomField,
-    remove: removeCustomField,
-  } = useFieldArray({
-    control,
-    name: 'registrationSettings.customFields',
-  })
+  // Enhanced registration settings state
+  const [customFields, setCustomFields] = useState<EnhancedCustomField[]>(
+    (event?.registrationSettings?.customFields as EnhancedCustomField[]) || []
+  )
+  const [formSections, setFormSections] = useState<FormSection[]>(
+    event?.registrationSettings?.formSections || []
+  )
+  const [formLayout, setFormLayout] = useState<FormLayout>(
+    event?.registrationSettings?.formLayout || 'single-page'
+  )
+  const [formStatus, setFormStatus] = useState<FormStatus>(
+    event?.registrationSettings?.formStatus || 'draft'
+  )
+  const [qrCodeEnabled, setQrCodeEnabled] = useState(
+    event?.registrationSettings?.qrCodeEnabled || false
+  )
+  const [formHeader, setFormHeader] = useState<FormHeader>(
+    event?.registrationSettings?.formHeader || {}
+  )
+  const [successMessage, setSuccessMessage] = useState<SuccessMessage>(
+    event?.registrationSettings?.successMessage || {}
+  )
+  const [termsAndConditions, setTermsAndConditions] = useState<TermsAndConditions>(
+    event?.registrationSettings?.termsAndConditions || { enabled: false }
+  )
 
   const watchedTags = watch('tags') || []
   const watchedIsVirtual = watch('location.isVirtual')
+  const watchedType = watch('type')
+  const watchedStatus = watch('status')
+  const watchedTitle = watch('title')
 
   useEffect(() => {
     loadMembers()
@@ -201,19 +330,6 @@ export default function EventForm({
     }
   }
 
-  const handleNext = async () => {
-    const isValid = await trigger()
-    if (isValid && currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1)
-    }
-  }
-
-  const handlePrevious = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
-    }
-  }
-
   const addTag = () => {
     if (tagInput.trim() && !watchedTags.includes(tagInput.trim())) {
       setValue('tags', [...watchedTags, tagInput.trim()])
@@ -226,6 +342,9 @@ export default function EventForm({
     setValue('tags', newTags)
   }
 
+  const selectedType = eventTypes.find(t => t.value === watchedType)
+  const selectedStatus = eventStatuses.find(s => s.value === watchedStatus)
+
   const onFormSubmit = async (data: any) => {
     const formattedData: CreateEventData | UpdateEventData = {
       ...data,
@@ -236,580 +355,538 @@ export default function EventForm({
         maxAttendees: data.registrationSettings.maxAttendees
           ? parseInt(data.registrationSettings.maxAttendees)
           : undefined,
+        customFields: customFields,
+        formSections: formSections,
+        formLayout: formLayout,
+        formStatus: formStatus,
+        qrCodeEnabled: qrCodeEnabled,
+        formHeader: formHeader,
+        successMessage: successMessage,
+        termsAndConditions: termsAndConditions,
       },
     }
     await onSubmit(formattedData)
   }
 
-  const renderStepIndicator = () => (
-    <div className="mb-8">
-      <div className="flex items-center justify-between">
-        {stepConfig.map((step, index) => {
-          const stepNumber = index + 1
-          const isCompleted = stepNumber < currentStep
-          const isCurrent = stepNumber === currentStep
-          const Icon = step.icon
-
-          return (
-            <React.Fragment key={stepNumber}>
-              <div className="flex flex-col items-center">
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(stepNumber)}
-                  className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-200',
-                    isCompleted && 'bg-primary-600 border-primary-600 text-white',
-                    isCurrent && 'border-primary-600 text-primary-600 bg-primary-50',
-                    !isCompleted && !isCurrent && 'border-gray-300 text-gray-400'
-                  )}
-                >
-                  {isCompleted ? (
-                    <Check className="h-5 w-5" />
-                  ) : (
-                    <Icon className="h-5 w-5" />
-                  )}
-                </button>
-                <span
-                  className={cn(
-                    'mt-2 text-sm font-medium hidden md:block',
-                    isCurrent && 'text-primary-600',
-                    !isCurrent && 'text-gray-500'
-                  )}
-                >
-                  {step.title}
-                </span>
-              </div>
-              {index < stepConfig.length - 1 && (
-                <div
-                  className={cn(
-                    'flex-1 h-0.5 mx-4',
-                    stepNumber < currentStep ? 'bg-primary-600' : 'bg-gray-200'
-                  )}
-                />
+  // Tab: Event Details
+  const renderDetailsTab = () => (
+    <div className="space-y-4">
+      {/* Basic Info Section */}
+      <CollapsibleSection title="Basic Information" icon={Sparkles} defaultOpen={true}>
+        <div className="space-y-4">
+          {/* Title with Type Selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Event Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              {...register('title', { required: 'Title is required' })}
+              placeholder="Enter a memorable event title"
+              className={cn(
+                "w-full rounded-lg border border-gray-300 px-4 py-3 text-lg font-medium",
+                "focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500",
+                "placeholder:text-gray-400 placeholder:font-normal",
+                errors.title && "border-red-300"
               )}
-            </React.Fragment>
-          )
-        })}
-      </div>
-    </div>
-  )
+            />
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-600">{errors.title?.message as string}</p>
+            )}
+          </div>
 
-  const renderStep1 = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Event Title *
-          </label>
-          <Input
-            {...register('title', { required: 'Title is required' })}
-            placeholder="Enter event title"
-            error={errors.title?.message as string}
-          />
+          {/* Type and Status Row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Event Type
+              </label>
+              <div className="relative">
+                <select
+                  {...register('type')}
+                  className="w-full appearance-none rounded-lg border border-gray-300 bg-white pl-10 pr-8 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                >
+                  {eventTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.icon} {type.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-lg">
+                  {selectedType?.icon}
+                </div>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Status
+              </label>
+              <div className="relative">
+                <select
+                  {...register('status')}
+                  className={cn(
+                    "w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 pr-8 py-2.5",
+                    "focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  )}
+                >
+                  {eventStatuses.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Description
+            </label>
+            <textarea
+              {...register('description')}
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 placeholder:text-gray-400 resize-none"
+              placeholder="Describe your event..."
+            />
+          </div>
         </div>
+      </CollapsibleSection>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Event Type *
-          </label>
-          <select
-            {...register('type', { required: 'Type is required' })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {eventTypes.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Status
-          </label>
-          <select
-            {...register('status')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {eventStatuses.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Start Date *
-          </label>
-          <Input
+      {/* Date & Time Section */}
+      <CollapsibleSection title="Date & Time" icon={Clock} defaultOpen={true}>
+        <div className="grid grid-cols-2 gap-3">
+          <IconInput
+            icon={Calendar}
+            label="Start Date"
             type="date"
             {...register('startDate', { required: 'Start date is required' })}
             error={errors.startDate?.message as string}
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            End Date *
-          </label>
-          <Input
+          <IconInput
+            icon={Calendar}
+            label="End Date"
             type="date"
             {...register('endDate', { required: 'End date is required' })}
             error={errors.endDate?.message as string}
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Start Time
-          </label>
-          <Input type="time" {...register('startTime')} />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            End Time
-          </label>
-          <Input type="time" {...register('endTime')} />
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description
-          </label>
-          <textarea
-            {...register('description')}
-            rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Enter event description"
+          <IconInput
+            icon={Clock}
+            label="Start Time"
+            type="time"
+            {...register('startTime')}
+          />
+          <IconInput
+            icon={Clock}
+            label="End Time"
+            type="time"
+            {...register('endTime')}
           />
         </div>
-      </div>
-    </div>
-  )
+      </CollapsibleSection>
 
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <div className="flex items-center mb-4">
-        <input
-          type="checkbox"
-          {...register('location.isVirtual')}
-          id="isVirtual"
-          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-        />
-        <label htmlFor="isVirtual" className="ml-2 text-sm text-gray-700">
-          This is a virtual event
-        </label>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {watchedIsVirtual ? 'Event Name/Platform' : 'Venue Name'} *
-          </label>
-          <Input
-            {...register('location.name', { required: 'Location name is required' })}
-            placeholder={watchedIsVirtual ? 'e.g., Zoom Meeting' : 'e.g., Main Auditorium'}
-            error={errors.location?.name?.message as string}
-          />
-        </div>
-
-        {watchedIsVirtual ? (
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Virtual Meeting Link
-            </label>
-            <Input
-              {...register('location.virtualLink')}
-              placeholder="https://..."
-              type="url"
-            />
-          </div>
-        ) : (
-          <>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Address
-              </label>
-              <Input
-                {...register('location.address')}
-                placeholder="Street address"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                City
-              </label>
-              <Input {...register('location.city')} placeholder="City" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                State
-              </label>
-              <Input {...register('location.state')} placeholder="State" />
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-
-  const renderStep3 = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="md:col-span-2">
-          <div className="flex items-center mb-4">
+      {/* Location Section */}
+      <CollapsibleSection title="Location" icon={MapPin} defaultOpen={true}>
+        <div className="space-y-4">
+          {/* Virtual Toggle */}
+          <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
             <input
               type="checkbox"
-              {...register('registrationSettings.isOpen')}
-              id="isOpen"
+              {...register('location.isVirtual')}
               className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
             />
-            <label htmlFor="isOpen" className="ml-2 text-sm text-gray-700">
-              Registration is open
-            </label>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Maximum Attendees
-          </label>
-          <Input
-            type="number"
-            {...register('registrationSettings.maxAttendees')}
-            placeholder="Leave empty for unlimited"
-            min={1}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Registration Deadline
-          </label>
-          <Input type="date" {...register('registrationSettings.deadline')} />
-        </div>
-
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            {...register('registrationSettings.requireApproval')}
-            id="requireApproval"
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-          />
-          <label htmlFor="requireApproval" className="ml-2 text-sm text-gray-700">
-            Require approval for registrations
-          </label>
-        </div>
-
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            {...register('registrationSettings.allowWaitlist')}
-            id="allowWaitlist"
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-          />
-          <label htmlFor="allowWaitlist" className="ml-2 text-sm text-gray-700">
-            Allow waitlist when full
-          </label>
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Registration URL Slug
-          </label>
-          <div className="flex items-center">
-            <span className="text-gray-500 text-sm mr-2">/event-registration/</span>
-            <Input
-              {...register('registrationSlug')}
-              placeholder="my-event-2025"
-              className="flex-1"
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            This will be used for the public registration link
-          </p>
-        </div>
-      </div>
-
-      <div className="border-t pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="font-medium text-gray-900">Custom Registration Fields</h4>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() =>
-              appendCustomField({
-                id: `field-${Date.now()}`,
-                label: '',
-                type: 'text',
-                required: false,
-                options: [],
-              })
-            }
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Field
-          </Button>
-        </div>
-
-        {customFieldsArray.map((field, index) => (
-          <div key={field.id} className="border rounded-lg p-4 mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Field Label
-                </label>
-                <Input
-                  {...register(`registrationSettings.customFields.${index}.label`)}
-                  placeholder="e.g., Dietary Requirements"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Field Type
-                </label>
-                <select
-                  {...register(`registrationSettings.customFields.${index}.type`)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="text">Text</option>
-                  <option value="textarea">Textarea</option>
-                  <option value="select">Select</option>
-                  <option value="checkbox">Checkbox</option>
-                  <option value="radio">Radio</option>
-                </select>
-              </div>
-              <div className="flex items-end gap-2">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    {...register(`registrationSettings.customFields.${index}.required`)}
-                    className="h-4 w-4 text-primary-600 border-gray-300 rounded"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">Required</label>
-                </div>
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={() => removeCustomField(index)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="flex items-center gap-2">
+              <Video className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">This is a virtual event</span>
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+          </label>
 
-  const renderStep4 = () => (
-    <div className="space-y-6">
-      <div className="border-b pb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="font-medium text-gray-900">Committee Members</h4>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => appendCommittee({ member: '', role: '' })}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Member
-          </Button>
-        </div>
-
-        {committeeFields.map((field, index) => (
-          <div key={field.id} className="flex gap-4 mb-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Member
-              </label>
-              <select
-                {...register(`committee.${index}.member`)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                disabled={loadingMembers}
-              >
-                <option value="">Select a member</option>
-                {members.map((member) => (
-                  <option key={member._id} value={member._id}>
-                    {member.firstName} {member.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role
-              </label>
-              <Input
-                {...register(`committee.${index}.role`)}
-                placeholder="e.g., Coordinator"
+          {watchedIsVirtual ? (
+            <div className="space-y-3">
+              <IconInput
+                icon={Globe}
+                label="Platform Name"
+                placeholder="e.g., Zoom, Google Meet"
+                {...register('location.name', { required: 'Platform name is required' })}
+                error={(errors.location as any)?.name?.message as string}
+              />
+              <IconInput
+                icon={Globe}
+                label="Meeting Link"
+                type="url"
+                placeholder="https://..."
+                {...register('location.virtualLink')}
               />
             </div>
-            <div className="flex items-end">
-              <Button
+          ) : (
+            <div className="space-y-3">
+              <IconInput
+                icon={Building}
+                label="Venue Name"
+                placeholder="e.g., Main Auditorium"
+                {...register('location.name', { required: 'Venue name is required' })}
+                error={(errors.location as any)?.name?.message as string}
+              />
+              <IconInput
+                icon={MapPin}
+                label="Address"
+                placeholder="Street address"
+                {...register('location.address')}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <IconInput
+                  label="City"
+                  placeholder="City"
+                  {...register('location.city')}
+                />
+                <IconInput
+                  label="State"
+                  placeholder="State"
+                  {...register('location.state')}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      {/* Team & Contact Section */}
+      <CollapsibleSection title="Team & Contact" icon={Users} defaultOpen={false} badge={committeeFields.length}>
+        <div className="space-y-4">
+          {/* Committee Members */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-gray-700">Committee Members</label>
+              <button
                 type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => removeCommittee(index)}
+                onClick={() => appendCommittee({ member: '', role: '' })}
+                className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
               >
-                <Trash2 className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
+                Add
+              </button>
+            </div>
+
+            {committeeFields.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
+                No committee members added
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {committeeFields.map((field, index) => (
+                  <div key={field.id} className="flex gap-2 items-start">
+                    <select
+                      {...register(`committee.${index}.member`)}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                      disabled={loadingMembers}
+                    >
+                      <option value="">Select member</option>
+                      {members.map((member) => (
+                        <option key={member._id} value={member._id}>
+                          {member.firstName} {member.lastName}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      {...register(`committee.${index}.role`)}
+                      placeholder="Role"
+                      className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeCommittee(index)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Contact Info */}
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <IconInput
+              icon={Mail}
+              label="Contact Email"
+              type="email"
+              placeholder="events@church.org"
+              {...register('contactEmail')}
+            />
+            <IconInput
+              icon={Phone}
+              label="Contact Phone"
+              placeholder="+234..."
+              {...register('contactPhone')}
+            />
+          </div>
+
+          {/* Website URL */}
+          <div className="pt-2">
+            <IconInput
+              icon={Link}
+              label="Event Website URL"
+              type="url"
+              placeholder="https://event-website.com"
+              {...register('websiteUrl')}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Optional: Add a dedicated website URL if this event has its own website
+            </p>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Tags & Media Section */}
+      <CollapsibleSection title="Tags & Media" icon={Tag} defaultOpen={false} badge={watchedTags.length}>
+        <div className="space-y-4">
+          <IconInput
+            icon={Image}
+            label="Banner Image URL"
+            placeholder="https://..."
+            {...register('bannerImage')}
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Tags
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  placeholder="Add a tag"
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                  className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+              <Button type="button" variant="secondary" onClick={addTag}>
+                Add
               </Button>
             </div>
-          </div>
-        ))}
-
-        {committeeFields.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
-            No committee members added yet
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <Mail className="inline h-4 w-4 mr-1" />
-            Contact Email
-          </label>
-          <Input
-            type="email"
-            {...register('contactEmail')}
-            placeholder="events@church.org"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <Phone className="inline h-4 w-4 mr-1" />
-            Contact Phone
-          </label>
-          <Input
-            {...register('contactPhone')}
-            placeholder="+234..."
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <Image className="inline h-4 w-4 mr-1" />
-            Banner Image URL
-          </label>
-          <Input
-            {...register('bannerImage')}
-            placeholder="https://..."
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <Tag className="inline h-4 w-4 mr-1" />
-            Tags
-          </label>
-          <div className="flex gap-2 mb-2">
-            <Input
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              placeholder="Add a tag"
-              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-            />
-            <Button type="button" variant="secondary" onClick={addTag}>
-              Add
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {watchedTags.map((tag: string, index: number) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-3 py-1 rounded-full bg-primary-100 text-primary-700 text-sm"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeTag(index)}
-                  className="ml-2 text-primary-500 hover:text-primary-700"
-                >
-                  &times;
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
-  return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Card>
-        <div className="p-6">
-          {renderStepIndicator()}
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {currentStep === 1 && renderStep1()}
-              {currentStep === 2 && renderStep2()}
-              {currentStep === 3 && renderStep3()}
-              {currentStep === 4 && renderStep4()}
-            </motion.div>
-          </AnimatePresence>
-
-          <div className="mt-8 pt-6 border-t flex justify-between">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={currentStep === 1 ? onCancel : handlePrevious}
-            >
-              {currentStep === 1 ? (
-                'Cancel'
-              ) : (
-                <>
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </>
-              )}
-            </Button>
-
-            {currentStep < totalSteps ? (
-              <Button type="button" onClick={handleNext}>
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            ) : (
-              <Button type="submit" disabled={loading}>
-                {loading ? (
-                  'Saving...'
-                ) : mode === 'create' ? (
-                  <>
-                    <Check className="h-4 w-4 mr-1" />
-                    Create Event
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-1" />
-                    Update Event
-                  </>
-                )}
-              </Button>
+            {watchedTags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {watchedTags.map((tag: string, index: number) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary-50 text-primary-700 text-sm font-medium"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(index)}
+                      className="hover:text-primary-900 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
-      </Card>
+      </CollapsibleSection>
+    </div>
+  )
+
+  // Tab: Registration Form
+  const renderRegistrationTab = () => {
+    const watchedIsOpen = watch('registrationSettings.isOpen')
+    const watchedMaxAttendees = watch('registrationSettings.maxAttendees')
+    const watchedDeadline = watch('registrationSettings.deadline')
+    const watchedRequireApproval = watch('registrationSettings.requireApproval')
+    const watchedAllowWaitlist = watch('registrationSettings.allowWaitlist')
+    const watchedSlug = watch('registrationSlug')
+
+    return (
+      <FormBuilderStep
+        isOpen={watchedIsOpen}
+        maxAttendees={watchedMaxAttendees}
+        deadline={watchedDeadline}
+        requireApproval={watchedRequireApproval}
+        allowWaitlist={watchedAllowWaitlist}
+        registrationSlug={watchedSlug}
+        customFields={customFields}
+        formLayout={formLayout}
+        formSections={formSections}
+        qrCodeEnabled={qrCodeEnabled}
+        formHeader={formHeader}
+        successMessage={successMessage}
+        termsAndConditions={termsAndConditions}
+        formStatus={formStatus}
+        eventTitle={watchedTitle}
+        onIsOpenChange={(value) => setValue('registrationSettings.isOpen', value)}
+        onMaxAttendeesChange={(value) => setValue('registrationSettings.maxAttendees', value)}
+        onDeadlineChange={(value) => setValue('registrationSettings.deadline', value)}
+        onRequireApprovalChange={(value) => setValue('registrationSettings.requireApproval', value)}
+        onAllowWaitlistChange={(value) => setValue('registrationSettings.allowWaitlist', value)}
+        onRegistrationSlugChange={(value) => setValue('registrationSlug', value)}
+        onCustomFieldsChange={setCustomFields}
+        onFormLayoutChange={setFormLayout}
+        onFormSectionsChange={setFormSections}
+        onQrCodeEnabledChange={setQrCodeEnabled}
+        onFormHeaderChange={setFormHeader}
+        onSuccessMessageChange={setSuccessMessage}
+        onTermsAndConditionsChange={setTermsAndConditions}
+        onFormStatusChange={setFormStatus}
+      />
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onFormSubmit)} className="h-full flex flex-col">
+      {/* Header with Title Preview and Status */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {selectedType && (
+                <span className="text-2xl">{selectedType.icon}</span>
+              )}
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {watchedTitle || (mode === 'create' ? 'New Event' : 'Edit Event')}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  {mode === 'create' ? 'Create a new event' : 'Update event details'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {selectedStatus && (
+              <span className={cn(
+                "px-3 py-1 rounded-full text-sm font-medium",
+                selectedStatus.color
+              )}>
+                {selectedStatus.label}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="px-6">
+          <nav className="flex gap-1">
+            {tabs.map((tab, index) => {
+              const Icon = tab.icon
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors rounded-t-lg",
+                    isActive
+                      ? "text-primary-600 bg-primary-50"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                >
+                  <span className={cn(
+                    "flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold",
+                    isActive ? "bg-primary-600 text-white" : "bg-gray-200 text-gray-600"
+                  )}>
+                    {index + 1}
+                  </span>
+                  <Icon className="h-4 w-4" />
+                  <span>{tab.label}</span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-y-auto bg-gray-50">
+        <div className="max-w-4xl mx-auto p-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              {activeTab === 'details' && renderDetailsTab()}
+              {activeTab === 'registration' && renderRegistrationTab()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Floating Action Bar */}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 shadow-lg">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            className="flex items-center gap-2"
+          >
+            <X className="h-4 w-4" />
+            Cancel
+          </Button>
+
+          <div className="flex items-center gap-3">
+            {activeTab === 'details' && (
+              <Button
+                type="button"
+                onClick={() => setActiveTab('registration')}
+                className="flex items-center gap-2"
+              >
+                Next: Registration
+                <FileText className="h-4 w-4" />
+              </Button>
+            )}
+            {activeTab === 'registration' && (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setActiveTab('details')}
+                  className="flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Back to Details
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="flex items-center gap-2 min-w-[140px] justify-center"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      {mode === 'create' ? 'Create Event' : 'Save Changes'}
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </form>
   )
 }

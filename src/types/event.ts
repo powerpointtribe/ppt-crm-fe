@@ -1,4 +1,34 @@
 import { Member } from './index'
+import {
+  EnhancedCustomField,
+  EnhancedRegistrationSettings,
+  FormSection,
+  FormHeader,
+  SuccessMessage,
+  TermsAndConditions,
+  FieldValidation,
+  ConditionalLogic,
+  ConditionalRule,
+  CustomFieldType,
+  FormLayout,
+  FormStatus,
+} from './registration-form'
+
+// Re-export registration form types for convenience
+export type {
+  EnhancedCustomField,
+  EnhancedRegistrationSettings,
+  FormSection,
+  FormHeader,
+  SuccessMessage,
+  TermsAndConditions,
+  FieldValidation,
+  ConditionalLogic,
+  ConditionalRule,
+  CustomFieldType,
+  FormLayout,
+  FormStatus,
+}
 
 // Event types
 export type EventType =
@@ -38,16 +68,23 @@ export interface EventLocation {
   virtualLink?: string
 }
 
-// Custom field for registration
+// Custom field for registration (legacy - kept for backwards compatibility)
 export interface CustomField {
   id: string
   label: string
-  type: 'text' | 'textarea' | 'select' | 'checkbox' | 'radio'
+  type: 'text' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'email' | 'phone' | 'number' | 'date' | 'time' | 'rating' | 'multi-checkbox'
   required: boolean
   options?: string[]
+  placeholder?: string
+  helpText?: string
+  description?: string
+  sectionId?: string
+  order: number
+  validation?: FieldValidation
+  conditionalLogic?: ConditionalLogic
 }
 
-// Registration settings
+// Registration settings (enhanced with new fields)
 export interface RegistrationSettings {
   isOpen: boolean
   maxAttendees?: number
@@ -55,6 +92,13 @@ export interface RegistrationSettings {
   requireApproval: boolean
   allowWaitlist: boolean
   customFields: CustomField[]
+  formLayout?: FormLayout
+  formSections?: FormSection[]
+  qrCodeEnabled?: boolean
+  formHeader?: FormHeader
+  successMessage?: SuccessMessage
+  termsAndConditions?: TermsAndConditions
+  formStatus?: FormStatus
 }
 
 // Committee member
@@ -87,6 +131,7 @@ export interface Event {
   bannerImage?: string
   contactEmail?: string
   contactPhone?: string
+  websiteUrl?: string
   tags: string[]
   registrationCount: number
   confirmedCount: number
@@ -165,6 +210,7 @@ export interface CreateEventData {
   bannerImage?: string
   contactEmail?: string
   contactPhone?: string
+  websiteUrl?: string
   tags?: string[]
 }
 
@@ -261,7 +307,7 @@ export interface SessionFacilitator {
 
 export interface SessionAssessmentConfig {
   hasAssessment: boolean
-  type?: 'quiz' | 'assignment' | 'practical' | 'presentation'
+  assessmentType?: 'quiz' | 'assignment' | 'practical' | 'presentation'
   passingScore?: number
   maxScore?: number
   required?: boolean

@@ -103,6 +103,30 @@ const EventNew = lazy(() => import('@/pages/Events/EventNew'))
 const EventDetail = lazy(() => import('@/pages/Events/EventDetail'))
 const EventEdit = lazy(() => import('@/pages/Events/EventEdit'))
 
+// Library Management
+const LibraryDashboard = lazy(() => import('@/pages/Library/LibraryDashboard'))
+const Books = lazy(() => import('@/pages/Library/Books'))
+const BookNew = lazy(() => import('@/pages/Library/BookNew'))
+const BookDetail = lazy(() => import('@/pages/Library/BookDetail'))
+const BookEdit = lazy(() => import('@/pages/Library/BookEdit'))
+const LibraryCategories = lazy(() => import('@/pages/Library/Categories'))
+const Borrowings = lazy(() => import('@/pages/Library/Borrowings'))
+const BorrowingNew = lazy(() => import('@/pages/Library/BorrowingNew'))
+const OverdueBooks = lazy(() => import('@/pages/Library/OverdueBooks'))
+const MemberBorrowingHistory = lazy(() => import('@/pages/Library/MemberHistory'))
+
+// Bulk Email Management
+const BulkEmailDashboard = lazy(() => import('@/pages/BulkEmail/BulkEmailDashboard'))
+const EmailTemplates = lazy(() => import('@/pages/BulkEmail/Templates'))
+const EmailTemplateNew = lazy(() => import('@/pages/BulkEmail/TemplateNew'))
+const EmailTemplateDetail = lazy(() => import('@/pages/BulkEmail/TemplateDetail'))
+const EmailTemplateEdit = lazy(() => import('@/pages/BulkEmail/TemplateEdit'))
+const EmailCampaigns = lazy(() => import('@/pages/BulkEmail/Campaigns'))
+const EmailCampaignNew = lazy(() => import('@/pages/BulkEmail/CampaignNew'))
+const EmailCampaignDetail = lazy(() => import('@/pages/BulkEmail/CampaignDetail'))
+const EmailCampaignEdit = lazy(() => import('@/pages/BulkEmail/CampaignEdit'))
+const EmailSendHistory = lazy(() => import('@/pages/BulkEmail/SendHistory'))
+
 // Wrapper for lazy components with smooth loading
 function LazyPage({ children }: { children: React.ReactNode }) {
   return (
@@ -537,6 +561,110 @@ function App() {
           <Route path="/events/:id/edit" element={
             <ProtectedRoute>
               <LazyPage><EventEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
+
+          {/* Library Management */}
+          <Route path="/library" element={
+            <ProtectedRoute>
+              <LazyPage><LibraryDashboard /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/books" element={
+            <ProtectedRoute>
+              <LazyPage><Books /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/books/new" element={
+            <ProtectedRoute>
+              <LazyPage><BookNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/books/:id" element={
+            <ProtectedRoute>
+              <LazyPage><BookDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/books/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><BookEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/categories" element={
+            <ProtectedRoute>
+              <LazyPage><LibraryCategories /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/borrowings" element={
+            <ProtectedRoute>
+              <LazyPage><Borrowings /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/borrowings/new" element={
+            <ProtectedRoute>
+              <LazyPage><BorrowingNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/overdue" element={
+            <ProtectedRoute>
+              <LazyPage><OverdueBooks /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/library/member/:memberId" element={
+            <ProtectedRoute>
+              <LazyPage><MemberBorrowingHistory /></LazyPage>
+            </ProtectedRoute>
+          } />
+
+          {/* Bulk Email Management */}
+          <Route path="/bulk-email" element={
+            <ProtectedRoute>
+              <LazyPage><BulkEmailDashboard /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/templates" element={
+            <ProtectedRoute>
+              <LazyPage><EmailTemplates /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/templates/new" element={
+            <ProtectedRoute>
+              <LazyPage><EmailTemplateNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/templates/:id" element={
+            <ProtectedRoute>
+              <LazyPage><EmailTemplateDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/templates/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><EmailTemplateEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/campaigns" element={
+            <ProtectedRoute>
+              <LazyPage><EmailCampaigns /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/campaigns/new" element={
+            <ProtectedRoute>
+              <LazyPage><EmailCampaignNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/campaigns/:id" element={
+            <ProtectedRoute>
+              <LazyPage><EmailCampaignDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/campaigns/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><EmailCampaignEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/history" element={
+            <ProtectedRoute>
+              <LazyPage><EmailSendHistory /></LazyPage>
             </ProtectedRoute>
           } />
         </Routes>

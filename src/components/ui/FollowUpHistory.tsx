@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import {
-  Calendar, Phone, Mail, MessageSquare, Video, Home,
+  Calendar, Phone, Mail, MessageSquare, Home,
   User, Clock, CheckCircle, AlertCircle, XCircle,
   ArrowRight, Plus
 } from 'lucide-react'
@@ -23,7 +23,6 @@ const getMethodIcon = (method: FollowUpRecord['method']) => {
     case 'sms': return MessageSquare
     case 'whatsapp': return MessageSquare
     case 'visit': return Home
-    case 'video_call': return Video
     default: return Phone
   }
 }
@@ -35,7 +34,6 @@ const getMethodColor = (method: FollowUpRecord['method']) => {
     case 'sms': return 'text-purple-600 bg-purple-100'
     case 'whatsapp': return 'text-green-600 bg-green-100'
     case 'visit': return 'text-orange-600 bg-orange-100'
-    case 'video_call': return 'text-indigo-600 bg-indigo-100'
     default: return 'text-gray-600 bg-gray-100'
   }
 }
@@ -84,7 +82,6 @@ const formatMethodLabel = (method: FollowUpRecord['method']) => {
     case 'sms': return 'SMS/Text'
     case 'whatsapp': return 'WhatsApp'
     case 'visit': return 'Home Visit'
-    case 'video_call': return 'Video Call'
     default: return method
   }
 }
@@ -214,7 +211,7 @@ export default function FollowUpHistory({
                       </div>
                     </div>
 
-                    <p className="text-sm text-gray-700 mb-3 leading-relaxed">
+                    <p className="text-xs text-gray-700 mb-3">
                       {followUp.notes}
                     </p>
 

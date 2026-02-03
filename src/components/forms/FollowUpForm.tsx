@@ -9,7 +9,7 @@ import { cn } from '@/utils/cn'
 
 const followUpSchema = z.object({
   date: z.string().min(1, 'Date is required'),
-  method: z.enum(['phone', 'email', 'sms', 'whatsapp', 'visit', 'video_call', 'in_visit'], {
+  method: z.enum(['phone', 'email', 'sms', 'whatsapp', 'visit', 'in_visit'], {
     required_error: 'Select a contact method'
   }),
   notes: z.string().min(1, 'Notes are required'),
@@ -44,7 +44,6 @@ const contactMethods = [
   { value: 'sms', label: 'SMS' },
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'visit', label: 'Visit' },
-  { value: 'video_call', label: 'Video' },
   { value: 'in_visit', label: 'In-Visit' }
 ]
 

@@ -4,7 +4,7 @@ import { transformPaginatedResponse, transformSingleResponse } from '@/utils/api
 
 export interface FollowUpRecord {
   date: string
-  method: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit' | 'video_call' | 'in_visit'
+  method: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit' | 'in_visit'
   notes: string
   outcome: 'successful' | 'no_answer' | 'busy' | 'not_interested' | 'interested' | 'follow_up_needed'
   contactedBy: string | {
@@ -31,7 +31,7 @@ export interface CallReport {
   attended3rdService: boolean
   attended4thService: boolean
 
-  contactMethod: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit' | 'video_call'
+  contactMethod: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit'
   nextFollowUpDate?: string
   reportNumber: number // 1-4
   createdAt: string

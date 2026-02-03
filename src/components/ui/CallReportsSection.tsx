@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, Edit, Trash2, Phone, Mail, MessageSquare, Video, Home,
+  Plus, Edit, Trash2, Phone, Mail, MessageSquare, Home,
   CheckCircle, Clock, AlertCircle, Users, Calendar, FileText
 } from 'lucide-react'
 import Card from '@/components/ui/Card'
@@ -21,7 +21,6 @@ const getContactMethodIcon = (method: string) => {
     case 'email': return Mail
     case 'sms':
     case 'whatsapp': return MessageSquare
-    case 'video_call': return Video
     case 'visit': return Home
     default: return Phone
   }

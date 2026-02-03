@@ -1,13 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Phone,
-  Search,
   Filter,
   TrendingUp,
   Clock,
-  CheckCircle,
   Users,
   Calendar,
   User,
@@ -38,7 +36,7 @@ interface CallReport {
     email?: string
   }
   status: 'successful' | 'no_answer' | 'busy' | 'not_interested' | 'interested' | 'follow_up_needed' | 'completed'
-  contactMethod: 'phone' | 'whatsapp' | 'sms' | 'email' | 'visit' | 'video_call' | 'in_visit'
+  contactMethod: 'phone' | 'whatsapp' | 'sms' | 'email' | 'visit' | 'in_visit'
   callMadeBy: {
     _id: string
     firstName: string
@@ -65,14 +63,19 @@ interface CallReportsAnalytics {
     member: { firstName: string; lastName: string }
     reportCount: number
     contactCount: number
-    pendingFollowUps: number
+    uniqueContacts: number
+    firstTimersManaged: number
     totalAssigned: number
+    expectedContacts: number
+    contactCompletionRate: number
+    pendingFollowUps: number
     closedCount: number
     conversionRate: number
+    avgReportsPerFirstTimer: number
+    overdueFirstTimers: number
   }>
 }
 
-// Helper function to calculate date range from filter
 const getDateRangeFromFilter = (filter: DateRangeFilter): { fromDate: string; toDate: string } => {
   const today = new Date()
   const toDate = today.toISOString().split('T')[0]
@@ -112,26 +115,19 @@ export default function CallReports() {
   const [statsLoading, setStatsLoading] = useState(false)
   const [error, setError] = useState<any>(null)
 
-  // Tab and View State
   const [activeTab, setActiveTab] = useState<'reports' | 'analytics'>('reports')
   const [dateRange, setDateRange] = useState<DateRangeFilter>('7days')
 
-  // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [methodFilter, setMethodFilter] = useState('')
   const [showFilterModal, setShowFilterModal] = useState(false)
 
-  // Temp filter states for modal
   const [tempStatusFilter, setTempStatusFilter] = useState('')
   const [tempMethodFilter, setTempMethodFilter] = useState('')
 
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState<any>(null)
-
-  // Calculate date range from filter
-  const { fromDate: dateFromFilter, toDate: dateToFilter } = getDateRangeFromFilter(dateRange)
 
   const loadReports = useCallback(async (page: number = currentPage) => {
     try {
@@ -205,7 +201,6 @@ export default function CallReports() {
     loadReports(1)
   }
 
-  // Filter modal functions
   const openFilterModal = () => {
     setTempStatusFilter(statusFilter)
     setTempMethodFilter(methodFilter)
@@ -243,7 +238,6 @@ export default function CallReports() {
     setCurrentPage(1)
   }
 
-  // Pagination handlers
   const handlePrevPage = () => {
     if (pagination && pagination.hasPrev) {
       loadReports(currentPage - 1)
@@ -275,6 +269,45 @@ export default function CallReports() {
 
   const hasActiveFilters = !!(statusFilter || methodFilter)
   const activeFilterCount = [statusFilter, methodFilter].filter(Boolean).length
+
+  // Group reports by first timer
+  interface GroupedReport {
+    firstTimerId: string
+    firstTimer: CallReport['firstTimer']
+    contactCount: number
+    lastContactDate: string
+    lastCalledBy: CallReport['callMadeBy']
+  }
+
+  const groupedReports: GroupedReport[] = useMemo(() => {
+    const grouped = reports.reduce((acc, report) => {
+      const ftId = report.firstTimer?._id
+      if (!ftId) return acc
+
+      if (!acc[ftId]) {
+        acc[ftId] = {
+          firstTimerId: ftId,
+          firstTimer: report.firstTimer,
+          contactCount: 0,
+          lastContactDate: report.contactDate,
+          lastCalledBy: report.callMadeBy
+        }
+      }
+
+      acc[ftId].contactCount++
+
+      if (new Date(report.contactDate) > new Date(acc[ftId].lastContactDate)) {
+        acc[ftId].lastContactDate = report.contactDate
+        acc[ftId].lastCalledBy = report.callMadeBy
+      }
+
+      return acc
+    }, {} as Record<string, GroupedReport>)
+
+    return Object.values(grouped).sort(
+      (a, b) => new Date(b.lastContactDate).getTime() - new Date(a.lastContactDate).getTime()
+    )
+  }, [reports])
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -309,36 +342,9 @@ export default function CallReports() {
       case 'sms': return <Phone className="w-4 h-4" />
       case 'email': return <User className="w-4 h-4" />
       case 'visit': return <User className="w-4 h-4" />
-      case 'video_call': return <Phone className="w-4 h-4" />
       case 'in_visit': return <Users className="w-4 h-4" />
       default: return <Phone className="w-4 h-4" />
     }
-  }
-
-  const getMethodLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      phone: 'Phone',
-      whatsapp: 'WhatsApp',
-      sms: 'SMS',
-      email: 'Email',
-      visit: 'Visit',
-      video_call: 'Video Call',
-      in_visit: 'In-Visit',
-    }
-    return labels[method] || method
-  }
-
-  const getVisitBadge = (visitNumber: number) => {
-    const suffix = visitNumber === 2 ? 'nd' : visitNumber === 3 ? 'rd' : 'th'
-    return `${visitNumber}${suffix} Visit`
-  }
-
-  if (error) {
-    return (
-      <Layout title="Call Reports">
-        <ErrorBoundary error={error} />
-      </Layout>
-    )
   }
 
   const statusOptions = [
@@ -357,9 +363,16 @@ export default function CallReports() {
     { value: 'sms', label: 'SMS' },
     { value: 'email', label: 'Email' },
     { value: 'visit', label: 'Visit' },
-    { value: 'video_call', label: 'Video Call' },
     { value: 'in_visit', label: 'In-Visit' },
   ]
+
+  if (error) {
+    return (
+      <Layout title="Call Reports">
+        <ErrorBoundary error={error} />
+      </Layout>
+    )
+  }
 
   return (
     <Layout title="Call Reports" subtitle="Track follow-up conversations and team performance">
@@ -371,7 +384,7 @@ export default function CallReports() {
               <LoadingSpinner size="md" />
             </div>
           )}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -380,11 +393,11 @@ export default function CallReports() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Reports</p>
-                  <p className="text-2xl font-bold text-gray-900">{analytics?.totalReports || 0}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Reports</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">{analytics?.totalReports || 0}</p>
                 </div>
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                 </div>
               </div>
             </motion.div>
@@ -397,11 +410,11 @@ export default function CallReports() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Contacted Today</p>
-                  <p className="text-2xl font-bold text-green-600">{analytics?.contactedToday || 0}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Contacted Today</p>
+                  <p className="text-xl sm:text-2xl font-bold text-green-600">{analytics?.contactedToday || 0}</p>
                 </div>
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Phone className="h-5 w-5 text-green-600" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                 </div>
               </div>
             </motion.div>
@@ -414,11 +427,11 @@ export default function CallReports() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Pending Follow-ups</p>
-                  <p className="text-2xl font-bold text-orange-600">{analytics?.pendingFollowUps || 0}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Pending Follow-ups</p>
+                  <p className="text-xl sm:text-2xl font-bold text-orange-600">{analytics?.pendingFollowUps || 0}</p>
                 </div>
-                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-orange-600" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                 </div>
               </div>
             </motion.div>
@@ -431,11 +444,11 @@ export default function CallReports() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Call Success Rate</p>
-                  <p className="text-2xl font-bold text-purple-600">{analytics?.conversionRate || 0}%</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Call Success Rate</p>
+                  <p className="text-xl sm:text-2xl font-bold text-purple-600">{analytics?.conversionRate || 0}%</p>
                 </div>
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                 </div>
               </div>
             </motion.div>
@@ -443,8 +456,8 @@ export default function CallReports() {
         </div>
 
         {/* Date Range Selector and Tabs */}
-        <div className="flex items-center justify-between border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-200">
+          <nav className="-mb-px flex space-x-4 sm:space-x-8" aria-label="Tabs">
             <button
               onClick={() => handleTabChange('reports')}
               className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
@@ -498,7 +511,7 @@ export default function CallReports() {
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
             onSearchSubmit={handleSearch}
-            searchPlaceholder="Search by caller name..."
+            searchPlaceholder="Search by first timer name..."
             secondaryActions={
               <div className="flex items-center gap-2">
                 <Button
@@ -538,7 +551,7 @@ export default function CallReports() {
             <div className="flex items-center justify-center py-8">
               <LoadingSpinner size="md" />
             </div>
-          ) : reports.length === 0 ? (
+          ) : groupedReports.length === 0 ? (
             <div className="text-center py-16">
               <Phone className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-medium text-gray-900 mb-2">No call reports found</h3>
@@ -553,17 +566,16 @@ export default function CallReports() {
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">First Timer</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Contact Method</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Times Contacted</th>
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Called By</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Contact Date</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Last Contact Date</th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {reports.map((report, index) => (
+                    {groupedReports.map((grouped, index) => (
                       <motion.tr
-                        key={report._id}
+                        key={grouped.firstTimerId}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2, delay: index * 0.02 }}
@@ -572,44 +584,36 @@ export default function CallReports() {
                         <td className="px-4 py-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
-                              {report.firstTimer?.firstName?.charAt(0) || '?'}{report.firstTimer?.lastName?.charAt(0) || '?'}
+                              {grouped.firstTimer?.firstName?.charAt(0) || '?'}{grouped.firstTimer?.lastName?.charAt(0) || '?'}
                             </div>
                             <div>
                               <div className="font-medium text-gray-900">
-                                {report.firstTimer?.firstName || 'Unknown'} {report.firstTimer?.lastName || ''}
+                                {grouped.firstTimer?.firstName || 'Unknown'} {grouped.firstTimer?.lastName || ''}
                               </div>
-                              <div className="text-sm text-gray-500">{report.firstTimer?.phone}</div>
+                              <div className="text-sm text-gray-500">{grouped.firstTimer?.phone}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <Badge variant={getStatusBadgeColor(report.status)}>
-                            {getStatusLabel(report.status)}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
-                            {getMethodIcon(report.contactMethod)}
-                            <span className="text-sm text-gray-900">
-                              {getMethodLabel(report.contactMethod)}
+                            <span className="inline-flex items-center justify-center w-6 h-6 text-sm font-medium text-blue-600 bg-blue-100 rounded-full">
+                              {grouped.contactCount}
                             </span>
-                            {report.contactMethod === 'in_visit' && report.visitNumber && (
-                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                                {getVisitBadge(report.visitNumber)}
-                              </span>
-                            )}
+                            <span className="text-sm text-gray-600">
+                              {grouped.contactCount === 1 ? 'time' : 'times'}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center text-sm text-gray-600">
                             <User className="h-3 w-3 mr-1" />
-                            {report.callMadeBy?.firstName} {report.callMadeBy?.lastName}
+                            {grouped.lastCalledBy?.firstName} {grouped.lastCalledBy?.lastName}
                           </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center text-sm text-gray-600">
                             <Calendar className="h-3 w-3 mr-1" />
-                            {formatDateTime(report.contactDate)}
+                            {formatDate(grouped.lastContactDate)}
                           </div>
                         </td>
                         <td className="px-4 py-4">
@@ -617,7 +621,7 @@ export default function CallReports() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/first-timers/${report.firstTimer?._id}`)}
+                              onClick={() => navigate(`/first-timers/${grouped.firstTimerId}`)}
                               className="p-1"
                             >
                               <Eye className="h-4 w-4" />
@@ -656,14 +660,9 @@ export default function CallReports() {
                     <div>
                       <p className="text-sm text-gray-700">
                         Showing{' '}
-                        <span className="font-medium">{((currentPage - 1) * 10) + 1}</span>
-                        {' '}to{' '}
-                        <span className="font-medium">
-                          {Math.min(currentPage * 10, pagination.total)}
-                        </span>
-                        {' '}of{' '}
-                        <span className="font-medium">{pagination.total}</span>
-                        {' '}results
+                        <span className="font-medium">{groupedReports.length}</span>
+                        {' '}first timer{groupedReports.length !== 1 ? 's' : ''}{' '}
+                        ({pagination.total} total reports)
                       </p>
                     </div>
                     <div>
@@ -725,6 +724,58 @@ export default function CallReports() {
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Team Summary Stats */}
+              {Array.isArray(analytics?.teamPerformance) && analytics.teamPerformance.length > 0 && (
+                <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-100">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Team Overview</h3>
+                  {(() => {
+                    const teamStats = analytics.teamPerformance.reduce((acc, member) => {
+                      acc.totalUniqueContacts += member.uniqueContacts || member.firstTimersManaged || 0
+                      acc.totalContacts += member.reportCount || member.contactCount || 0
+                      acc.totalExpected += member.expectedContacts || member.totalAssigned || 0
+                      acc.totalPending += member.pendingFollowUps || 0
+                      acc.totalOverdue += member.overdueFirstTimers || 0
+                      return acc
+                    }, { totalUniqueContacts: 0, totalContacts: 0, totalExpected: 0, totalPending: 0, totalOverdue: 0 })
+
+                    const overallCompletionRate = teamStats.totalExpected > 0
+                      ? (teamStats.totalUniqueContacts / teamStats.totalExpected) * 100
+                      : 0
+
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <div className="bg-white rounded-lg p-3 border border-gray-200 text-center">
+                          <div className="text-2xl font-bold text-blue-600">{teamStats.totalUniqueContacts}</div>
+                          <div className="text-xs text-gray-500">Unique Contacts</div>
+                        </div>
+                        <div className="bg-white rounded-lg p-3 border border-gray-200 text-center">
+                          <div className="text-2xl font-bold text-green-600">{teamStats.totalContacts}</div>
+                          <div className="text-xs text-gray-500">Total Contacts</div>
+                        </div>
+                        <div className="bg-white rounded-lg p-3 border border-gray-200 text-center">
+                          <div className="text-2xl font-bold text-purple-600">{teamStats.totalExpected}</div>
+                          <div className="text-xs text-gray-500">Expected Contacts</div>
+                        </div>
+                        <div className="bg-white rounded-lg p-3 border border-gray-200 text-center">
+                          <div className={`text-2xl font-bold ${overallCompletionRate >= 70 ? 'text-green-600' : overallCompletionRate >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                            {Math.round(overallCompletionRate)}%
+                          </div>
+                          <div className="text-xs text-gray-500">Completion Rate</div>
+                        </div>
+                        <div className="bg-white rounded-lg p-3 border border-gray-200 text-center">
+                          <div className="text-2xl font-bold text-orange-600">{teamStats.totalPending}</div>
+                          <div className="text-xs text-gray-500">Pending Follow-ups</div>
+                        </div>
+                        <div className="bg-white rounded-lg p-3 border border-gray-200 text-center">
+                          <div className="text-2xl font-bold text-red-600">{teamStats.totalOverdue}</div>
+                          <div className="text-xs text-gray-500">Overdue</div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </Card>
+              )}
+
               {/* Status Distribution */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="p-6">
@@ -762,59 +813,105 @@ export default function CallReports() {
               {/* Team Performance */}
               <Card className="p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Team Performance</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Team Member
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Contacts Made
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pending Follow Ups
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Call Success Rate
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {Array.isArray(analytics?.teamPerformance) ? analytics.teamPerformance.map((member, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                {Array.isArray(analytics?.teamPerformance) && analytics.teamPerformance.length > 0 ? (
+                  <div className="space-y-4">
+                    {analytics.teamPerformance.map((member, index) => {
+                      const uniqueContacts = member.uniqueContacts || member.firstTimersManaged || 0
+                      const totalContacts = member.reportCount || member.contactCount || 0
+                      const expectedContacts = member.expectedContacts || member.totalAssigned || 0
+                      const completionRate = member.contactCompletionRate || (expectedContacts > 0 ? (uniqueContacts / expectedContacts) * 100 : 0)
+                      const avgReportsPerFT = member.avgReportsPerFirstTimer || (uniqueContacts > 0 ? totalContacts / uniqueContacts : 0)
+
+                      return (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="bg-gray-50 rounded-lg p-4 border border-gray-100"
+                        >
+                          {/* Member Header */}
+                          <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center">
-                              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
                                 {member.member?.firstName?.charAt(0)}{member.member?.lastName?.charAt(0)}
                               </div>
-                              <div className="ml-3 text-sm font-medium text-gray-900">
-                                {member.member?.firstName} {member.member?.lastName}
+                              <div className="ml-3">
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {member.member?.firstName} {member.member?.lastName}
+                                </div>
+                                <div className="text-xs text-gray-500">Team Member</div>
                               </div>
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{member.contactCount || member.reportCount}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{member.pendingFollowUps || 0}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={member.conversionRate > 50 ? 'success' : 'warning'}>
-                              {member.conversionRate}%
+                            <Badge variant={member.conversionRate > 50 ? 'success' : member.conversionRate > 25 ? 'warning' : 'error'}>
+                              {member.conversionRate}% Success
                             </Badge>
-                          </td>
-                        </tr>
-                      )) : (
-                        <tr>
-                          <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                            No team performance data available
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+
+                          {/* Contact Metrics */}
+                          <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div className="bg-white rounded-lg p-3 border border-gray-200">
+                              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Unique Contacts</div>
+                              <div className="text-xl font-bold text-blue-600">{uniqueContacts}</div>
+                              <div className="text-xs text-gray-400">First timers reached</div>
+                            </div>
+                            <div className="bg-white rounded-lg p-3 border border-gray-200">
+                              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total Contacts</div>
+                              <div className="text-xl font-bold text-green-600">{totalContacts}</div>
+                              <div className="text-xs text-gray-400">Call reports made</div>
+                            </div>
+                            <div className="bg-white rounded-lg p-3 border border-gray-200">
+                              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Expected Contacts</div>
+                              <div className="text-xl font-bold text-purple-600">{expectedContacts}</div>
+                              <div className="text-xs text-gray-400">Assigned to contact</div>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="mb-4">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-gray-600">Contact Completion</span>
+                              <span className="text-xs font-semibold text-gray-900">{Math.round(completionRate)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full transition-all duration-500 ${
+                                  completionRate >= 80 ? 'bg-green-500' : completionRate >= 50 ? 'bg-blue-500' : completionRate >= 25 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${Math.min(completionRate, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Additional Stats Row */}
+                          <div className="grid grid-cols-4 gap-2 pt-3 border-t border-gray-200">
+                            <div className="text-center">
+                              <div className="text-sm font-semibold text-gray-900">{avgReportsPerFT.toFixed(1)}</div>
+                              <div className="text-xs text-gray-500">Avg Reports/FT</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-sm font-semibold text-orange-600">{member.pendingFollowUps || 0}</div>
+                              <div className="text-xs text-gray-500">Pending</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-sm font-semibold text-red-600">{member.overdueFirstTimers || 0}</div>
+                              <div className="text-xs text-gray-500">Overdue</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-sm font-semibold text-gray-900">{member.conversionRate}%</div>
+                              <div className="text-xs text-gray-500">Success Rate</div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No team performance data available</p>
+                  </div>
+                )}
               </Card>
             </div>
           )

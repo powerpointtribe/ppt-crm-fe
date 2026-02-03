@@ -15,7 +15,6 @@ import {
   Phone,
   Mail,
   MessageSquare,
-  Video,
   Home,
   Users,
   ChevronLeft,
@@ -70,7 +69,6 @@ const contactMethodOptions = [
   { value: 'sms', label: 'SMS/Text' },
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'visit', label: 'In-Person Visit' },
-  { value: 'video_call', label: 'Video Call' },
 ]
 
 const getContactMethodIcon = (method: string) => {
@@ -79,7 +77,6 @@ const getContactMethodIcon = (method: string) => {
     case 'email': return Mail
     case 'sms':
     case 'whatsapp': return MessageSquare
-    case 'video_call': return Video
     case 'visit': return Home
     default: return Phone
   }

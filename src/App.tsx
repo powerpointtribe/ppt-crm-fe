@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { ModuleAccessGuard } from '@/guards'
 import GlobalLoadingIndicator from '@/components/GlobalLoadingIndicator'
@@ -155,12 +155,12 @@ function App() {
 
   return (
     <>
+      <Toaster />
       <OfflineBanner />
       <GlobalLoadingIndicator />
       <ScrollToTop />
       <PWAPrompt />
-      <AnimatePresence mode="wait">
-        <Routes>
+      <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
@@ -667,8 +667,7 @@ function App() {
               <LazyPage><EmailSendHistory /></LazyPage>
             </ProtectedRoute>
           } />
-        </Routes>
-      </AnimatePresence>
+      </Routes>
     </>
   )
 }

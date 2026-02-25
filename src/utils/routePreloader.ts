@@ -169,12 +169,14 @@ export function lazyWithPreload<T extends ComponentType<any>>(
 // Preload common routes on app start
 export function preloadCommonRoutes(): void {
   // Preload most visited routes after initial load
+  // Reduced delay from 2000ms to 500ms for faster perceived performance
   setTimeout(() => {
     routePreloader.preloadMultiple([
       '/dashboard',
       '/members',
+      '/groups',
       '/first-timers',
       '/finance',
     ])
-  }, 2000)
+  }, 500)
 }

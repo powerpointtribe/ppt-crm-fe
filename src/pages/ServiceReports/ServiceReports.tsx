@@ -139,21 +139,24 @@ export default function ServiceReports() {
 
   const loadStats = useCallback(async () => {
     try {
-      const statsData = await serviceReportsService.getServiceReportStats()
+      const statsData = await serviceReportsService.getServiceReportStats({
+        dateFrom: dateFromFilter || undefined,
+        dateTo: dateToFilter || undefined,
+      })
       setStats(statsData)
     } catch (err) {
       console.error('Failed to load stats:', err)
     }
-  }, [])
+  }, [dateFromFilter, dateToFilter])
 
   const loadChartData = useCallback(async () => {
     try {
-      const data = await serviceReportsService.getAttendanceChartData(10)
+      const data = await serviceReportsService.getAttendanceChartData(10, dateFromFilter, dateToFilter)
       setChartData(data)
     } catch (err) {
       console.error('Failed to load chart data:', err)
     }
-  }, [])
+  }, [dateFromFilter, dateToFilter])
 
   useEffect(() => {
     loadReports()

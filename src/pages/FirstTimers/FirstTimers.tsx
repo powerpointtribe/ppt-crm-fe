@@ -36,7 +36,7 @@ export default function FirstTimers() {
     return 'Good evening'
   }
   const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'closed' | 'archived'>('all')
-  const [dateRange, setDateRange] = useState<DateRangeFilter>('3months')
+  const [dateRange, setDateRange] = useState<DateRangeFilter>('all')
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -154,7 +154,7 @@ export default function FirstTimers() {
   const loadStats = useCallback(async () => {
     try {
       setStatsLoading(true)
-      const statsData = await firstTimersService.getFirstTimerStats()
+      const statsData = await firstTimersService.getFirstTimerStats({ dateRange })
       setStats(statsData)
     } catch (error) {
       console.error('Error loading first timer stats:', error)
@@ -163,7 +163,7 @@ export default function FirstTimers() {
     } finally {
       setStatsLoading(false)
     }
-  }, [])
+  }, [dateRange])
 
   const loadArchiveStats = useCallback(async () => {
     try {
@@ -179,7 +179,7 @@ export default function FirstTimers() {
     // Reset to page 1 when filters or tab change
     setCurrentPage(1)
     loadFirstTimers(1, activeTab)
-  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, selectedBranch, activeTab])
+  }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, selectedBranch, activeTab, dateRange])
 
   useEffect(() => {
     loadStats()
@@ -368,6 +368,9 @@ export default function FirstTimers() {
       case 'READY_FOR_INTEGRATION': return 'bg-green-100 text-green-800'
       case 'ARCHIVED': return 'bg-orange-100 text-orange-800'
       case 'CLOSED': return 'bg-purple-100 text-purple-800'
+      case 'CLOSED_MANUAL': return 'bg-gray-100 text-gray-800'
+      case 'CLOSED_MEMBER': return 'bg-emerald-100 text-emerald-800'
+      case 'CLOSED_INACTIVE': return 'bg-slate-100 text-slate-800'
       // Legacy status values
       case 'not_contacted': return 'bg-red-100 text-red-800'
       case 'contacted': return 'bg-blue-100 text-blue-800'
@@ -385,6 +388,9 @@ export default function FirstTimers() {
       case 'READY_FOR_INTEGRATION': return 'Ready for Integration'
       case 'ARCHIVED': return 'Archived'
       case 'CLOSED': return 'Closed'
+      case 'CLOSED_MANUAL': return 'Historical'
+      case 'CLOSED_MEMBER': return 'Became Member'
+      case 'CLOSED_INACTIVE': return 'Inactive'
       // Legacy status values
       case 'not_contacted': return 'Not Contacted'
       case 'contacted': return 'Contacted'

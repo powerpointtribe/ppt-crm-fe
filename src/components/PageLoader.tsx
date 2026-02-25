@@ -30,18 +30,10 @@ export default function PageLoader({ minimal = false }: PageLoaderProps) {
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center gap-4"
-      >
+      <div className="flex flex-col items-center gap-4">
         {/* Animated loader */}
         <div className="relative w-12 h-12">
-          <motion.div
-            className="absolute inset-0 border-2 border-indigo-200 rounded-full"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          />
+          <div className="absolute inset-0 border-2 border-indigo-200 rounded-full" />
           <motion.div
             className="absolute inset-0 border-2 border-transparent border-t-indigo-500 rounded-full"
             animate={{ rotate: 360 }}
@@ -52,15 +44,10 @@ export default function PageLoader({ minimal = false }: PageLoaderProps) {
             }}
           />
         </div>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-sm text-gray-500 dark:text-gray-400"
-        >
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Loading...
-        </motion.p>
-      </motion.div>
+        </p>
+      </div>
     </div>
   )
 }

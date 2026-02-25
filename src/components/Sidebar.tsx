@@ -89,6 +89,12 @@ const menuGroups: MenuGroup[] = [
         hasDropdown: true,
         subItems: [
           {
+            icon: BarChart3,
+            label: 'Analytics',
+            path: '/members/analytics',
+            requiredPermission: 'members:view-stats',
+          },
+          {
             icon: FileText,
             label: 'Reports',
             path: '/members/reports',
@@ -138,26 +144,26 @@ const menuGroups: MenuGroup[] = [
         icon: FolderKanban,
         label: 'Groups',
         path: '/groups',
-        requiredPermission: 'units:view',
+        requiredPermission: 'groups:view',
         hasDropdown: true,
         subItems: [
           {
             icon: MapPin,
             label: 'Districts',
             path: '/groups?page=1&limit=20&search=&type=district',
-            requiredPermission: 'units:view',
+            requiredPermission: 'groups:view',
           },
           {
             icon: Heart,
             label: 'Ministries',
             path: '/groups?page=1&limit=20&search=&type=ministry',
-            requiredPermission: 'units:view',
+            requiredPermission: 'groups:view',
           },
           {
             icon: Building2,
             label: 'Units',
             path: '/groups?page=1&limit=20&search=&type=unit',
-            requiredPermission: 'units:view',
+            requiredPermission: 'groups:view',
           },
         ],
       },

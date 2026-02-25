@@ -251,9 +251,9 @@ export const serviceReportsService = {
     }))
   },
 
-  getAttendanceChartData: async (limit: number = 10): Promise<any[]> => {
+  getAttendanceChartData: async (limit: number = 10, dateFrom?: string, dateTo?: string): Promise<any[]> => {
     const response = await apiService.get<ApiResponse<any[]>>('/service-reports/chart-data', {
-      params: { limit }
+      params: { limit, dateFrom, dateTo }
     })
     return transformSingleResponse<any[]>(response) as any[]
   },

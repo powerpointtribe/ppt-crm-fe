@@ -142,52 +142,19 @@ export default function Groups() {
     if (!filteredType) return
     try {
       const effectiveBranchId = selectedBranch?._id || undefined
-      // Fetch counts for active and inactive groups
-      const [activeResponse, inactiveResponse] = await Promise.all([
-        groupsService.getGroups({
-          type: filteredType as GroupSearchParams['type'],
-          isActive: true,
-          branchId: effectiveBranchId,
-          limit: 1 // Just need the total count from pagination
-        }),
-        groupsService.getGroups({
-          type: filteredType as GroupSearchParams['type'],
-          isActive: false,
-          branchId: effectiveBranchId,
-          limit: 1 // Just need the total count from pagination
-        })
-      ])
 
-      // For total members, fetch in batches of 100 (API max limit)
-      let totalMembers = 0
-      let page = 1
-      let hasMore = true
-
-      while (hasMore) {
-        const response = await groupsService.getGroups({
-          type: filteredType as GroupSearchParams['type'],
-          branchId: effectiveBranchId,
-          page,
-          limit: 100
-        })
-
-        totalMembers += response.items.reduce(
-          (acc, g) => acc + (g.currentMemberCount || g.members?.length || 0),
-          0
-        )
-
-        hasMore = response.pagination.hasNext
-        page++
-
-        // Safety limit to prevent infinite loops
-        if (page > 50) break
-      }
+      // Use optimized stats endpoint instead of fetching all groups
+      // This is MUCH faster as it uses database aggregation
+      const stats = await groupsService.getGroupStats({
+        type: filteredType as any,
+        branchId: effectiveBranchId
+      })
 
       setFilteredTypeStats({
-        total: activeResponse.pagination.total + inactiveResponse.pagination.total,
-        active: activeResponse.pagination.total,
-        inactive: inactiveResponse.pagination.total,
-        totalMembers
+        total: stats.total,
+        active: stats.active,
+        inactive: stats.inactive || 0,
+        totalMembers: stats.totalMembers
       })
     } catch (error) {
       console.error('Error loading filtered type stats:', error)
@@ -1002,7 +969,6 @@ export default function Groups() {
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Type</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leader</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Members</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Status</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
                 </tr>
@@ -1069,16 +1035,6 @@ export default function Groups() {
                             <span className="text-gray-400">/{group.maxCapacity}</span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        {group.meetingSchedule ? (
-                          <div className="text-xs">
-                            <span className="text-gray-900">{group.meetingSchedule.day}s</span>
-                            <span className="text-gray-400"> · {group.meetingSchedule.time}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-xs">—</span>
-                        )}
                       </td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${

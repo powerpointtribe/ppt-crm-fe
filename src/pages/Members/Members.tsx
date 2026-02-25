@@ -380,13 +380,15 @@ export default function Members() {
         search: searchParams.search || undefined,
       }
 
-      // Load all members to enable proper client-side filtering and pagination
+      // Load members with reasonable pagination limit
+      // NOTE: Reduced from 100 to 20 per page and max 5 pages (100 members total) for better performance
+      // For large datasets, encourage users to use search/filters instead of loading everything
       let allMembers: Member[] = []
       let currentPage = 1
       let hasMore = true
 
-      while (hasMore && currentPage <= 20) { // Limit to 20 pages max
-        const response = await membersService.getMembers({ ...filterParams, page: currentPage, limit: 100 })
+      while (hasMore && currentPage <= 5) { // Limit to 5 pages max (100 members)
+        const response = await membersService.getMembers({ ...filterParams, page: currentPage, limit: 20 })
         allMembers = [...allMembers, ...response.items]
         hasMore = response.pagination.hasNext
         currentPage++

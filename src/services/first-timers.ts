@@ -289,8 +289,8 @@ export const firstTimersService = {
     await apiService.delete(`/first-timers/${id}`)
   },
 
-  getFirstTimerStats: async (): Promise<any> => {
-    const response = await apiService.get<ApiResponse<any>>('/first-timers/stats')
+  getFirstTimerStats: async (params?: { dateRange?: DateRangeFilter }): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>('/first-timers/stats', { params })
     return transformSingleResponse(response)
   },
 

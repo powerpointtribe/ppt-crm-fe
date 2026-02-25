@@ -446,7 +446,7 @@ export default function FirstTimerDetail() {
                 "w-20 h-20 rounded-full bg-gray-900 flex items-center justify-center text-white text-2xl font-semibold",
                 firstTimer.profilePhotoUrl ? "hidden" : ""
               )}>
-                {firstTimer.firstName[0]}{firstTimer.lastName[0]}
+                {(firstTimer.firstName?.[0] || '?').toUpperCase()}{(firstTimer.lastName?.[0] || '?').toUpperCase()}
               </div>
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900">
@@ -1041,7 +1041,9 @@ export default function FirstTimerDetail() {
                               </p>
                             </td>
                             <td className="py-3 px-2 text-sm text-gray-600 whitespace-nowrap">
-                              {typeof followUp.contactedBy === 'string'
+                              {!followUp.contactedBy
+                                ? 'System Import'
+                                : typeof followUp.contactedBy === 'string'
                                 ? followUp.contactedBy
                                 : `${followUp.contactedBy.firstName} ${followUp.contactedBy.lastName}`}
                             </td>
@@ -1269,7 +1271,9 @@ export default function FirstTimerDetail() {
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-500">Contacted By</span>
                   <span className="text-xs font-medium text-gray-900">
-                    {typeof selectedFollowUp.contactedBy === 'string'
+                    {!selectedFollowUp.contactedBy
+                      ? 'System Import'
+                      : typeof selectedFollowUp.contactedBy === 'string'
                       ? selectedFollowUp.contactedBy
                       : `${selectedFollowUp.contactedBy.firstName} ${selectedFollowUp.contactedBy.lastName}`}
                   </span>

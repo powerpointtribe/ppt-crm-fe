@@ -147,8 +147,8 @@ export const groupsService = {
     await apiService.delete(`/groups/${id}`)
   },
 
-  getGroupStats: async (): Promise<any> => {
-    const response = await apiService.get<ApiResponse<any>>('/groups/stats')
+  getGroupStats: async (params?: { type?: string; branchId?: string }): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>('/groups/stats', { params })
     return transformSingleResponse(response)
   },
 

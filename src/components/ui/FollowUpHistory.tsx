@@ -219,7 +219,9 @@ export default function FollowUpHistory({
                       <div className="flex items-center gap-1">
                         <User className="w-3 h-3" />
                         Contacted by: {
-                          typeof followUp.contactedBy === 'string'
+                          !followUp.contactedBy
+                            ? 'System Import'
+                            : typeof followUp.contactedBy === 'string'
                             ? followUp.contactedBy
                             : `${followUp.contactedBy.firstName} ${followUp.contactedBy.lastName}`
                         }

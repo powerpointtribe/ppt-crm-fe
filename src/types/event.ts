@@ -837,3 +837,88 @@ export interface ParticipantAccountabilityQueryParams {
   page?: number
   limit?: number
 }
+
+// ========== PARTNER TYPES ==========
+
+export enum PartnerStatus {
+  PENDING = 'pending',
+  CONTACTED = 'contacted',
+  IN_DISCUSSION = 'in_discussion',
+  CONFIRMED = 'confirmed',
+  DECLINED = 'declined',
+}
+
+export interface EventPartner {
+  _id: string
+  event: string
+  branch: string
+  name: string
+  company?: string
+  email: string
+  phone: string
+  interestDetails: string
+  status: PartnerStatus
+  notes?: string
+  assignedTo?: {
+    _id: string
+    firstName: string
+    lastName: string
+    email: string
+  }
+  submittedAt: string
+  contactedAt?: string
+  confirmedAt?: string
+  declinedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PartnerSearchParams {
+  status?: PartnerStatus
+  search?: string
+  assignedTo?: string
+  startDate?: string
+  endDate?: string
+  page?: number
+  limit?: number
+}
+
+export interface UpdatePartnerStatusData {
+  status: PartnerStatus
+  notes?: string
+  assignedTo?: string
+}
+
+export interface ContactPartnerData {
+  subject: string
+  message: string
+  updateStatus?: PartnerStatus
+}
+
+export interface BulkPartnerEmailData {
+  subject: string
+  message: string
+  statuses?: PartnerStatus[]
+  partnerIds?: string[]
+  scheduledFor?: string
+}
+
+export interface PartnerAnalytics {
+  eventId: string
+  eventTitle: string
+  totalInquiries: number
+  statusBreakdown: {
+    pending: number
+    contacted: number
+    inDiscussion: number
+    confirmed: number
+    declined: number
+  }
+  conversionRate: number
+  recentInquiries: number
+  avgResponseTime: number | null
+  topCompanies: Array<{
+    company: string
+    count: number
+  }>
+}

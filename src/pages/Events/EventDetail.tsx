@@ -29,6 +29,10 @@ import {
   GraduationCap,
   Eye,
   RefreshCw,
+  Download,
+  FileText,
+  FileSpreadsheet,
+  ChevronDown,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
@@ -44,6 +48,9 @@ import {
   ParticipantAccountabilitySummary,
   ParticipantAccountabilityQueryParams,
   AttendanceStatusCategory,
+  EventPartner,
+  PartnerStatus,
+  PartnerSearchParams,
 } from '@/types/event'
 import { formatDate } from '@/utils/formatters'
 import { showToast } from '@/utils/toast'
@@ -84,7 +91,7 @@ export default function EventDetail() {
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'info' | 'registrations' | 'sessions' | 'analytics' | 'accountability' | 'committee'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'registrations' | 'sessions' | 'analytics' | 'accountability' | 'committee' | 'partners'>('info')
   const [registrationSearch, setRegistrationSearch] = useState('')
   const [registrationFilter, setRegistrationFilter] = useState<RegistrationStatus | ''>('')
   const [loadingRegistrations, setLoadingRegistrations] = useState(false)
@@ -102,6 +109,20 @@ export default function EventDetail() {
   const [loadingAccountability, setLoadingAccountability] = useState(false)
   const [accountabilityFilter, setAccountabilityFilter] = useState<AttendanceStatusCategory | ''>('')
   const [accountabilitySearch, setAccountabilitySearch] = useState('')
+
+  // Partners state
+  const [partners, setPartners] = useState<EventPartner[]>([])
+  const [loadingPartners, setLoadingPartners] = useState(false)
+  const [partnerFilter, setPartnerFilter] = useState<PartnerStatus | ''>('')
+  const [partnerSearch, setPartnerSearch] = useState('')
+  const [selectedPartner, setSelectedPartner] = useState<EventPartner | null>(null)
+  const [showPartnerModal, setShowPartnerModal] = useState(false)
+
+  // Export state
+  const [showRegistrationExportMenu, setShowRegistrationExportMenu] = useState(false)
+  const [showPartnerExportMenu, setShowPartnerExportMenu] = useState(false)
+  const [exportingRegistrations, setExportingRegistrations] = useState(false)
+  const [exportingPartners, setExportingPartners] = useState(false)
 
   const canUpdate = hasPermission('events:update')
   const canViewRegistrations = hasPermission('events:view-registrations')
@@ -137,6 +158,28 @@ export default function EventDetail() {
       loadAccountability()
     }
   }, [id, activeTab, accountabilityFilter])
+
+  useEffect(() => {
+    if (id && activeTab === 'partners') {
+      loadPartners()
+    }
+  }, [id, activeTab, partnerFilter])
+
+  // Close export dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.export-dropdown-container')) {
+        setShowRegistrationExportMenu(false)
+        setShowPartnerExportMenu(false)
+      }
+    }
+
+    if (showRegistrationExportMenu || showPartnerExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showRegistrationExportMenu, showPartnerExportMenu])
 
   const loadEvent = async (eventId: string) => {
     try {
@@ -259,6 +302,102 @@ export default function EventDetail() {
     }
   }
 
+  // Load partners
+  const loadPartners = async () => {
+    if (!id) return
+    try {
+      setLoadingPartners(true)
+      const params: PartnerSearchParams = {
+        status: partnerFilter || undefined,
+        search: partnerSearch || undefined,
+        limit: 50,
+      }
+      const response = await eventsService.getEventPartners(id, params)
+      setPartners(response.items || [])
+    } catch (error: any) {
+      console.error('Error loading partners:', error)
+      showToast('error', 'Failed to load partners')
+    } finally {
+      setLoadingPartners(false)
+    }
+  }
+
+  // Update partner status
+  const handleUpdatePartnerStatus = async (partnerId: string, status: PartnerStatus) => {
+    if (!id) return
+    try {
+      await eventsService.updatePartnerStatus(id, partnerId, { status })
+      showToast('success', 'Partner status updated')
+      loadPartners()
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to update partner status')
+    }
+  }
+
+  // Export registrations
+  const handleExportRegistrations = async (format: 'csv' | 'xlsx' | 'pdf') => {
+    if (!id) return
+    try {
+      setExportingRegistrations(true)
+      setShowRegistrationExportMenu(false)
+
+      const params: RegistrationSearchParams = {
+        search: registrationSearch || undefined,
+        status: registrationFilter || undefined,
+      }
+
+      const blob = await eventsService.exportRegistrations(id, format, params)
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${event?.title || 'event'}-registrations-${new Date().toISOString().split('T')[0]}.${format === 'xlsx' ? 'xlsx' : format}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      showToast('success', `Registrations exported as ${format.toUpperCase()}`)
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to export registrations')
+    } finally {
+      setExportingRegistrations(false)
+    }
+  }
+
+  // Export partners
+  const handleExportPartners = async (format: 'csv' | 'xlsx' | 'pdf') => {
+    if (!id) return
+    try {
+      setExportingPartners(true)
+      setShowPartnerExportMenu(false)
+
+      const params: PartnerSearchParams = {
+        search: partnerSearch || undefined,
+        status: partnerFilter || undefined,
+      }
+
+      const blob = await eventsService.exportPartners(id, format, params)
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${event?.title || 'event'}-partners-${new Date().toISOString().split('T')[0]}.${format === 'xlsx' ? 'xlsx' : format}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      showToast('success', `Partners exported as ${format.toUpperCase()}`)
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to export partners')
+    } finally {
+      setExportingPartners(false)
+    }
+  }
+
   // Delete session
   const handleDeleteSession = async (sessionId: string) => {
     if (!confirm('Are you sure you want to delete this session?')) return
@@ -313,6 +452,12 @@ export default function EventDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
+          {hasPermission('events:view-registrations') && (
+            <Button variant="secondary" onClick={() => navigate(`/events/${id}/manage`)}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Manage
+            </Button>
+          )}
           {canUpdate && (
             <Button onClick={() => navigate(`/events/${id}/edit`)}>
               <Edit className="h-4 w-4 mr-2" />
@@ -323,84 +468,129 @@ export default function EventDetail() {
       }
     >
       <div className="space-y-6">
-        {/* Header */}
-        <Card>
-          <div className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
-                  <Badge
-                    variant={
-                      event.status === 'published'
-                        ? 'success'
-                        : event.status === 'cancelled'
-                        ? 'destructive'
-                        : 'default'
-                    }
-                  >
-                    {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+        {/* Modern Compact Header with Banner */}
+        <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
+          {/* Banner Image */}
+          {event.bannerImage && (
+            <div className="relative h-48 md:h-64 bg-gradient-to-br from-primary-500 to-primary-700 overflow-hidden">
+              <img
+                src={event.bannerImage}
+                alt={event.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+              {/* Floating Status Badge */}
+              <div className="absolute top-4 right-4">
+                <Badge
+                  variant={
+                    event.status === 'published'
+                      ? 'success'
+                      : event.status === 'cancelled'
+                      ? 'destructive'
+                      : 'default'
+                  }
+                  className="shadow-lg"
+                >
+                  {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                </Badge>
+              </div>
+
+              {/* Global Badge */}
+              {event.isGlobal && (
+                <div className="absolute top-4 left-4">
+                  <Badge className="bg-white/95 text-gray-800 shadow-lg border-0">
+                    Global Event
                   </Badge>
                 </div>
-                <p className="text-gray-500">{event.type.charAt(0).toUpperCase() + event.type.slice(1)}</p>
+              )}
+            </div>
+          )}
+
+          {/* Compact Info Section */}
+          <div className="p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{event.title}</h1>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <span>{formatDate(event.startDate)}</span>
+                  </div>
+                  {event.startTime && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <span>{event.startTime} - {event.endTime}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <span className="truncate">{event.location.name}</span>
+                  </div>
+                </div>
               </div>
+
+              {/* Action Buttons */}
               {event.registrationSlug && event.status === 'published' && (
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={copyRegistrationLink}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy Link
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button variant="outline" size="sm" onClick={copyRegistrationLink}>
+                    <Copy className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
                     onClick={() => window.open(`/event-registration/${event.registrationSlug}`, '_blank')}
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Open
+                    <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
               )}
             </div>
 
-            {/* Stats */}
+            {/* Compact Stats Grid */}
             {stats && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {stats.totalRegistrations}
-                  </div>
-                  <div className="text-sm text-gray-500">Total Registrations</div>
+              <div className="grid grid-cols-4 gap-3 mt-6">
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <div className="text-xl font-bold text-gray-900">{stats.totalRegistrations}</div>
+                  <div className="text-xs text-gray-500 mt-1">Total</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {stats.byStatus.confirmed}
-                  </div>
-                  <div className="text-sm text-gray-500">Confirmed</div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <div className="text-xl font-bold text-green-600">{stats.byStatus.confirmed}</div>
+                  <div className="text-xs text-green-600 mt-1">Confirmed</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {stats.byStatus.attended}
-                  </div>
-                  <div className="text-sm text-gray-500">Attended</div>
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <div className="text-xl font-bold text-blue-600">{stats.byStatus.attended}</div>
+                  <div className="text-xs text-blue-600 mt-1">Attended</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {stats.byStatus.pending}
-                  </div>
-                  <div className="text-sm text-gray-500">Pending</div>
+                <div className="bg-yellow-50 rounded-lg p-3 text-center">
+                  <div className="text-xl font-bold text-yellow-600">{stats.byStatus.pending}</div>
+                  <div className="text-xs text-yellow-600 mt-1">Pending</div>
                 </div>
               </div>
             )}
           </div>
-        </Card>
+        </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px space-x-6 overflow-x-auto">
+        {/* Modern Tabs with Counts */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+          <nav className="flex -mb-px overflow-x-auto px-4 scrollbar-thin">
             {[
               { id: 'info', label: 'Event Info', icon: Calendar },
-              { id: 'registrations', label: 'Registrations', icon: Users, permission: canViewRegistrations },
-              { id: 'sessions', label: 'Sessions', icon: PlayCircle },
+              {
+                id: 'registrations',
+                label: 'Registrations',
+                icon: Users,
+                permission: canViewRegistrations,
+                count: stats?.totalRegistrations
+              },
+              {
+                id: 'partners',
+                label: 'Partners',
+                icon: UserPlus,
+                permission: canViewRegistrations,
+                count: partners.length || undefined
+              },
+              { id: 'sessions', label: 'Sessions', icon: PlayCircle, count: sessions.length || undefined },
               { id: 'analytics', label: 'Analytics', icon: BarChart3 },
               { id: 'accountability', label: 'Accountability', icon: ClipboardCheck, permission: canViewRegistrations },
               { id: 'committee', label: 'Committee', icon: UserPlus },
@@ -408,47 +598,62 @@ export default function EventDetail() {
               .filter((tab) => tab.permission !== false)
               .map((tab) => {
                 const Icon = tab.icon
+                const isActive = activeTab === tab.id
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
                     className={cn(
-                      'flex items-center px-1 py-4 border-b-2 font-medium text-sm whitespace-nowrap',
-                      activeTab === tab.id
-                        ? 'border-primary-500 text-primary-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      'relative flex items-center gap-2 px-4 py-4 border-b-2 font-medium text-sm whitespace-nowrap transition-all',
+                      isActive
+                        ? 'border-primary-500 text-primary-600 bg-primary-50/50'
+                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     )}
                   >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {tab.label}
+                    <Icon className={cn('h-4 w-4', isActive && 'text-primary-600')} />
+                    <span>{tab.label}</span>
+                    {tab.count !== undefined && tab.count > 0 && (
+                      <span className={cn(
+                        'ml-1 px-2 py-0.5 text-xs font-semibold rounded-full',
+                        isActive
+                          ? 'bg-primary-100 text-primary-700'
+                          : 'bg-gray-100 text-gray-600'
+                      )}>
+                        {tab.count}
+                      </span>
+                    )}
                   </button>
                 )
               })}
           </nav>
         </div>
 
-        {/* Tab Content */}
+        {/* Enhanced Tab Content */}
         {activeTab === 'info' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
+            {/* Date & Time Card */}
+            <Card className="shadow-sm border-gray-100">
               <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Date & Time</h3>
+                <div className="flex items-center mb-4">
+                  <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <Calendar className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Date & Time</h3>
+                </div>
                 <div className="space-y-3">
-                  <div className="flex items-center text-gray-600">
-                    <Calendar className="h-5 w-5 mr-3 text-gray-400" />
-                    <span>
+                  <div className="flex items-center text-gray-700">
+                    <div className="w-20 text-sm text-gray-500 font-medium">Starts</div>
+                    <span className="font-medium">
                       {formatDate(event.startDate)}
-                      {event.endDate !== event.startDate && (
-                        <> - {formatDate(event.endDate)}</>
-                      )}
+                      {event.startTime && <span className="text-gray-500 ml-2">at {event.startTime}</span>}
                     </span>
                   </div>
-                  {event.startTime && (
-                    <div className="flex items-center text-gray-600">
-                      <Clock className="h-5 w-5 mr-3 text-gray-400" />
-                      <span>
-                        {event.startTime}
-                        {event.endTime && <> - {event.endTime}</>}
+                  {event.endDate && event.endDate !== event.startDate && (
+                    <div className="flex items-center text-gray-700">
+                      <div className="w-20 text-sm text-gray-500 font-medium">Ends</div>
+                      <span className="font-medium">
+                        {formatDate(event.endDate)}
+                        {event.endTime && <span className="text-gray-500 ml-2">at {event.endTime}</span>}
                       </span>
                     </div>
                   )}
@@ -456,102 +661,136 @@ export default function EventDetail() {
               </div>
             </Card>
 
-            <Card>
+            {/* Location Card */}
+            <Card className="shadow-sm border-gray-100">
               <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Location</h3>
-                <div className="space-y-3">
-                  <div className="flex items-start text-gray-600">
-                    <MapPin className="h-5 w-5 mr-3 text-gray-400 mt-0.5" />
-                    <div>
-                      <div className="font-medium">{event.location.name}</div>
-                      {event.location.isVirtual ? (
-                        event.location.virtualLink && (
-                          <a
-                            href={event.location.virtualLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary-600 hover:underline"
-                          >
-                            Join virtual meeting
-                          </a>
-                        )
-                      ) : (
-                        <>
-                          {event.location.address && <div>{event.location.address}</div>}
-                          {event.location.city && (
-                            <div>
-                              {event.location.city}, {event.location.state}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
+                <div className="flex items-center mb-4">
+                  <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <MapPin className="h-5 w-5 text-green-600" />
                   </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Location</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="font-medium text-gray-900">{event.location.name}</div>
+                  {event.location.isVirtual ? (
+                    event.location.virtualLink && (
+                      <a
+                        href={event.location.virtualLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium text-sm"
+                      >
+                        Join virtual meeting
+                        <ExternalLink className="h-3.5 w-3.5 ml-1" />
+                      </a>
+                    )
+                  ) : (
+                    <>
+                      {event.location.address && <div className="text-gray-600 text-sm">{event.location.address}</div>}
+                      {event.location.city && (
+                        <div className="text-gray-600 text-sm">
+                          {event.location.city}, {event.location.state}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </Card>
 
+            {/* Description Card */}
             {event.description && (
-              <Card className="md:col-span-2">
+              <Card className="md:col-span-2 shadow-sm border-gray-100">
                 <div className="p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Description</h3>
-                  <p className="text-gray-600 whitespace-pre-wrap">{event.description}</p>
+                  <div className="flex items-center mb-4">
+                    <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                      <BookOpen className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Description</h3>
+                  </div>
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{event.description}</p>
                 </div>
               </Card>
             )}
 
-            <Card>
+            {/* Contact Information Card */}
+            <Card className="shadow-sm border-gray-100">
               <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Information</h3>
+                <div className="flex items-center mb-4">
+                  <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                    <Mail className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Contact</h3>
+                </div>
                 <div className="space-y-3">
                   {event.contactEmail && (
-                    <div className="flex items-center text-gray-600">
-                      <Mail className="h-5 w-5 mr-3 text-gray-400" />
-                      <a href={`mailto:${event.contactEmail}`} className="text-primary-600 hover:underline">
-                        {event.contactEmail}
-                      </a>
-                    </div>
+                    <a href={`mailto:${event.contactEmail}`} className="flex items-center text-primary-600 hover:text-primary-700 group">
+                      <Mail className="h-4 w-4 mr-3 text-gray-400 group-hover:text-primary-600" />
+                      <span className="font-medium">{event.contactEmail}</span>
+                    </a>
                   )}
                   {event.contactPhone && (
-                    <div className="flex items-center text-gray-600">
-                      <Phone className="h-5 w-5 mr-3 text-gray-400" />
-                      <a href={`tel:${event.contactPhone}`} className="text-primary-600 hover:underline">
-                        {event.contactPhone}
-                      </a>
-                    </div>
+                    <a href={`tel:${event.contactPhone}`} className="flex items-center text-primary-600 hover:text-primary-700 group">
+                      <Phone className="h-4 w-4 mr-3 text-gray-400 group-hover:text-primary-600" />
+                      <span className="font-medium">{event.contactPhone}</span>
+                    </a>
                   )}
                 </div>
               </div>
             </Card>
 
-            <Card>
+            {/* Registration Settings Card */}
+            <Card className="shadow-sm border-gray-100">
               <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Registration Settings</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Status</span>
-                    <Badge variant={event.registrationSettings.isOpen ? 'success' : 'destructive'}>
+                <div className="flex items-center mb-4">
+                  <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                    <Users className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Registration</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600 font-medium">Status</span>
+                    <Badge variant={event.registrationSettings.isOpen ? 'success' : 'destructive'} className="font-medium">
                       {event.registrationSettings.isOpen ? 'Open' : 'Closed'}
                     </Badge>
                   </div>
                   {event.registrationSettings.maxAttendees && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Max Attendees</span>
-                      <span className="font-medium">{event.registrationSettings.maxAttendees}</span>
-                    </div>
+                    <>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-sm text-gray-600 font-medium">Capacity</span>
+                        <span className="font-semibold text-gray-900">{event.registrationSettings.maxAttendees}</span>
+                      </div>
+                      <div className="pt-2">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-500">Filled</span>
+                          <span className="font-medium text-gray-700">
+                            {stats?.totalRegistrations || 0} / {event.registrationSettings.maxAttendees}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(((stats?.totalRegistrations || 0) / event.registrationSettings.maxAttendees) * 100, 100)}%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
                   )}
                   {event.registrationSettings.deadline && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Deadline</span>
-                      <span className="font-medium">
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm text-gray-600 font-medium">Deadline</span>
+                      <span className="font-medium text-gray-900">
                         {formatDate(event.registrationSettings.deadline)}
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Approval Required</span>
-                    <span className="font-medium">
-                      {event.registrationSettings.requireApproval ? 'Yes' : 'No'}
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600 font-medium">Approval</span>
+                    <span className="font-medium text-gray-900">
+                      {event.registrationSettings.requireApproval ? 'Required' : 'Not Required'}
                     </span>
                   </div>
                 </div>
@@ -561,91 +800,158 @@ export default function EventDetail() {
         )}
 
         {activeTab === 'registrations' && canViewRegistrations && (
-          <Card>
-            <div className="p-4 border-b">
-              <div className="flex flex-col md:flex-row gap-4">
+          <Card className="shadow-sm">
+            {/* Enhanced Toolbar */}
+            <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search registrations..."
+                      placeholder="Search by name, email, or phone..."
                       value={registrationSearch}
                       onChange={(e) => setRegistrationSearch(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && loadRegistrations()}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
                     />
                   </div>
                 </div>
-                <select
-                  value={registrationFilter}
-                  onChange={(e) => setRegistrationFilter(e.target.value as RegistrationStatus | '')}
-                  className="px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="waitlisted">Waitlisted</option>
-                  <option value="attended">Attended</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="no-show">No Show</option>
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={registrationFilter}
+                    onChange={(e) => setRegistrationFilter(e.target.value as RegistrationStatus | '')}
+                    className="px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="waitlisted">Waitlisted</option>
+                    <option value="attended">Attended</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="no-show">No Show</option>
+                  </select>
+
+                  {/* Export Dropdown */}
+                  <div className="relative export-dropdown-container">
+                    <Button
+                      onClick={() => setShowRegistrationExportMenu(!showRegistrationExportMenu)}
+                      size="sm"
+                      variant="outline"
+                      disabled={exportingRegistrations || registrations.length === 0}
+                      className="gap-2"
+                    >
+                      {exportingRegistrations ? (
+                        <LoadingSpinner size="sm" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      <span className="hidden sm:inline">Export</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+
+                    {showRegistrationExportMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                        <button
+                          onClick={() => handleExportRegistrations('csv')}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <span>Export as CSV</span>
+                        </button>
+                        <button
+                          onClick={() => handleExportRegistrations('xlsx')}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                          <span>Export as Excel</span>
+                        </button>
+                        <button
+                          onClick={() => handleExportRegistrations('pdf')}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <FileText className="h-4 w-4 text-red-600" />
+                          <span>Export as PDF</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button onClick={loadRegistrations} size="sm" variant="outline">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
             {loadingRegistrations ? (
-              <div className="p-8 text-center">
-                <LoadingSpinner />
+              <div className="p-12 text-center">
+                <LoadingSpinner size="lg" />
               </div>
             ) : registrations.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                No registrations found
+              <div className="p-12 text-center">
+                <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">No registrations found</h4>
+                <p className="text-gray-500 max-w-sm mx-auto">
+                  {registrationFilter || registrationSearch
+                    ? 'Try adjusting your filters or search query'
+                    : 'Registrations will appear here once people sign up for this event'}
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50/80">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Attendee
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Contact
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Type
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Registered
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {registrations.map((reg) => (
-                      <tr key={reg._id} className="hover:bg-gray-50">
+                      <tr key={reg._id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">
-                            {reg.attendeeInfo.firstName} {reg.attendeeInfo.lastName}
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                              <span className="text-white font-semibold text-sm">
+                                {reg.attendeeInfo.firstName[0]}{reg.attendeeInfo.lastName[0]}
+                              </span>
+                            </div>
+                            <div className="ml-3">
+                              <div className="font-medium text-gray-900">
+                                {reg.attendeeInfo.firstName} {reg.attendeeInfo.lastName}
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{reg.attendeeInfo.email}</div>
+                          <div className="text-sm text-gray-900">{reg.attendeeInfo.email}</div>
                           <div className="text-sm text-gray-500">{reg.attendeeInfo.phone}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={reg.attendeeType === 'member' ? 'success' : 'default'}>
+                          <Badge variant={reg.attendeeType === 'member' ? 'success' : 'default'} className="font-medium">
                             {reg.attendeeType === 'member' ? 'Member' : 'Visitor'}
                           </Badge>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant={statusColors[reg.status]}>
-                            {reg.status.charAt(0).toUpperCase() + reg.status.slice(1)}
+                          <Badge variant={statusColors[reg.status]} className="font-medium">
+                            {reg.status.charAt(0).toUpperCase() + reg.status.slice(1).replace('-', ' ')}
                           </Badge>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -658,8 +964,9 @@ export default function EventDetail() {
                                 variant="secondary"
                                 size="sm"
                                 onClick={() => handleCheckIn(reg._id)}
+                                className="font-medium"
                               >
-                                <CheckCircle className="h-4 w-4 mr-1" />
+                                <CheckCircle className="h-4 w-4 mr-1.5" />
                                 Check In
                               </Button>
                             )}
@@ -669,16 +976,245 @@ export default function EventDetail() {
                                   variant="secondary"
                                   size="sm"
                                   onClick={() => handleUpdateStatus(reg._id, 'confirmed')}
+                                  className="font-medium"
                                 >
                                   Confirm
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="text-red-600"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                   onClick={() => handleUpdateStatus(reg._id, 'cancelled')}
                                 >
                                   Cancel
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Partners Tab */}
+        {activeTab === 'partners' && canViewRegistrations && (
+          <Card className="shadow-sm">
+            {/* Enhanced Toolbar */}
+            <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by name, company, or email..."
+                      value={partnerSearch}
+                      onChange={(e) => setPartnerSearch(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && loadPartners()}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={partnerFilter}
+                    onChange={(e) => setPartnerFilter(e.target.value as PartnerStatus | '')}
+                    className="px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value={PartnerStatus.PENDING}>Pending</option>
+                    <option value={PartnerStatus.CONTACTED}>Contacted</option>
+                    <option value={PartnerStatus.IN_DISCUSSION}>In Discussion</option>
+                    <option value={PartnerStatus.CONFIRMED}>Confirmed</option>
+                    <option value={PartnerStatus.DECLINED}>Declined</option>
+                  </select>
+
+                  {/* Export Dropdown */}
+                  <div className="relative export-dropdown-container">
+                    <Button
+                      onClick={() => setShowPartnerExportMenu(!showPartnerExportMenu)}
+                      size="sm"
+                      variant="outline"
+                      disabled={exportingPartners || partners.length === 0}
+                      className="gap-2"
+                    >
+                      {exportingPartners ? (
+                        <LoadingSpinner size="sm" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      <span className="hidden sm:inline">Export</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+
+                    {showPartnerExportMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                        <button
+                          onClick={() => handleExportPartners('csv')}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <span>Export as CSV</span>
+                        </button>
+                        <button
+                          onClick={() => handleExportPartners('xlsx')}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                          <span>Export as Excel</span>
+                        </button>
+                        <button
+                          onClick={() => handleExportPartners('pdf')}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <FileText className="h-4 w-4 text-red-600" />
+                          <span>Export as PDF</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button onClick={loadPartners} size="sm" variant="outline">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {loadingPartners ? (
+              <div className="p-12 text-center">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : partners.length === 0 ? (
+              <div className="p-12 text-center">
+                <UserPlus className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">No Partnership Inquiries</h4>
+                <p className="text-gray-500 max-w-sm mx-auto">
+                  {partnerFilter || partnerSearch
+                    ? 'No partners match your current filters'
+                    : 'Partnership inquiries will appear here when submitted'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50/80">
+                    <tr>
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Partner
+                      </th>
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Company
+                      </th>
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Contact
+                      </th>
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Interest
+                      </th>
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Submitted
+                      </th>
+                      <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {partners.map((partner) => (
+                      <tr
+                        key={partner._id}
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setSelectedPartner(partner)
+                          setShowPartnerModal(true)
+                        }}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center">
+                              <UserPlus className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="ml-3">
+                              <div className="font-medium text-gray-900">{partner.name}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{partner.company || '—'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{partner.email}</div>
+                          <div className="text-sm text-gray-500">{partner.phone}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-600 max-w-xs truncate" title={partner.interestDetails}>
+                            {partner.interestDetails}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge
+                            variant={
+                              partner.status === PartnerStatus.CONFIRMED ? 'success' :
+                              partner.status === PartnerStatus.DECLINED ? 'destructive' :
+                              partner.status === PartnerStatus.PENDING ? 'warning' :
+                              'default'
+                            }
+                            className="font-medium"
+                          >
+                            {partner.status.charAt(0).toUpperCase() + partner.status.slice(1).replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(partner.submittedAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {partner.status === PartnerStatus.PENDING && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.CONTACTED)}
+                                className="font-medium"
+                              >
+                                Mark Contacted
+                              </Button>
+                            )}
+                            {partner.status === PartnerStatus.CONTACTED && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.IN_DISCUSSION)}
+                                className="font-medium"
+                              >
+                                In Discussion
+                              </Button>
+                            )}
+                            {partner.status === PartnerStatus.IN_DISCUSSION && (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.CONFIRMED)}
+                                  className="font-medium"
+                                >
+                                  Confirm
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.DECLINED)}
+                                >
+                                  Decline
                                 </Button>
                               </>
                             )}
@@ -1354,6 +1890,266 @@ export default function EventDetail() {
           </Card>
         )}
       </div>
+
+      {/* Partner Detail Modal */}
+      {showPartnerModal && selectedPartner && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowPartnerModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-gradient-to-br from-indigo-500 to-indigo-700 text-white p-6 rounded-t-2xl">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                    <UserPlus className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">{selectedPartner.name}</h3>
+                    <p className="text-indigo-100 text-sm mt-1">Partnership Inquiry</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPartnerModal(false)}
+                  className="text-white/80 hover:text-white hover:bg-white/10 rounded-lg p-2 transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Status Badge */}
+              <div className="mt-4">
+                <Badge
+                  variant={
+                    selectedPartner.status === PartnerStatus.CONFIRMED ? 'success' :
+                    selectedPartner.status === PartnerStatus.DECLINED ? 'destructive' :
+                    selectedPartner.status === PartnerStatus.PENDING ? 'warning' :
+                    'default'
+                  }
+                  className="font-semibold px-3 py-1 text-sm"
+                >
+                  {selectedPartner.status.charAt(0).toUpperCase() + selectedPartner.status.slice(1).replace('_', ' ')}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              {/* Contact Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Contact Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                    <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Mail className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-gray-500 mb-1">Email</p>
+                      <a
+                        href={`mailto:${selectedPartner.email}`}
+                        className="text-sm font-medium text-gray-900 hover:text-primary-600 break-all"
+                      >
+                        {selectedPartner.email}
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                    <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Phone className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-gray-500 mb-1">Phone</p>
+                      <a
+                        href={`tel:${selectedPartner.phone}`}
+                        className="text-sm font-medium text-gray-900 hover:text-primary-600"
+                      >
+                        {selectedPartner.phone}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedPartner.company && (
+                  <div className="mt-4 flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                    <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Users className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-gray-500 mb-1">Company</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedPartner.company}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Interest Details */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Partnership Interest</h4>
+                <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{selectedPartner.interestDetails}</p>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Timeline</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="h-9 w-9 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Calendar className="h-4 w-4 text-gray-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Submitted</p>
+                      <p className="text-sm font-medium text-gray-900">{formatDate(selectedPartner.submittedAt)}</p>
+                    </div>
+                  </div>
+
+                  {selectedPartner.contactedAt && (
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                      <div className="h-9 w-9 bg-blue-200 rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-600">Contacted</p>
+                        <p className="text-sm font-medium text-gray-900">{formatDate(selectedPartner.contactedAt)}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedPartner.confirmedAt && (
+                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                      <div className="h-9 w-9 bg-green-200 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Award className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-600">Confirmed</p>
+                        <p className="text-sm font-medium text-gray-900">{formatDate(selectedPartner.confirmedAt)}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedPartner.declinedAt && (
+                    <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+                      <div className="h-9 w-9 bg-red-200 rounded-full flex items-center justify-center flex-shrink-0">
+                        <UserX className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-red-600">Declined</p>
+                        <p className="text-sm font-medium text-gray-900">{formatDate(selectedPartner.declinedAt)}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedPartner.notes && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Internal Notes</h4>
+                  <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                    <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">{selectedPartner.notes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer - Actions */}
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6 rounded-b-2xl">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {selectedPartner.status === PartnerStatus.PENDING && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleUpdatePartnerStatus(selectedPartner._id, PartnerStatus.CONTACTED)
+                        setShowPartnerModal(false)
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1.5" />
+                      Mark as Contacted
+                    </Button>
+                  )}
+
+                  {selectedPartner.status === PartnerStatus.CONTACTED && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleUpdatePartnerStatus(selectedPartner._id, PartnerStatus.IN_DISCUSSION)
+                        setShowPartnerModal(false)
+                      }}
+                    >
+                      Move to Discussion
+                    </Button>
+                  )}
+
+                  {selectedPartner.status === PartnerStatus.IN_DISCUSSION && (
+                    <>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUpdatePartnerStatus(selectedPartner._id, PartnerStatus.CONFIRMED)
+                          setShowPartnerModal(false)
+                        }}
+                        className="bg-green-600 text-white hover:bg-green-700"
+                      >
+                        <Award className="h-4 w-4 mr-1.5" />
+                        Confirm Partnership
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUpdatePartnerStatus(selectedPartner._id, PartnerStatus.DECLINED)
+                          setShowPartnerModal(false)
+                        }}
+                      >
+                        <UserX className="h-4 w-4 mr-1.5" />
+                        Decline
+                      </Button>
+                    </>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`mailto:${selectedPartner.email}`, '_blank')}
+                  >
+                    <Mail className="h-4 w-4 mr-1.5" />
+                    Send Email
+                  </Button>
+                </div>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowPartnerModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </Layout>
   )
 }

@@ -102,6 +102,7 @@ const Events = lazy(() => import('@/pages/Events/Events'))
 const EventNew = lazy(() => import('@/pages/Events/EventNew'))
 const EventDetail = lazy(() => import('@/pages/Events/EventDetail'))
 const EventEdit = lazy(() => import('@/pages/Events/EventEdit'))
+const EventManagement = lazy(() => import('@/pages/Events/EventManagement'))
 
 // Library Management
 const LibraryDashboard = lazy(() => import('@/pages/Library/LibraryDashboard'))
@@ -556,6 +557,11 @@ function App() {
           <Route path="/events/:id" element={
             <ProtectedRoute>
               <LazyPage><EventDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/events/:eventId/manage" element={
+            <ProtectedRoute>
+              <LazyPage><EventManagement /></LazyPage>
             </ProtectedRoute>
           } />
           <Route path="/events/:id/edit" element={

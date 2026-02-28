@@ -437,6 +437,144 @@ export const eventsService = {
     )
     return transformSingleResponse<TrainingAccountabilityReport>(response) as TrainingAccountabilityReport
   },
+  // ========== PARTNERS MANAGEMENT (ADMIN) ==========
+
+  getEventPartners: async (
+    eventId: string,
+    params?: any
+  ): Promise<PaginatedResponse<any>> => {
+    const response = await apiService.get<ApiResponse<any>>(
+      `/events/${eventId}/admin/partners`,
+      { params }
+    )
+    return transformPaginatedResponse<any>(response)
+  },
+
+  updatePartnerStatus: async (
+    eventId: string,
+    partnerId: string,
+    data: { status: string; notes?: string; assignedTo?: string }
+  ): Promise<any> => {
+    const response = await apiService.patch<ApiResponse<any>>(
+      `/events/${eventId}/admin/partners/${partnerId}/status`,
+      data
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  contactPartner: async (
+    eventId: string,
+    partnerId: string,
+    data: { subject: string; message: string; updateStatus?: string }
+  ): Promise<void> => {
+    await apiService.post(
+      `/events/${eventId}/admin/partners/${partnerId}/contact`,
+      data
+    )
+  },
+
+  sendBulkPartnerEmail: async (
+    eventId: string,
+    data: {
+      subject: string
+      message: string
+      statuses?: string[]
+      partnerIds?: string[]
+      scheduledFor?: string
+    }
+  ): Promise<{ jobId: string; recipientCount: number }> => {
+    const response = await apiService.post<ApiResponse<any>>(
+      `/events/${eventId}/admin/partners/email/bulk`,
+      data
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  getPartnerAnalytics: async (eventId: string): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>(
+      `/events/${eventId}/admin/analytics/partners`
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  exportPartners: async (
+    eventId: string,
+    format: 'csv' | 'xlsx' | 'pdf' = 'xlsx',
+    params?: any
+  ): Promise<Blob> => {
+    const response = await apiService.get(
+      `/events/${eventId}/admin/partners/export`,
+      {
+        params: { format, ...params },
+        responseType: 'blob',
+      }
+    )
+    return response.data
+  },
+
+  // ========== REGISTRATIONS MANAGEMENT (ADMIN) ==========
+
+  getEventRegistrationsAdmin: async (
+    eventId: string,
+    params?: RegistrationSearchParams
+  ): Promise<PaginatedResponse<EventRegistration>> => {
+    const response = await apiService.get<ApiResponse<any>>(
+      `/events/${eventId}/admin/registrations`,
+      { params }
+    )
+    return transformPaginatedResponse<EventRegistration>(response)
+  },
+
+  exportRegistrations: async (
+    eventId: string,
+    format: 'csv' | 'xlsx' | 'pdf' = 'xlsx',
+    params?: RegistrationSearchParams
+  ): Promise<Blob> => {
+    const response = await apiService.get(
+      `/events/${eventId}/admin/registrations/export`,
+      {
+        params: { format, ...params },
+        responseType: 'blob',
+      }
+    )
+    return response.data
+  },
+
+  updateRegistrationStatusAdmin: async (
+    eventId: string,
+    registrationId: string,
+    data: { status: string; notes?: string }
+  ): Promise<EventRegistration> => {
+    const response = await apiService.patch<ApiResponse<EventRegistration>>(
+      `/events/${eventId}/admin/registrations/${registrationId}/status`,
+      data
+    )
+    return transformSingleResponse<EventRegistration>(response) as EventRegistration
+  },
+
+  sendBulkRegistrationEmail: async (
+    eventId: string,
+    data: {
+      subject: string
+      message: string
+      statuses?: string[]
+      registrationIds?: string[]
+      scheduledFor?: string
+    }
+  ): Promise<{ jobId: string; recipientCount: number }> => {
+    const response = await apiService.post<ApiResponse<any>>(
+      `/events/${eventId}/admin/registrations/email/bulk`,
+      data
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  getEventOverviewAdmin: async (eventId: string): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>(
+      `/events/${eventId}/admin/analytics/overview`
+    )
+    return transformSingleResponse<any>(response)
+  },
 }
 
 export type {

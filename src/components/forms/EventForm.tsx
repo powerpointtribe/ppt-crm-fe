@@ -237,12 +237,14 @@ export default function EventForm({
           contactPhone: event.contactPhone || '',
           websiteUrl: event.websiteUrl || '',
           tags: event.tags || [],
+          isGlobal: event.isGlobal || false,
         }
       : {
           title: '',
           description: '',
           type: 'other',
           status: 'draft',
+          isGlobal: false,
           startDate: '',
           endDate: '',
           startTime: '',
@@ -452,6 +454,24 @@ export default function EventForm({
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 placeholder:text-gray-400 resize-none"
               placeholder="Describe your event..."
             />
+          </div>
+
+          {/* Global Event Toggle */}
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 bg-gray-50">
+            <input
+              type="checkbox"
+              id="isGlobal"
+              {...register('isGlobal')}
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+            />
+            <div className="flex-1">
+              <label htmlFor="isGlobal" className="text-sm font-medium text-gray-900 cursor-pointer">
+                Make this a Global Event
+              </label>
+              <p className="text-xs text-gray-500 mt-0.5">
+                This event will be available to all branches across the organization
+              </p>
+            </div>
           </div>
         </div>
       </CollapsibleSection>

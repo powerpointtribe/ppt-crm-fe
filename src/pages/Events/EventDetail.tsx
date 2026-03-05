@@ -452,12 +452,6 @@ export default function EventDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          {hasPermission('events:view-registrations') && (
-            <Button variant="secondary" onClick={() => navigate(`/events/${id}/manage`)}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Manage
-            </Button>
-          )}
           {canUpdate && (
             <Button onClick={() => navigate(`/events/${id}/edit`)}>
               <Edit className="h-4 w-4 mr-2" />

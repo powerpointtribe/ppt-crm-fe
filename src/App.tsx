@@ -102,7 +102,7 @@ const Events = lazy(() => import('@/pages/Events/Events'))
 const EventNew = lazy(() => import('@/pages/Events/EventNew'))
 const EventDetail = lazy(() => import('@/pages/Events/EventDetail'))
 const EventEdit = lazy(() => import('@/pages/Events/EventEdit'))
-const EventManagement = lazy(() => import('@/pages/Events/EventManagement'))
+// EventManagement removed - EventDetail.tsx handles management via tabs
 
 // Library Management
 const LibraryDashboard = lazy(() => import('@/pages/Library/LibraryDashboard'))
@@ -559,11 +559,7 @@ function App() {
               <LazyPage><EventDetail /></LazyPage>
             </ProtectedRoute>
           } />
-          <Route path="/events/:eventId/manage" element={
-            <ProtectedRoute>
-              <LazyPage><EventManagement /></LazyPage>
-            </ProtectedRoute>
-          } />
+          {/* EventManagement route removed - EventDetail handles management */}
           <Route path="/events/:id/edit" element={
             <ProtectedRoute>
               <LazyPage><EventEdit /></LazyPage>

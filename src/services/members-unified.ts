@@ -58,6 +58,8 @@ export interface MemberSearchParams {
   maxAge?: number
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+  hasDistrict?: boolean
+  birthdayMonth?: number
 }
 
 export interface PaginatedResponse<T> {

@@ -36,6 +36,22 @@ export function transformPaginatedResponse<T>(
   response: BackendApiResponse<BackendPaginatedResponse<T>> | BackendPaginatedResponse<T> | any
 ): FrontendPaginatedResponse<T> {
 
+  // Handle already-unwrapped API response: { data: [...], total: N, page: N, ... }
+  // This is the format returned by apiService.get which already does response.data
+  if (response && !Array.isArray(response) && Array.isArray(response.data) && typeof response.total === 'number') {
+    return {
+      items: response.data,
+      pagination: {
+        page: response.page || 1,
+        limit: response.limit || 10,
+        total: response.total || 0,
+        totalPages: response.totalPages || 0,
+        hasNext: response.hasNext || false,
+        hasPrev: response.hasPrev || false
+      }
+    }
+  }
+
   // Handle the exact API response structure: response.data.data
   if (response?.data?.data && typeof response.data.data === 'object' && Array.isArray(response.data.data.data)) {
     const apiData = response.data.data

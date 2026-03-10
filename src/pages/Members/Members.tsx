@@ -274,44 +274,6 @@ export default function Members() {
     }
   }
 
-  const hasDistrict = (member: Member) => {
-    if (!member.district) return false
-    // Handle both populated (object) and unpopulated (string ID) districts
-    if (typeof member.district === 'string') return member.district.length > 0
-    return member.district._id && member.district._id.length > 0
-  }
-
-  // Check if member has birthday this month
-  const hasBirthdayThisMonth = (member: Member) => {
-    if (!member.dateOfBirth) return false
-    const currentMonth = new Date().getMonth() + 1 // 1-12
-
-    // Handle different date formats: "YYYY-MM-DD", "MM-DD", or ISO string
-    let birthMonth: number
-    const dob = member.dateOfBirth
-
-    if (dob.includes('T')) {
-      // ISO date string
-      birthMonth = new Date(dob).getMonth() + 1
-    } else if (dob.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // YYYY-MM-DD format
-      birthMonth = parseInt(dob.split('-')[1], 10)
-    } else if (dob.match(/^\d{2}-\d{2}$/)) {
-      // MM-DD format
-      birthMonth = parseInt(dob.split('-')[0], 10)
-    } else {
-      // Try to parse as date
-      const parsed = new Date(dob)
-      if (!isNaN(parsed.getTime())) {
-        birthMonth = parsed.getMonth() + 1
-      } else {
-        return false
-      }
-    }
-
-    return birthMonth === currentMonth
-  }
-
   // Get the birth day of the month for a member
   const getBirthDay = (member: Member): number | null => {
     if (!member.dateOfBirth) return null
@@ -367,9 +329,13 @@ export default function Members() {
       setLoading(true)
 
       // Build params with filters - only include non-empty values
-      // Use selectedBranch (global) or branchFilter (from filter modal)
       const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
+      const page = searchParams.page || 1
+      const limit = searchParams.limit || 10
+
       const filterParams: MemberSearchParams = {
+        page,
+        limit,
         membershipStatus: statusFilter || undefined,
         gender: genderFilter ? (genderFilter as 'male' | 'female') : undefined,
         maritalStatus: maritalStatusFilter ? (maritalStatusFilter as Member['maritalStatus']) : undefined,
@@ -380,60 +346,31 @@ export default function Members() {
         search: searchParams.search || undefined,
       }
 
-      // Load members with reasonable pagination limit
-      // NOTE: Reduced from 100 to 20 per page and max 5 pages (100 members total) for better performance
-      // For large datasets, encourage users to use search/filters instead of loading everything
-      let allMembers: Member[] = []
-      let currentPage = 1
-      let hasMore = true
-
-      while (hasMore && currentPage <= 5) { // Limit to 5 pages max (100 members)
-        const response = await membersService.getMembers({ ...filterParams, page: currentPage, limit: 20 })
-        allMembers = [...allMembers, ...response.items]
-        hasMore = response.pagination.hasNext
-        currentPage++
-      }
-
-      // Filter members based on active tab
-      let tabFilteredMembers: Member[]
+      // Apply tab-specific server-side filters
       if (activeTab === 'assigned') {
-        tabFilteredMembers = allMembers.filter(member => hasDistrict(member))
-      } else {
-        // First filter to get all birthdays this month
-        const birthdayMembers = allMembers.filter(member => hasBirthdayThisMonth(member))
-        // Then filter by past/today/future
-        tabFilteredMembers = filterBirthdaysByTime(birthdayMembers, birthdayTimeFilter)
+        filterParams.hasDistrict = true
+      } else if (activeTab === 'birthdays') {
+        const currentMonth = new Date().getMonth() + 1
+        filterParams.birthdayMonth = currentMonth
       }
 
-      // Store all filtered members for reference
-      setAllFilteredMembers(tabFilteredMembers)
+      // Single API call with server-side pagination
+      const response = await membersService.getMembers(filterParams)
 
-      // Apply client-side pagination
-      const page = searchParams.page || 1
-      const limit = searchParams.limit || 10
-      const startIndex = (page - 1) * limit
-      const endIndex = startIndex + limit
-      const paginatedMembers = tabFilteredMembers.slice(startIndex, endIndex)
+      let displayMembers = response.items
+      let displayPagination = response.pagination
 
-      // Calculate pagination info
-      const total = tabFilteredMembers.length
-      const totalPages = Math.ceil(total / limit)
+      // For birthdays tab, apply client-side past/today/future filter
+      if (activeTab === 'birthdays') {
+        displayMembers = filterBirthdaysByTime(displayMembers, birthdayTimeFilter)
+      }
 
-      setMembers(paginatedMembers)
-      setPagination({
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      })
+      setMembers(displayMembers)
+      setAllFilteredMembers(displayMembers)
+      setPagination(displayPagination)
 
-      // Update counts
-      const assigned = allMembers.filter(member => hasDistrict(member)).length
-      const birthdays = allMembers.filter(member => hasBirthdayThisMonth(member)).length
-      setAssignedCount(assigned)
-      setBirthdayCount(birthdays)
+      // Load counts for tab badges (lightweight parallel requests)
+      loadTabCounts(filterParams)
     } catch (error: any) {
       console.error('Error loading members:', error)
       setError(error)
@@ -442,9 +379,28 @@ export default function Members() {
     }
   }
 
-  // Counts are now calculated in loadMembers, this function is kept for backwards compatibility
+  // Load tab badge counts separately to keep main query fast
+  const loadTabCounts = async (baseParams: MemberSearchParams) => {
+    try {
+      const countParams = { ...baseParams, page: 1, limit: 1 }
+      // Remove tab-specific filters for count queries
+      delete countParams.hasDistrict
+      delete countParams.birthdayMonth
+
+      const [assignedRes, birthdayRes] = await Promise.all([
+        membersService.getMembers({ ...countParams, hasDistrict: true }),
+        membersService.getMembers({ ...countParams, birthdayMonth: new Date().getMonth() + 1 }),
+      ])
+
+      setAssignedCount(assignedRes.pagination.total)
+      setBirthdayCount(birthdayRes.pagination.total)
+    } catch {
+      // Non-critical, keep existing counts
+    }
+  }
+
   const loadCounts = async () => {
-    // Counts are updated in loadMembers
+    // Counts are loaded as part of loadMembers via loadTabCounts
   }
 
   const handleSearch = (e: React.FormEvent) => {
@@ -700,17 +656,21 @@ export default function Members() {
         dateJoinedTo: dateToFilter || undefined,
       }
 
-      // Load all filtered members
+      // Apply tab-specific server-side filters for export
+      if (activeTab === 'assigned') {
+        filterParams.hasDistrict = true
+      } else if (activeTab === 'birthdays') {
+        filterParams.birthdayMonth = new Date().getMonth() + 1
+      }
+
+      // Load all filtered members for export
       let allMembers: Member[] = []
       let currentPage = 1
       let hasMore = true
 
       while (hasMore && currentPage <= 20) {
         const response = await membersService.getMembers({ ...filterParams, page: currentPage, limit: 100 })
-        const filteredItems = activeTab === 'assigned'
-          ? response.items.filter(member => hasDistrict(member))
-          : response.items.filter(member => hasBirthdayThisMonth(member))
-        allMembers = [...allMembers, ...filteredItems]
+        allMembers = [...allMembers, ...response.items]
         hasMore = response.pagination.hasNext
         currentPage++
       }

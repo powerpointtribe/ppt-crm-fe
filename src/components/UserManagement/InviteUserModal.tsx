@@ -49,6 +49,7 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
   const [branches, setBranches] = useState<Branch[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [inviteMode, setInviteMode] = useState<'member' | 'operational'>('member');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState('');
   const [selectedBranchId, setSelectedBranchId] = useState('');
@@ -57,6 +58,11 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
   const [submitting, setSubmitting] = useState(false);
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
+
+  // Operational mode fields
+  const [opFirstName, setOpFirstName] = useState('');
+  const [opLastName, setOpLastName] = useState('');
+  const [opEmail, setOpEmail] = useState('');
 
   const toast = useToast();
 
@@ -169,11 +175,6 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedMember) {
-      toast.error('Please select a member');
-      return;
-    }
-
     if (!selectedRoleId) {
       toast.error('Please select a role');
       return;
@@ -190,22 +191,54 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
       return;
     }
 
-    setSubmitting(true);
-    try {
-      await userInvitationsService.createInvitation({
-        memberId: selectedMember._id,
-        roleId: selectedRoleId,
-        branchId: selectedBranchId,
-        assignedDistricts: isAssistantPastor ? selectedDistrictIds : undefined,
-        notes: notes || undefined,
-      });
-      onSuccess();
-    } catch (error: any) {
-      console.error('Failed to create invitation:', error);
-      const message = error?.response?.data?.message || 'Failed to send invitation';
-      toast.error(message);
-    } finally {
-      setSubmitting(false);
+    if (inviteMode === 'operational') {
+      if (!opFirstName.trim() || !opLastName.trim() || !opEmail.trim()) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        await userInvitationsService.createOperationalInvitation({
+          firstName: opFirstName.trim(),
+          lastName: opLastName.trim(),
+          email: opEmail.trim(),
+          roleId: selectedRoleId,
+          branchId: selectedBranchId,
+          assignedDistricts: isAssistantPastor ? selectedDistrictIds : undefined,
+          notes: notes || undefined,
+        });
+        onSuccess();
+      } catch (error: any) {
+        console.error('Failed to create operational user:', error);
+        const message = error?.message || 'Failed to create operational user';
+        toast.error(message);
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      if (!selectedMember) {
+        toast.error('Please select a member');
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        await userInvitationsService.createInvitation({
+          memberId: selectedMember._id,
+          roleId: selectedRoleId,
+          branchId: selectedBranchId,
+          assignedDistricts: isAssistantPastor ? selectedDistrictIds : undefined,
+          notes: notes || undefined,
+        });
+        onSuccess();
+      } catch (error: any) {
+        console.error('Failed to create invitation:', error);
+        const message = error?.message || 'Failed to send invitation';
+        toast.error(message);
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -237,72 +270,142 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Member Selection */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Select Member <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                {selectedMember ? (
-                  <div className="flex items-center justify-between p-2 border border-gray-300 rounded-lg bg-gray-50">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {selectedMember.firstName} {selectedMember.lastName}
-                      </p>
-                      <p className="text-xs text-gray-500">{selectedMember.email}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMember(null)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search members..."
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          setShowMemberDropdown(true);
-                        }}
-                        onFocus={() => setShowMemberDropdown(true)}
-                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                      <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    </div>
-
-                    {showMemberDropdown && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {filteredMembers.length === 0 ? (
-                          <div className="p-2 text-center text-xs text-gray-500">
-                            {searchQuery ? 'No members found' : 'No members available'}
-                          </div>
-                        ) : (
-                          filteredMembers.map((member) => (
-                            <button
-                              key={member._id}
-                              type="button"
-                              onClick={() => handleSelectMember(member)}
-                              className="w-full text-left px-2 py-1.5 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                            >
-                              <p className="text-sm font-medium text-gray-900">
-                                {member.firstName} {member.lastName}
-                              </p>
-                              <p className="text-xs text-gray-500">{member.email}</p>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+            {/* Invite Mode Toggle */}
+            <div className="flex bg-gray-100 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setInviteMode('member')}
+                className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-md transition-colors ${
+                  inviteMode === 'member'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Invite Member
+              </button>
+              <button
+                type="button"
+                onClick={() => setInviteMode('operational')}
+                className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-md transition-colors ${
+                  inviteMode === 'operational'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Operational Account
+              </button>
             </div>
+
+            {inviteMode === 'operational' ? (
+              <>
+                {/* Operational User Fields */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      First Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={opFirstName}
+                      onChange={(e) => setOpFirstName(e.target.value)}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="First name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Last Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={opLastName}
+                      onChange={(e) => setOpLastName(e.target.value)}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Last name"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={opEmail}
+                    onChange={(e) => setOpEmail(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="email@example.com"
+                  />
+                </div>
+              </>
+            ) : (
+              /* Member Selection */
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Select Member <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  {selectedMember ? (
+                    <div className="flex items-center justify-between p-2 border border-gray-300 rounded-lg bg-gray-50">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {selectedMember.firstName} {selectedMember.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">{selectedMember.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMember(null)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search members..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setShowMemberDropdown(true);
+                          }}
+                          onFocus={() => setShowMemberDropdown(true)}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      </div>
+
+                      {showMemberDropdown && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {filteredMembers.length === 0 ? (
+                            <div className="p-2 text-center text-xs text-gray-500">
+                              {searchQuery ? 'No members found' : 'No members available'}
+                            </div>
+                          ) : (
+                            filteredMembers.map((member) => (
+                              <button
+                                key={member._id}
+                                type="button"
+                                onClick={() => handleSelectMember(member)}
+                                className="w-full text-left px-2 py-1.5 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                              >
+                                <p className="text-sm font-medium text-gray-900">
+                                  {member.firstName} {member.lastName}
+                                </p>
+                                <p className="text-xs text-gray-500">{member.email}</p>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Role Selection */}
             <div>
@@ -400,7 +503,9 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
               <p className="text-[10px] text-blue-800">
-                An email with login credentials will be sent. The invitation expires in 7 days.
+                {inviteMode === 'operational'
+                  ? 'A new operational account will be created with login credentials sent via email. This account will not appear in member listings.'
+                  : 'An email with login credentials will be sent. The invitation expires in 7 days.'}
               </p>
             </div>
 
@@ -414,10 +519,11 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
                 size="sm"
                 disabled={
                   submitting ||
-                  !selectedMember ||
                   !selectedRoleId ||
                   !selectedBranchId ||
-                  (isAssistantPastor && selectedDistrictIds.length === 0)
+                  (isAssistantPastor && selectedDistrictIds.length === 0) ||
+                  (inviteMode === 'member' && !selectedMember) ||
+                  (inviteMode === 'operational' && (!opFirstName.trim() || !opLastName.trim() || !opEmail.trim()))
                 }
               >
                 {submitting ? (

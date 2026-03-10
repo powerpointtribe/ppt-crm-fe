@@ -64,6 +64,11 @@ export default function ActiveUsersTable({
               <div>
                 <h3 className="text-sm font-medium text-gray-900">
                   {user.firstName} {user.lastName}
+                  {user.accountType === 'operational' && (
+                    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-800">
+                      Ops
+                    </span>
+                  )}
                 </h3>
                 <p className="text-xs text-gray-500">{user.email}</p>
               </div>
@@ -119,6 +124,7 @@ export default function ActiveUsersTable({
           <thead>
             <tr className="border-b border-gray-200">
               <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">User</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 hidden lg:table-cell">Type</th>
               <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Email</th>
               <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 hidden lg:table-cell">Phone</th>
               <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Role</th>
@@ -134,6 +140,13 @@ export default function ActiveUsersTable({
                   <p className="text-sm font-medium text-gray-900">
                     {user.firstName} {user.lastName}
                   </p>
+                </td>
+                <td className="py-2 px-3 hidden lg:table-cell">
+                  {user.accountType === 'operational' ? (
+                    <Badge variant="warning" className="text-[10px]">Operational</Badge>
+                  ) : (
+                    <Badge variant="default" className="text-[10px]">Member</Badge>
+                  )}
                 </td>
                 <td className="py-2 px-3">
                   <p className="text-xs text-gray-600">{user.email}</p>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit, Phone, Mail, User, Users, Star, Clock, Briefcase } from 'lucide-react'
+import { ArrowLeft, Edit, Phone, Mail, User, Users, Star, Clock, Briefcase, Zap } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -8,6 +8,7 @@ import Badge from '@/components/ui/Badge'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import MemberTimeline from '@/components/member/MemberTimeline'
+import QuickEditMemberModal from '@/components/member/QuickEditMemberModal'
 import { Member, membersService } from '@/services/members'
 import { formatDate } from '@/utils/formatters'
 
@@ -18,6 +19,7 @@ export default function MemberDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'profile' | 'timeline'>('profile')
+  const [showQuickEdit, setShowQuickEdit] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -289,6 +291,15 @@ export default function MemberDetail() {
                       Email
                     </a>
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs col-span-2"
+                    onClick={() => setShowQuickEdit(true)}
+                  >
+                    <Zap className="h-3.5 w-3.5 mr-1" />
+                    Quick Edit
+                  </Button>
                 </div>
               </Card>
 
@@ -359,6 +370,15 @@ export default function MemberDetail() {
           <MemberTimeline memberId={member._id} />
         )}
       </div>
+
+      <QuickEditMemberModal
+        isOpen={showQuickEdit}
+        onClose={() => setShowQuickEdit(false)}
+        member={member}
+        onSuccess={() => {
+          if (id) loadMember(id)
+        }}
+      />
     </Layout>
   )
 }

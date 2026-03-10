@@ -91,6 +91,17 @@ export interface ActiveUser {
     displayName: string;
   };
   lastLogin?: string;
+  accountType?: 'member' | 'operational';
+}
+
+export interface CreateOperationalInvitationData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  roleId: string;
+  branchId: string;
+  assignedDistricts?: string[];
+  notes?: string;
 }
 
 export interface UpdateUserRoleData {
@@ -114,6 +125,14 @@ const userInvitationsService = {
   async createInvitation(data: CreateInvitationData): Promise<UserInvitation> {
     const response = await apiService.post<{ success: boolean; message: string; data: UserInvitation }>(
       '/user-invitations',
+      data
+    );
+    return response.data.data;
+  },
+
+  async createOperationalInvitation(data: CreateOperationalInvitationData): Promise<UserInvitation> {
+    const response = await apiService.post<{ success: boolean; message: string; data: UserInvitation }>(
+      '/user-invitations/operational',
       data
     );
     return response.data.data;

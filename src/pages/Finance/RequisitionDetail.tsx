@@ -5,15 +5,14 @@ import {
   CheckCircle,
   XCircle,
   Banknote,
-  Clock,
   User,
-  Building2,
   FileText,
-  Calendar,
+  GitBranch,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import RequisitionTimeline from '@/components/finance/RequisitionTimeline'
 import { financeService } from '@/services/finance'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import type { Requisition } from '@/types/finance'
@@ -27,6 +26,7 @@ export default function RequisitionDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'details' | 'timeline'>('details')
 
   // Modals
   const [showApproveModal, setShowApproveModal] = useState(false)
@@ -34,7 +34,6 @@ export default function RequisitionDetail() {
   const [showDisburseModal, setShowDisburseModal] = useState(false)
   const [approvalNotes, setApprovalNotes] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
-  const [disbursementRef, setDisbursementRef] = useState('')
   const [disbursementNotes, setDisbursementNotes] = useState('')
 
   const canApprove = hasPermission('finance:approve-requisition')
@@ -87,14 +86,9 @@ export default function RequisitionDetail() {
   }
 
   const handleDisburse = async () => {
-    if (!disbursementRef.trim()) {
-      setError('Please provide a disbursement reference')
-      return
-    }
     try {
       setActionLoading(true)
       await financeService.disburseRequisition(id!, {
-        disbursementReference: disbursementRef,
         notes: disbursementNotes,
       })
       setShowDisburseModal(false)
@@ -162,8 +156,17 @@ export default function RequisitionDetail() {
   }
 
   const statusCfg = requisitionStatusConfig[requisition.status]
-  const requestor = typeof requisition.requestor === 'object' ? requisition.requestor : null
-  const isOwner = requestor?._id === member?._id
+  // Get requestor info: populated Member, or fallback to public submission fields
+  const requestorMember = (typeof requisition.requestor === 'object' && requisition.requestor !== null)
+    ? requisition.requestor
+    : (typeof requisition.createdBy === 'object' && requisition.createdBy !== null)
+      ? requisition.createdBy
+      : null
+  const requestorName = requestorMember
+    ? `${requestorMember.firstName} ${requestorMember.lastName}`
+    : requisition.submitterName || null
+  const requestorEmail = requestorMember?.email || requisition.submitterEmail || null
+  const isOwner = requestorMember?._id === member?._id
 
   const canShowApproveReject =
     canApprove &&
@@ -186,14 +189,30 @@ export default function RequisitionDetail() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Requisition Details
             </h1>
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
               <span
                 className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${statusCfg.bgColor} ${statusCfg.color}`}
               >
                 {statusCfg.label}
               </span>
+              {requisition.referenceNumber && (
+                <span className="text-sm font-mono font-medium text-gray-700">
+                  {requisition.referenceNumber}
+                </span>
+              )}
               <span className="text-gray-500">Created {formatDate(requisition.createdAt)}</span>
             </div>
+            {(requestorName || requestorEmail) && (
+              <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                <User className="w-3.5 h-3.5" />
+                <span>
+                  {requestorName}
+                  {requestorEmail && (
+                    <span className="text-gray-400 ml-1">({requestorEmail})</span>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -229,6 +248,35 @@ export default function RequisitionDetail() {
           </div>
         )}
 
+        {/* Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex gap-6">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`py-2 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'details'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <FileText className="h-4 w-4 mr-1.5 inline" />
+              Details
+            </button>
+            <button
+              onClick={() => setActiveTab('timeline')}
+              className={`py-2 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'timeline'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <GitBranch className="h-4 w-4 mr-1.5 inline" />
+              Approval Timeline
+            </button>
+          </nav>
+        </div>
+
+        {activeTab === 'details' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
@@ -333,99 +381,17 @@ export default function RequisitionDetail() {
                 </div>
                 <div>
                   <p className="font-medium">
-                    {requestor?.firstName} {requestor?.lastName}
+                    {requestorName || 'Unknown'}
                   </p>
-                  <p className="text-sm text-gray-500">{requestor?.email}</p>
+                  <p className="text-sm text-gray-500">{requestorEmail || '-'}</p>
                 </div>
-              </div>
-            </Card>
-
-            {/* Timeline */}
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Timeline</h2>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-gray-500" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Created</p>
-                    <p className="text-sm text-gray-500">{formatDate(requisition.createdAt)}</p>
-                  </div>
-                </div>
-
-                {requisition.submittedAt && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Submitted</p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(requisition.submittedAt)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {requisition.approvedAt && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Approved</p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(requisition.approvedAt)}
-                      </p>
-                      {requisition.approvalNotes && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          "{requisition.approvalNotes}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {requisition.rejectedAt && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                      <XCircle className="w-4 h-4 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Rejected</p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(requisition.rejectedAt)}
-                      </p>
-                      {requisition.rejectionReason && (
-                        <p className="text-sm text-red-600 mt-1">
-                          "{requisition.rejectionReason}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {requisition.disbursedAt && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                      <Banknote className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Disbursed</p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(requisition.disbursedAt)}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Ref: {requisition.disbursementReference}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             </Card>
           </div>
         </div>
+        ) : (
+          <RequisitionTimeline requisition={requisition} />
+        )}
       </div>
 
       {/* Approve Modal */}
@@ -499,18 +465,6 @@ export default function RequisitionDetail() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Disbursement Reference <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Transaction ID"
-                  value={disbursementRef}
-                  onChange={(e) => setDisbursementRef(e.target.value)}
-                  className="w-full p-3 border rounded-lg"
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium mb-1">Notes (optional)</label>
                 <textarea
                   placeholder="Add notes"
@@ -527,7 +481,7 @@ export default function RequisitionDetail() {
               </Button>
               <Button
                 onClick={handleDisburse}
-                disabled={actionLoading || !disbursementRef.trim()}
+                disabled={actionLoading}
               >
                 {actionLoading ? 'Processing...' : 'Confirm Disbursement'}
               </Button>

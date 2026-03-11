@@ -45,7 +45,7 @@ export default function PublicRequisitionAction() {
           })
           return
         } else if (action === 'disburse') {
-          await financeService.disburseWithToken(token, { disbursementReference: 'N/A' })
+          await financeService.disburseWithToken(token, {})
         }
 
         // Redirect to success page

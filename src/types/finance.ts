@@ -125,6 +125,10 @@ export interface Requisition {
   referenceNumber?: string
   branch: string | { _id: string; name: string }
   requestor: string | Member
+  isPublicSubmission?: boolean
+  submitterName?: string
+  submitterEmail?: string
+  submitterPhone?: string
   unit?: string | { _id: string; name: string }
   expenseCategory: string | ExpenseCategory
   eventDescription: string
@@ -184,7 +188,6 @@ export interface RejectRequisitionDto {
 
 // Disburse requisition DTO
 export interface DisburseRequisitionDto {
-  disbursementReference: string
   notes?: string
 }
 

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { ModuleAccessGuard } from '@/guards'
@@ -87,7 +87,6 @@ const Branches = lazy(() => import('@/pages/Branches').then(m => ({ default: m.B
 const BranchForm = lazy(() => import('@/pages/Branches').then(m => ({ default: m.BranchForm })))
 const BranchDetail = lazy(() => import('@/pages/Branches').then(m => ({ default: m.BranchDetail })))
 
-const FinanceDashboard = lazy(() => import('@/pages/Finance/FinanceDashboard'))
 const RequisitionNew = lazy(() => import('@/pages/Finance/RequisitionNew'))
 const RequisitionsList = lazy(() => import('@/pages/Finance/RequisitionsList'))
 const RequisitionDetail = lazy(() => import('@/pages/Finance/RequisitionDetail'))
@@ -495,11 +494,7 @@ function App() {
           } />
 
           {/* Finance Management */}
-          <Route path="/finance" element={
-            <ProtectedRoute>
-              <LazyPage><FinanceDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
+          <Route path="/finance" element={<Navigate to="/finance/requisitions" replace />} />
           <Route path="/finance/requisitions" element={
             <ProtectedRoute>
               <LazyPage><RequisitionsList /></LazyPage>

@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Banknote, User, Building2 } from 'lucide-react'
+import { Eye, Banknote, User, Building2, ArrowLeft } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
 import { SkeletonTable } from '@/components/ui/Skeleton'
 import { financeService } from '@/services/finance'
 import type { Requisition } from '@/types/finance'
@@ -16,7 +15,6 @@ export default function PendingDisbursements() {
   const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [selectedReq, setSelectedReq] = useState<Requisition | null>(null)
-  const [disbursementRef, setDisbursementRef] = useState('')
   const [disbursementNotes, setDisbursementNotes] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -38,17 +36,15 @@ export default function PendingDisbursements() {
 
   const openDisburseModal = (req: Requisition) => {
     setSelectedReq(req)
-    setDisbursementRef('')
     setDisbursementNotes('')
     setShowModal(true)
   }
 
   const handleDisburse = async () => {
-    if (!selectedReq || !disbursementRef.trim()) return
+    if (!selectedReq) return
     try {
       setActionLoading(true)
       await financeService.disburseRequisition(selectedReq._id, {
-        disbursementReference: disbursementRef,
         notes: disbursementNotes,
       })
       setShowModal(false)
@@ -80,6 +76,13 @@ export default function PendingDisbursements() {
     <Layout>
       <div className="p-6 space-y-6">
         <div>
+          <button
+            onClick={() => navigate('/finance/requisitions')}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Requisitions
+          </button>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Pending Disbursements
           </h1>
@@ -220,16 +223,6 @@ export default function PendingDisbursements() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Disbursement Reference <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  placeholder="e.g., Transaction ID or Reference Number"
-                  value={disbursementRef}
-                  onChange={(e) => setDisbursementRef(e.target.value)}
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium mb-1">Notes (optional)</label>
                 <textarea
                   placeholder="Add any notes about this disbursement"
@@ -246,7 +239,7 @@ export default function PendingDisbursements() {
               </Button>
               <Button
                 onClick={handleDisburse}
-                disabled={actionLoading || !disbursementRef.trim()}
+                disabled={actionLoading}
               >
                 {actionLoading ? 'Processing...' : 'Confirm Disbursement'}
               </Button>

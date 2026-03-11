@@ -225,16 +225,10 @@ const menuGroups: MenuGroup[] = [
       {
         icon: DollarSign,
         label: 'Finance',
-        path: '/finance',
+        path: '/finance/requisitions',
         requiredPermission: 'finance:view-requisitions',
         hasDropdown: true,
         subItems: [
-          {
-            icon: FileText,
-            label: 'My Requisitions',
-            path: '/finance/requisitions',
-            requiredPermission: 'finance:create-requisition',
-          },
           {
             icon: CheckCircle,
             label: 'Approvals',

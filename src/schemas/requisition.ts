@@ -61,7 +61,6 @@ export type RejectRequisitionFormData = z.infer<typeof rejectRequisitionSchema>
 
 // Disburse requisition schema
 export const disburseRequisitionSchema = z.object({
-  disbursementReference: z.string().min(1, 'Disbursement reference is required'),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 })
 

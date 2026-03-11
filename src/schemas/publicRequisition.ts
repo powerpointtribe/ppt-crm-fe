@@ -61,10 +61,6 @@ export type PublicRejectFormData = z.infer<typeof publicRejectSchema>
 
 // Token-based disbursement schema
 export const publicDisburseSchema = z.object({
-  disbursementReference: z
-    .string()
-    .min(1, 'Disbursement reference is required')
-    .max(100, 'Reference must be less than 100 characters'),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 })
 

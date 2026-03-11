@@ -18,6 +18,9 @@ interface AuthContextType {
   canAccessModule: (module: string) => boolean;
   hasSystemRole: (role: string) => boolean;
   hasLeadershipRole: (role: 'district_pastor' | 'unit_head' | 'champ') => boolean;
+  // Password change requirement
+  requirePasswordChange: boolean;
+  clearPasswordChangeRequirement: () => void;
   // Computed flags (derived from permissions)
   isGIA: boolean;
   isPastor: boolean;
@@ -84,6 +87,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return cached;
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [requirePasswordChange, setRequirePasswordChange] = useState<boolean>(
+    () => localStorage.getItem('require_password_change') === 'true'
+  );
   const [cachedPermissions, setCachedPermissions] = useState<{
     accessibleModules: string[];
     systemRoles: string[];
@@ -253,6 +259,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setCachedPermissions(permissions);
       localStorage.setItem('cached_permissions', JSON.stringify(permissions));
 
+      // Handle password change requirement
+      if (response.requirePasswordChange) {
+        localStorage.setItem('require_password_change', 'true');
+        setRequirePasswordChange(true);
+      } else {
+        localStorage.removeItem('require_password_change');
+        setRequirePasswordChange(false);
+      }
+
       console.log('Login successful, permissions loaded:', loginPermissions.length);
     } catch (error) {
       throw error;
@@ -263,12 +278,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     throw new Error('Registration is disabled. Access is restricted to authorized PowerPoint Tribe leadership only.');
   };
 
+  const clearPasswordChangeRequirement = () => {
+    localStorage.removeItem('require_password_change');
+    setRequirePasswordChange(false);
+  };
+
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('cached_permissions');
     localStorage.removeItem('cached_member');
+    localStorage.removeItem('require_password_change');
     setMember(null);
     setCachedPermissions(null);
+    setRequirePasswordChange(false);
   };
 
   const refreshAuth = async () => {
@@ -400,6 +422,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     canAccessModule,
     hasSystemRole,
     hasLeadershipRole,
+    requirePasswordChange,
+    clearPasswordChangeRequirement,
     isGIA,
     isPastor,
     isAdmin,

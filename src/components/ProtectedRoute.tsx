@@ -39,6 +39,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
+  // Check if password change is required - redirect to change-password page
+  const requiresPasswordChange = localStorage.getItem('require_password_change') === 'true'
+  if (requiresPasswordChange && location.pathname !== '/change-password') {
+    debugLog('Password change required, redirecting to change-password')
+    return <Navigate to="/change-password" replace />
+  }
+
   debugLog('Authentication check passed, rendering children')
   return <>{children}</>
 }

@@ -13,6 +13,7 @@ import { preloadCommonRoutes } from '@/utils/routePreloader'
 import Login from '@/pages/auth/Login'
 import ForgotPassword from '@/pages/auth/ForgotPassword'
 import ResetPassword from '@/pages/auth/ResetPassword'
+import ChangePassword from '@/pages/auth/ChangePassword'
 
 // Public Pages - Load immediately
 import LandingPage from '@/pages/LandingPage'
@@ -166,6 +167,11 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/change-password" element={
+            <ProtectedRoute>
+              <ChangePassword />
+            </ProtectedRoute>
+          } />
           <Route path="/visitor-registration" element={<PublicVisitorRegistration />} />
           <Route path="/visitor-registration/:branchSlug" element={<PublicVisitorRegistration />} />
           <Route path="/workers-training-registration" element={<WorkersTrainingRegistration />} />
@@ -299,6 +305,7 @@ function App() {
           } />
 
           {/* Service Reports - Under Members section */}
+          <Route path="/service-reports" element={<Navigate to="/members/service-reports" replace />} />
           <Route path="/members/service-reports" element={
             <ProtectedRoute>
               <LazyPage><ServiceReports /></LazyPage>

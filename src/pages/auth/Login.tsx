@@ -48,9 +48,17 @@ export default function Login() {
       await login(data.email, data.password)
       debugLog('Login successful via auth context')
 
+      // Check if password change is required
+      const needsPasswordChange = localStorage.getItem('require_password_change') === 'true'
+
       setTimeout(() => {
-        debugLog('Navigating to dashboard...')
-        navigate('/dashboard')
+        if (needsPasswordChange) {
+          debugLog('Password change required, navigating to change-password...')
+          navigate('/change-password')
+        } else {
+          debugLog('Navigating to dashboard...')
+          navigate('/dashboard')
+        }
       }, 200)
     } catch (error: any) {
       debugLog(`Login error: ${error.message}`)

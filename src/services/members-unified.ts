@@ -13,6 +13,8 @@ export interface LoginCredentials {
 export interface LoginResponse {
   access_token: string
   member: Member
+  isFirstLogin?: boolean
+  requirePasswordChange?: boolean
 }
 
 export interface CreateMemberData {
@@ -186,9 +188,9 @@ export const membersService = {
   },
 
   // Password management
-  changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
-    await apiService.patch<ApiResponse<void>>('/members/change-password', {
-      oldPassword,
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await apiService.post<ApiResponse<void>>('/auth/change-password', {
+      currentPassword,
       newPassword
     })
   },

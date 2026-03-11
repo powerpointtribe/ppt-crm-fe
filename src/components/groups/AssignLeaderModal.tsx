@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Search, Crown, Shield, Star, AlertCircle, Loader2 } from 'lucide-react'
 import Button from '@/components/ui/Button'
@@ -74,14 +74,27 @@ export default function AssignLeaderModal({
     if (isOpen) {
       loadMembers()
       setSelectedMemberId(null)
+      setSearchQuery('')
     }
   }, [isOpen])
 
-  const loadMembers = async () => {
+  // Debounced server-side search
+  useEffect(() => {
+    if (!isOpen) return
+    const timer = setTimeout(() => {
+      loadMembers(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const loadMembers = async (search?: string) => {
     try {
       setLoading(true)
       setError(null)
-      const response = await membersService.getMembers({ limit: 100 })
+      const response = await membersService.getMembers({
+        limit: 50,
+        search: search || undefined,
+      })
       setMembers(response.items)
     } catch (err: any) {
       setError(err.message || 'Failed to load members')
@@ -89,18 +102,6 @@ export default function AssignLeaderModal({
       setLoading(false)
     }
   }
-
-  const filteredMembers = useMemo(() => {
-    if (!searchQuery) return members
-
-    const query = searchQuery.toLowerCase()
-    return members.filter(member => {
-      const fullName = `${member.firstName} ${member.lastName}`.toLowerCase()
-      const email = member.email?.toLowerCase() || ''
-      const phone = member.phone || ''
-      return fullName.includes(query) || email.includes(query) || phone.includes(query)
-    })
-  }, [members, searchQuery])
 
   const handleSubmit = async () => {
     if (!selectedMemberId) return
@@ -205,7 +206,7 @@ export default function AssignLeaderModal({
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
               </div>
-            ) : filteredMembers.length === 0 ? (
+            ) : members.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500">
                   {searchQuery ? 'No members found matching your search' : 'No members available'}
@@ -213,7 +214,7 @@ export default function AssignLeaderModal({
               </div>
             ) : (
               <div className="space-y-1">
-                {filteredMembers.map((member) => (
+                {members.map((member) => (
                   <button
                     key={member._id}
                     onClick={() => setSelectedMemberId(member._id)}

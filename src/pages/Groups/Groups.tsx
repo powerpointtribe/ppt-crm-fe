@@ -461,6 +461,9 @@ export default function Groups() {
     if (group.type === 'unit' && group.unitHead) {
       return { title: 'Unit Head', id: group.unitHead, icon: Shield }
     }
+    if (group.type === 'ministry' && group.ministryDirector) {
+      return { title: 'Ministry Director', id: group.ministryDirector, icon: Star }
+    }
     return null
   }
 

@@ -70,33 +70,45 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
   const selectedRole = roles.find(r => r._id === selectedRoleId);
   const isAssistantPastor = selectedRole?.slug === 'assistant-pastor' || selectedRole?.name?.toLowerCase().includes('assistant');
 
-  // Fetch members without platform access
-  useEffect(() => {
-    const fetchMembers = async () => {
+  // Load members via server-side search
+  const loadMembers = async (search?: string) => {
+    try {
       setLoading(true);
-      try {
-        // Fetch all members and filter those without roles or inactive
-        const response = await membersService.getMembers({
-          page: 1,
-          limit: 100,
-        });
+      const response = await membersService.getMembers({
+        limit: 50,
+        search: search || undefined,
+      });
 
-        // Filter members who don't have platform access yet
-        const membersWithoutAccess = response.items.filter(
-          (member: Member) => !member.role || !member.isActive
-        );
+      // Filter to members without platform access (no role assigned)
+      const membersWithoutAccess = response.items.filter(
+        (member: Member) => !member.role
+      );
 
-        setMembers(membersWithoutAccess);
-      } catch (error) {
-        console.error('Failed to fetch members:', error);
-        toast.error('Failed to load members');
-      } finally {
-        setLoading(false);
-      }
-    };
+      setMembers(membersWithoutAccess);
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
+      toast.error('Failed to load members');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchMembers();
+  // Initial load
+  useEffect(() => {
+    loadMembers();
   }, []);
+
+  // Debounced server-side search
+  useEffect(() => {
+    if (!searchQuery) {
+      loadMembers();
+      return;
+    }
+    const timer = setTimeout(() => {
+      loadMembers(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Fetch roles and branches
   useEffect(() => {
@@ -147,13 +159,8 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
     fetchDistricts();
   }, [selectedBranchId]);
 
-  // Filter members based on search
-  const filteredMembers = members.filter((member) => {
-    const fullName = `${member.firstName} ${member.lastName}`.toLowerCase();
-    const email = member.email.toLowerCase();
-    const query = searchQuery.toLowerCase();
-    return fullName.includes(query) || email.includes(query);
-  });
+  // Members are already filtered by server-side search
+  const filteredMembers = members;
 
   // Handle member selection
   const handleSelectMember = (member: Member) => {

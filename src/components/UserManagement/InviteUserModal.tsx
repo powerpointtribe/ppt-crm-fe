@@ -106,7 +106,7 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
     }
     const timer = setTimeout(() => {
       loadMembers(searchQuery);
-    }, 300);
+    }, 3000);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 

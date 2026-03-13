@@ -29,8 +29,11 @@ export const publicRequisitionSchema = z.object({
   expenseCategory: z.string().min(1, 'Expense category is required'),
   eventDescription: z
     .string()
-    .min(1, 'Event description is required')
-    .max(500, 'Event description must be less than 500 characters'),
+    .min(1, 'Event description is required'),
+  customEventDescription: z
+    .string()
+    .max(500, 'Description must be less than 500 characters')
+    .optional(),
   dateNeeded: z.string().min(1, 'Date needed is required'),
   lastRequest: z.string().max(200, 'Must be less than 200 characters').optional(),
   costBreakdown: z
@@ -48,6 +51,13 @@ export const publicRequisitionSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: 'Please enter your unit name',
       path: ['customUnit'],
+    })
+  }
+  if (data.eventDescription === 'other' && (!data.customEventDescription || data.customEventDescription.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please describe the event',
+      path: ['customEventDescription'],
     })
   }
 })

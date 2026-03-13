@@ -179,6 +179,7 @@ export default function PublicRequisitionForm() {
       customUnit: '',
       expenseCategory: '',
       eventDescription: '',
+      customEventDescription: '',
       dateNeeded: '',
       lastRequest: '',
       costBreakdown: [{ item: '', quantity: 1, unitCost: 0, total: 0 }],
@@ -200,6 +201,7 @@ export default function PublicRequisitionForm() {
 
   const selectedBranchSlug = watch('branchSlug')
   const selectedUnit = watch('unit')
+  const selectedEventDescription = watch('eventDescription')
   const costBreakdown = watch('costBreakdown')
   const discussedWithPDams = watch('discussedWithPDams')
 
@@ -396,6 +398,10 @@ export default function PublicRequisitionForm() {
       } else {
         submitData.customUnit = undefined
       }
+      if (submitData.eventDescription === 'other') {
+        submitData.eventDescription = submitData.customEventDescription || ''
+      }
+      delete (submitData as any).customEventDescription
       await financeService.createPublicRequisition(submitData)
       setSubmitted(true)
     } catch (err: any) {
@@ -460,8 +466,10 @@ export default function PublicRequisitionForm() {
                   submitterPhone: '',
                   branchSlug: branch?.slug || eligibilityBranchSlug,
                   unit: '',
+                  customUnit: '',
                   expenseCategory: '',
                   eventDescription: '',
+                  customEventDescription: '',
                   dateNeeded: '',
                   lastRequest: '',
                   costBreakdown: [{ item: '', quantity: 1, unitCost: 0, total: 0 }],
@@ -801,30 +809,40 @@ export default function PublicRequisitionForm() {
                 />
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Event Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  {...register('eventDescription')}
-                  rows={3}
+              <Select
+                label="Event Description"
+                required
+                error={errors.eventDescription?.message}
+                {...register('eventDescription', {
+                  onChange: (e) => {
+                    if (e.target.value !== 'other') {
+                      setValue('customEventDescription', '')
+                    }
+                  },
+                })}
+              >
+                <option value="">Select event description</option>
+                <option value="Monthly Budget">Monthly Budget</option>
+                <option value="Anniversary">Anniversary</option>
+                <option value="TnT">TnT</option>
+                <option value="Life Questions">Life Questions</option>
+                <option value="Paid Event at The Garrison">Paid Event at The Garrison</option>
+                <option value="Themed Services">Themed Services</option>
+                <option value="Special Events">Special Events</option>
+                <option value="Not an Event">Not an Event</option>
+                <option value="other">Other</option>
+              </Select>
+
+              {selectedEventDescription === 'other' && (
+                <Input
+                  label="Describe the Event"
+                  required
+                  type="text"
                   placeholder="What is this expense for?"
-                  className={`
-                    w-full rounded-lg border bg-white px-3 py-2.5
-                    text-gray-900 text-sm placeholder:text-gray-400 resize-none
-                    transition-colors duration-150
-                    hover:border-gray-300
-                    focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
-                    ${errors.eventDescription ? 'border-red-300' : 'border-gray-200'}
-                  `}
+                  error={errors.customEventDescription?.message}
+                  {...register('customEventDescription')}
                 />
-                {errors.eventDescription && (
-                  <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {errors.eventDescription.message}
-                  </p>
-                )}
-              </div>
+              )}
 
               <Input
                 label="Phone (optional)"
@@ -1046,41 +1064,20 @@ export default function PublicRequisitionForm() {
           <div>
             <SectionLabel>Confirmation</SectionLabel>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Discussed with P.Dams? <span className="text-red-500">*</span>
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
+              <Select
+                label="Discussed with P.Dams?"
+                required
+                error={errors.discussedWithPDams?.message}
+                {...register('discussedWithPDams')}
+              >
+                <option value="">Select an option</option>
+                <option value="yes">Yes, I have discussed this</option>
+                <option value="not_required">Not required (regular expense)</option>
+                <option value="no">No, I have not discussed this</option>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
                 For regular monthly expenses, select "Not required". For one-off expenses, discuss with P.Dams first.
               </p>
-
-              <div className="space-y-2">
-                {[
-                  { value: 'yes', label: 'Yes, I have discussed this' },
-                  { value: 'not_required', label: 'Not required (regular expense)' },
-                  { value: 'no', label: 'No, I have not discussed this' },
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className={`
-                      flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-all text-sm
-                      ${discussedWithPDams === option.value
-                        ? option.value === 'no'
-                          ? 'border-amber-300 bg-amber-50'
-                          : 'border-blue-300 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                      }
-                    `}
-                  >
-                    <input
-                      type="radio"
-                      value={option.value}
-                      {...register('discussedWithPDams')}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                    />
-                    <span className="text-gray-700">{option.label}</span>
-                  </label>
-                ))}
-              </div>
 
               <AnimatePresence>
                 {discussedWithPDams === 'no' && (

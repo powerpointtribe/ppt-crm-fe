@@ -434,8 +434,11 @@ export const financeService = {
     if (!cleanedData.unit || cleanedData.unit === '') {
       delete cleanedData.unit
     }
-    if (!cleanedData.lastRequestDate || cleanedData.lastRequestDate === '') {
-      delete cleanedData.lastRequestDate
+    if (!cleanedData.customUnit || cleanedData.customUnit === '') {
+      delete cleanedData.customUnit
+    }
+    if (!cleanedData.lastRequest || cleanedData.lastRequest === '') {
+      delete cleanedData.lastRequest
     }
     if (!cleanedData.submitterPhone || cleanedData.submitterPhone === '') {
       delete cleanedData.submitterPhone
@@ -523,6 +526,13 @@ export const financeService = {
   getPublicBranchBySlug: async (slug: string): Promise<PublicBranch> => {
     const response = await publicApi.get<ApiResponse<PublicBranch>>(
       `/public/finance/branches/${slug}`
+    )
+    return response.data.data
+  },
+
+  getPublicGroups: async (branchSlug: string): Promise<Array<{ _id: string; name: string; type: string }>> => {
+    const response = await publicApi.get<ApiResponse<Array<{ _id: string; name: string; type: string }>>>(
+      `/public/finance/groups/${branchSlug}`
     )
     return response.data.data
   },

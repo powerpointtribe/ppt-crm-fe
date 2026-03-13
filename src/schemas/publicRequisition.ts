@@ -20,15 +20,19 @@ export const publicRequisitionSchema = z.object({
   // Branch selection
   branchSlug: z.string().min(1, 'Please select a branch'),
 
-  // Same fields as regular requisition
-  unit: z.string().optional(),
+  // Unit selection - required: either pick a unit or type a custom one
+  unit: z.string().min(1, 'Please select a unit'),
+  customUnit: z
+    .string()
+    .max(200, 'Custom unit must be less than 200 characters')
+    .optional(),
   expenseCategory: z.string().min(1, 'Expense category is required'),
   eventDescription: z
     .string()
     .min(1, 'Event description is required')
     .max(500, 'Event description must be less than 500 characters'),
   dateNeeded: z.string().min(1, 'Date needed is required'),
-  lastRequestDate: z.string().optional(),
+  lastRequest: z.string().max(200, 'Must be less than 200 characters').optional(),
   costBreakdown: z
     .array(costBreakdownItemSchema)
     .min(1, 'At least one cost item is required'),
@@ -38,6 +42,14 @@ export const publicRequisitionSchema = z.object({
     required_error: 'Please select whether you have discussed this expense with P.Dams',
   }),
   discussedDate: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.unit === 'others' && (!data.customUnit || data.customUnit.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please enter your unit name',
+      path: ['customUnit'],
+    })
+  }
 })
 
 export type PublicRequisitionFormData = z.infer<typeof publicRequisitionSchema>

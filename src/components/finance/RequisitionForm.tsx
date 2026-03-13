@@ -61,7 +61,7 @@ export default function RequisitionForm({
               : requisition.expenseCategory,
           eventDescription: requisition.eventDescription,
           dateNeeded: requisition.dateNeeded?.split('T')[0],
-          lastRequestDate: requisition.lastRequestDate?.split('T')[0],
+          lastRequest: requisition.lastRequest || '',
           costBreakdown: requisition.costBreakdown,
           creditAccount: requisition.creditAccount,
           documentUrls: requisition.documentUrls,
@@ -390,8 +390,9 @@ export default function RequisitionForm({
                 Last Similar Request <span className="text-gray-400 text-xs">(optional)</span>
               </label>
               <input
-                type="date"
-                {...register('lastRequestDate')}
+                type="text"
+                placeholder="e.g., About 3 months ago"
+                {...register('lastRequest')}
                 className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all"
               />
             </div>

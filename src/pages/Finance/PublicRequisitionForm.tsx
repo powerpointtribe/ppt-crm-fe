@@ -148,8 +148,10 @@ export default function PublicRequisitionForm() {
   const [branch, setBranch] = useState<PublicBranch | null>(null)
   const [branches, setBranches] = useState<PublicBranch[]>([])
   const [expenseCategories, setExpenseCategories] = useState<PublicExpenseCategory[]>([])
+  const [groups, setGroups] = useState<Array<{ _id: string; name: string }>>([])
   const [loadingBranch, setLoadingBranch] = useState(!!branchSlug)
   const [loadingCategories, setLoadingCategories] = useState(false)
+  const [loadingGroups, setLoadingGroups] = useState(false)
 
   const [eligibilityEmail, setEligibilityEmail] = useState('')
   const [eligibilityBranchSlug, setEligibilityBranchSlug] = useState('')
@@ -174,10 +176,11 @@ export default function PublicRequisitionForm() {
       submitterPhone: '',
       branchSlug: branchSlug || '',
       unit: '',
+      customUnit: '',
       expenseCategory: '',
       eventDescription: '',
       dateNeeded: '',
-      lastRequestDate: '',
+      lastRequest: '',
       costBreakdown: [{ item: '', quantity: 1, unitCost: 0, total: 0 }],
       creditAccount: {
         bankName: '',
@@ -196,6 +199,7 @@ export default function PublicRequisitionForm() {
   })
 
   const selectedBranchSlug = watch('branchSlug')
+  const selectedUnit = watch('unit')
   const costBreakdown = watch('costBreakdown')
   const discussedWithPDams = watch('discussedWithPDams')
 
@@ -362,11 +366,37 @@ export default function PublicRequisitionForm() {
     fetchCategories()
   }, [branch?.slug, selectedBranchSlug])
 
+  useEffect(() => {
+    const fetchGroups = async () => {
+      const branchSlugToUse = branch?.slug || selectedBranchSlug
+      if (!branchSlugToUse) {
+        setGroups([])
+        return
+      }
+      try {
+        setLoadingGroups(true)
+        const data = await financeService.getPublicGroups(branchSlugToUse)
+        setGroups(data)
+      } catch {
+        // Silent fail
+      } finally {
+        setLoadingGroups(false)
+      }
+    }
+    fetchGroups()
+  }, [branch?.slug, selectedBranchSlug])
+
   const onSubmit = async (data: PublicRequisitionFormData) => {
     try {
       setLoading(true)
       setError(null)
-      await financeService.createPublicRequisition(data)
+      const submitData = { ...data }
+      if (submitData.unit === 'others') {
+        submitData.unit = undefined as any
+      } else {
+        submitData.customUnit = undefined
+      }
+      await financeService.createPublicRequisition(submitData)
       setSubmitted(true)
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to submit requisition.')
@@ -433,7 +463,7 @@ export default function PublicRequisitionForm() {
                   expenseCategory: '',
                   eventDescription: '',
                   dateNeeded: '',
-                  lastRequestDate: '',
+                  lastRequest: '',
                   costBreakdown: [{ item: '', quantity: 1, unitCost: 0, total: 0 }],
                   creditAccount: {
                     bankName: '',
@@ -736,9 +766,44 @@ export default function PublicRequisitionForm() {
                 />
               </div>
 
+              <Select
+                label="Unit"
+                required
+                disabled={loadingGroups}
+                error={errors.unit?.message}
+                {...register('unit', {
+                  onChange: (e) => {
+                    if (e.target.value !== 'others') {
+                      setValue('customUnit', '')
+                    }
+                  },
+                })}
+              >
+                <option value="">
+                  {loadingGroups ? 'Loading...' : 'Select unit'}
+                </option>
+                {groups.map((group) => (
+                  <option key={group._id} value={group._id}>
+                    {group.name}
+                  </option>
+                ))}
+                <option value="others">Others</option>
+              </Select>
+
+              {selectedUnit === 'others' && (
+                <Input
+                  label="Specify Group"
+                  required
+                  type="text"
+                  placeholder="Enter your group name"
+                  error={errors.customUnit?.message}
+                  {...register('customUnit')}
+                />
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Description <span className="text-red-500">*</span>
+                  Event Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   {...register('eventDescription')}
@@ -772,10 +837,11 @@ export default function PublicRequisitionForm() {
 
               <Input
                 label="Last Similar Request (optional)"
-                type="date"
+                type="text"
                 icon={Calendar}
+                placeholder="e.g., About 3 months ago"
                 hint="When was a similar expense last requested?"
-                {...register('lastRequestDate')}
+                {...register('lastRequest')}
               />
             </div>
           </div>

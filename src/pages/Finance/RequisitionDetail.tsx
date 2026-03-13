@@ -297,7 +297,7 @@ export default function RequisitionDetail() {
                   <div>
                     <label className="text-sm text-gray-500">Last Request of This Nature</label>
                     <p className="font-medium">
-                      {formatDate(requisition.lastRequestDate) || 'N/A'}
+                      {requisition.lastRequest || 'N/A'}
                     </p>
                   </div>
                 </div>

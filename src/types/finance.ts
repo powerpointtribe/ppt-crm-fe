@@ -133,7 +133,7 @@ export interface Requisition {
   expenseCategory: string | ExpenseCategory
   eventDescription: string
   dateNeeded: string
-  lastRequestDate?: string
+  lastRequest?: string
   totalAmount: number
   currency: string
   costBreakdown: CostBreakdownItem[]
@@ -164,7 +164,7 @@ export interface CreateRequisitionDto {
   expenseCategory: string
   eventDescription: string
   dateNeeded: string
-  lastRequestDate?: string
+  lastRequest?: string
   costBreakdown: CostBreakdownItem[]
   creditAccount: BankAccount
   documentUrls?: string[]

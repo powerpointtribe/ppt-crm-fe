@@ -27,7 +27,7 @@ export const requisitionSchema = z.object({
     .min(1, 'Event description is required')
     .max(500, 'Event description must be less than 500 characters'),
   dateNeeded: z.string().min(1, 'Date needed is required'),
-  lastRequestDate: z.string().optional(),
+  lastRequest: z.string().max(200, 'Must be less than 200 characters').optional(),
   costBreakdown: z
     .array(costBreakdownItemSchema)
     .min(1, 'At least one cost item is required'),

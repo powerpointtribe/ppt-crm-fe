@@ -201,6 +201,7 @@ export default function EventForm({
     setValue,
     formState: { errors },
   } = useForm<any>({
+    shouldUnregister: true,
     defaultValues: event
       ? {
           title: event.title,
@@ -760,7 +761,14 @@ export default function EventForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="h-full flex flex-col">
+    <form onSubmit={handleSubmit(onFormSubmit, (validationErrors) => {
+      // If validation fails on a hidden tab, switch to it so the user can see the errors
+      const detailsFields = ['title', 'startDate', 'endDate', 'location', 'type']
+      const hasDetailsErrors = Object.keys(validationErrors).some(key => detailsFields.includes(key))
+      if (hasDetailsErrors && activeTab !== 'details') {
+        setActiveTab('details')
+      }
+    })} className="h-full flex flex-col">
       {/* Header with Title Preview and Status */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">

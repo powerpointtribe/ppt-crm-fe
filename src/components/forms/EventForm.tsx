@@ -530,7 +530,7 @@ export default function EventForm({
                 icon={Globe}
                 label="Platform Name"
                 placeholder="e.g., Zoom, Google Meet"
-                {...register('location.name')}
+                {...register('location.name', { required: 'Platform name is required' })}
                 error={(errors.location as any)?.name?.message as string}
               />
               <IconInput
@@ -547,7 +547,7 @@ export default function EventForm({
                 icon={Building}
                 label="Venue Name"
                 placeholder="e.g., Main Auditorium"
-                {...register('location.name')}
+                {...register('location.name', { required: 'Venue name is required' })}
                 error={(errors.location as any)?.name?.message as string}
               />
               <IconInput
@@ -842,18 +842,12 @@ export default function EventForm({
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto bg-gray-50">
         <div className="max-w-4xl mx-auto p-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.15 }}
-            >
-              {activeTab === 'details' && renderDetailsTab()}
-              {activeTab === 'registration' && renderRegistrationTab()}
-            </motion.div>
-          </AnimatePresence>
+            <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
+              {renderDetailsTab()}
+            </div>
+            <div style={{ display: activeTab === 'registration' ? 'block' : 'none' }}>
+              {renderRegistrationTab()}
+            </div>
         </div>
       </div>
 

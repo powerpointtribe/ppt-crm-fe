@@ -50,7 +50,7 @@ export interface MemberSearchParams {
   districtId?: string
   unitId?: string
   ministry?: string
-  leadershipRole?: 'district_pastor' | 'champ' | 'unit_head'
+  leadershipRole?: 'unit_head' | 'district_pastor' | 'ministry_director'
   dateJoinedFrom?: string
   dateJoinedTo?: string
   minAge?: number

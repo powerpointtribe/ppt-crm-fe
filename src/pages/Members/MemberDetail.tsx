@@ -47,8 +47,10 @@ export default function MemberDetail() {
       LXL: 'secondary',
       DIRECTOR: 'warning',
       PASTOR: 'success',
+      CAMPUS_PASTOR: 'success',
       SENIOR_PASTOR: 'success',
-      LEFT: 'destructive'
+      LEFT: 'destructive',
+      RELOCATED: 'destructive'
     }
     return variants[status] || 'default'
   }

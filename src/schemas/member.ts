@@ -35,16 +35,16 @@ export const memberSchema = z.object({
   unit: z.string().optional(),
   additionalGroups: z.array(z.string()).optional().default([]),
   membershipStatus: z.enum([
-    'new_convert',
-    'worker',
-    'volunteer',
-    'leader',
-    'district_pastor',
-    'champ',
-    'unit_head',
-    'inactive',
-    'transferred'
-  ]).default('new_convert'),
+    'MEMBER',
+    'DC',
+    'LXL',
+    'DIRECTOR',
+    'PASTOR',
+    'CAMPUS_PASTOR',
+    'SENIOR_PASTOR',
+    'LEFT',
+    'RELOCATED'
+  ]).default('MEMBER'),
   dateJoined: z.string().optional(),
   baptismDate: z.string().optional(),
   confirmationDate: z.string().optional(),
@@ -103,8 +103,8 @@ export const memberEditSchema = z.object({
   unit: z.string().optional(),
   additionalGroups: z.array(z.string()).optional(),
   membershipStatus: z.enum([
-    'new_convert', 'worker', 'volunteer', 'leader', 'district_pastor',
-    'champ', 'unit_head', 'inactive', 'transferred'
+    'MEMBER', 'DC', 'LXL', 'DIRECTOR', 'PASTOR',
+    'CAMPUS_PASTOR', 'SENIOR_PASTOR', 'LEFT', 'RELOCATED'
   ]).optional(),
   dateJoined: z.string().optional(),
   baptismDate: z.string().optional(),
@@ -125,15 +125,15 @@ export type MemberEditFormData = z.infer<typeof memberEditSchema>
 // Bulk edit schema (partial updates)
 export const bulkMemberEditSchema = z.object({
   membershipStatus: z.enum([
-    'new_convert',
-    'worker',
-    'volunteer',
-    'leader',
-    'district_pastor',
-    'champ',
-    'unit_head',
-    'inactive',
-    'transferred'
+    'MEMBER',
+    'DC',
+    'LXL',
+    'DIRECTOR',
+    'PASTOR',
+    'CAMPUS_PASTOR',
+    'SENIOR_PASTOR',
+    'LEFT',
+    'RELOCATED'
   ]).optional(),
   district: z.string().optional(),
   unit: z.string().optional(),

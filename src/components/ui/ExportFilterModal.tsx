@@ -167,11 +167,15 @@ export default function ExportFilterModal({
                   onChange={(e) => handleFilterChange('membershipStatus', e.target.value)}
                 >
                   <option value="">All Statuses</option>
-                  <option value="new_convert">New Convert</option>
-                  <option value="baptized">Baptized</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="member">Member</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="MEMBER">Member</option>
+                  <option value="DC">David's Company</option>
+                  <option value="LXL">League of Xtraordinary Leaders</option>
+                  <option value="DIRECTOR">Director</option>
+                  <option value="PASTOR">Pastor</option>
+                  <option value="CAMPUS_PASTOR">Campus Pastor</option>
+                  <option value="SENIOR_PASTOR">Senior Pastor</option>
+                  <option value="LEFT">Left</option>
+                  <option value="RELOCATED">Relocated</option>
                 </select>
               </div>
 

@@ -52,7 +52,7 @@ export interface MemberSearchParams {
   unitId?: string
   unitType?: string
   systemRole?: string
-  leadershipRole?: 'district_pastor' | 'champ' | 'unit_head'
+  leadershipRole?: 'unit_head' | 'district_pastor' | 'ministry_director'
   ministry?: string
   dateJoinedFrom?: string
   dateJoinedTo?: string

@@ -35,7 +35,7 @@ export interface Member {
 
   // Church membership - Hierarchical status (MEMBER, DC, LXL, DIRECTOR, PASTOR, SENIOR_PASTOR, LEFT)
   // This is different from engagement status used in First Timers module
-  membershipStatus: 'MEMBER' | 'DC' | 'LXL' | 'DIRECTOR' | 'PASTOR' | 'SENIOR_PASTOR' | 'LEFT'
+  membershipStatus: 'MEMBER' | 'DC' | 'LXL' | 'DIRECTOR' | 'PASTOR' | 'CAMPUS_PASTOR' | 'SENIOR_PASTOR' | 'LEFT' | 'RELOCATED'
   dateJoined: string
   baptismDate?: string
   confirmationDate?: string

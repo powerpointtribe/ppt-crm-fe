@@ -41,12 +41,21 @@ import { useAuth } from '@/contexts/AuthContext-unified'
 
 // Filter options
 const statusOptions = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'new_convert', label: 'New Convert' },
-  { value: 'worker', label: 'Worker' },
-  { value: 'leader', label: 'Leader' },
-  { value: 'transferred', label: 'Transferred' },
+  { value: 'MEMBER', label: 'Member' },
+  { value: 'DC', label: "David's Company" },
+  { value: 'LXL', label: 'League of Xtraordinary Leaders' },
+  { value: 'DIRECTOR', label: 'Director' },
+  { value: 'PASTOR', label: 'Pastor' },
+  { value: 'CAMPUS_PASTOR', label: 'Campus Pastor' },
+  { value: 'SENIOR_PASTOR', label: 'Senior Pastor' },
+  { value: 'LEFT', label: 'Left' },
+  { value: 'RELOCATED', label: 'Relocated' },
+]
+
+const leadershipRoleOptions = [
+  { value: 'unit_head', label: 'Unit Head' },
+  { value: 'district_pastor', label: 'District Pastor' },
+  { value: 'ministry_director', label: 'Ministry Director' },
 ]
 
 const genderOptions = [
@@ -150,6 +159,7 @@ export default function Members() {
   // Filter states (applied filters)
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
+  const [leadershipRoleFilter, setLeadershipRoleFilter] = useState('')
   const [genderFilter, setGenderFilter] = useState('')
   const [maritalStatusFilter, setMaritalStatusFilter] = useState('')
   const [districtFilter, setDistrictFilter] = useState('')
@@ -157,6 +167,7 @@ export default function Members() {
 
   // Temporary filter states (for modal - only applied when user clicks Apply)
   const [tempStatusFilter, setTempStatusFilter] = useState('')
+  const [tempLeadershipRoleFilter, setTempLeadershipRoleFilter] = useState('')
   const [tempGenderFilter, setTempGenderFilter] = useState('')
   const [tempMaritalStatusFilter, setTempMaritalStatusFilter] = useState('')
   const [tempDistrictFilter, setTempDistrictFilter] = useState('')
@@ -172,12 +183,13 @@ export default function Members() {
   const canViewAllBranches = hasPermission('branches:view-all')
   const showBranchFilter = canViewAllBranches && branches.length > 0
 
-  const hasActiveFilters = statusFilter || genderFilter || maritalStatusFilter || districtFilter || branchFilter || dateFromFilter || dateToFilter
-  const activeFilterCount = [statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter].filter(Boolean).length
+  const hasActiveFilters = statusFilter || leadershipRoleFilter || genderFilter || maritalStatusFilter || districtFilter || branchFilter || dateFromFilter || dateToFilter
+  const activeFilterCount = [statusFilter, leadershipRoleFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter].filter(Boolean).length
 
   const openFilterModal = () => {
     // Sync temp filters with current applied filters
     setTempStatusFilter(statusFilter)
+    setTempLeadershipRoleFilter(leadershipRoleFilter)
     setTempGenderFilter(genderFilter)
     setTempMaritalStatusFilter(maritalStatusFilter)
     setTempDistrictFilter(districtFilter)
@@ -193,6 +205,7 @@ export default function Members() {
 
   const applyFilters = () => {
     setStatusFilter(tempStatusFilter)
+    setLeadershipRoleFilter(tempLeadershipRoleFilter)
     setGenderFilter(tempGenderFilter)
     setMaritalStatusFilter(tempMaritalStatusFilter)
     setDistrictFilter(tempDistrictFilter)
@@ -204,6 +217,7 @@ export default function Members() {
 
   const clearAllFilters = () => {
     setTempStatusFilter('')
+    setTempLeadershipRoleFilter('')
     setTempGenderFilter('')
     setTempMaritalStatusFilter('')
     setTempDistrictFilter('')
@@ -214,6 +228,7 @@ export default function Members() {
 
   const clearAppliedFilters = () => {
     setStatusFilter('')
+    setLeadershipRoleFilter('')
     setGenderFilter('')
     setMaritalStatusFilter('')
     setDistrictFilter('')
@@ -224,11 +239,11 @@ export default function Members() {
 
   useEffect(() => {
     loadMembers()
-  }, [searchParams, activeTab, birthdayTimeFilter, statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
+  }, [searchParams, activeTab, birthdayTimeFilter, statusFilter, leadershipRoleFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
 
   useEffect(() => {
     loadCounts()
-  }, [statusFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
+  }, [statusFilter, leadershipRoleFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
 
   useEffect(() => {
     loadLocationData()
@@ -337,6 +352,7 @@ export default function Members() {
         page,
         limit,
         membershipStatus: statusFilter || undefined,
+        leadershipRole: leadershipRoleFilter || undefined,
         gender: genderFilter ? (genderFilter as 'male' | 'female') : undefined,
         maritalStatus: maritalStatusFilter ? (maritalStatusFilter as Member['maritalStatus']) : undefined,
         branchId: effectiveBranchId,
@@ -648,6 +664,7 @@ export default function Members() {
       const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
       const filterParams: MemberSearchParams = {
         membershipStatus: statusFilter || undefined,
+        leadershipRole: leadershipRoleFilter || undefined,
         gender: genderFilter ? (genderFilter as 'male' | 'female') : undefined,
         maritalStatus: maritalStatusFilter ? (maritalStatusFilter as Member['maritalStatus']) : undefined,
         branchId: effectiveBranchId,
@@ -1703,6 +1720,14 @@ export default function Members() {
             onChange: setTempStatusFilter,
             options: statusOptions,
             placeholder: 'All Status',
+          },
+          {
+            id: 'leadershipRole',
+            label: 'Leadership Role',
+            value: tempLeadershipRoleFilter,
+            onChange: setTempLeadershipRoleFilter,
+            options: leadershipRoleOptions,
+            placeholder: 'All Roles',
           },
           {
             id: 'gender',

@@ -113,6 +113,10 @@ const statusOptions = [
   { value: 'LXL', label: 'League of Xtraordinary Leaders' },
   { value: 'DIRECTOR', label: 'Director' },
   { value: 'PASTOR', label: 'Pastor' },
+  { value: 'CAMPUS_PASTOR', label: 'Campus Pastor' },
+  { value: 'SENIOR_PASTOR', label: 'Senior Pastor' },
+  { value: 'LEFT', label: 'Left' },
+  { value: 'RELOCATED', label: 'Relocated' },
 ]
 
 const genderOptions = [

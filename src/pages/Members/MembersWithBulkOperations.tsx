@@ -486,15 +486,15 @@ export default function MembersWithBulkOperations() {
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Status</option>
-                <option value="new_convert">New Convert</option>
-                <option value="worker">Worker</option>
-                <option value="volunteer">Volunteer</option>
-                <option value="leader">Leader</option>
-                <option value="district_pastor">District Pastor</option>
-                <option value="champ">Champ</option>
-                <option value="unit_head">Unit Head</option>
-                <option value="inactive">Inactive</option>
-                <option value="transferred">Transferred</option>
+                <option value="MEMBER">Member</option>
+                <option value="DC">David's Company</option>
+                <option value="LXL">League of Xtraordinary Leaders</option>
+                <option value="DIRECTOR">Director</option>
+                <option value="PASTOR">Pastor</option>
+                <option value="CAMPUS_PASTOR">Campus Pastor</option>
+                <option value="SENIOR_PASTOR">Senior Pastor</option>
+                <option value="LEFT">Left</option>
+                <option value="RELOCATED">Relocated</option>
               </select>
 
               <select

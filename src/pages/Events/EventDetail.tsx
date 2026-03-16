@@ -118,6 +118,13 @@ export default function EventDetail() {
   const [selectedPartner, setSelectedPartner] = useState<EventPartner | null>(null)
   const [showPartnerModal, setShowPartnerModal] = useState(false)
 
+  // Edit/Delete state
+  const [editingRegistration, setEditingRegistration] = useState<EventRegistration | null>(null)
+  const [editingPartner, setEditingPartner] = useState<EventPartner | null>(null)
+  const [editRegForm, setEditRegForm] = useState({ firstName: '', lastName: '', email: '', phone: '', gender: '', notes: '' })
+  const [editPartnerForm, setEditPartnerForm] = useState({ name: '', company: '', email: '', phone: '', interestDetails: '', notes: '' })
+  const [savingEdit, setSavingEdit] = useState(false)
+
   // Export state
   const [showRegistrationExportMenu, setShowRegistrationExportMenu] = useState(false)
   const [showPartnerExportMenu, setShowPartnerExportMenu] = useState(false)
@@ -130,6 +137,86 @@ export default function EventDetail() {
   const canCheckIn = hasPermission('events:check-in')
   const canManageCommittee = hasPermission('events:manage-committee')
   const [deleting, setDeleting] = useState(false)
+
+  // Edit/Delete handlers for registrations
+  const openEditRegistration = (reg: EventRegistration) => {
+    setEditRegForm({
+      firstName: reg.attendeeInfo.firstName || '',
+      lastName: reg.attendeeInfo.lastName || '',
+      email: reg.attendeeInfo.email || '',
+      phone: reg.attendeeInfo.phone || '',
+      gender: reg.attendeeInfo.gender || '',
+      notes: reg.notes || '',
+    })
+    setEditingRegistration(reg)
+  }
+
+  const handleSaveRegistration = async () => {
+    if (!id || !editingRegistration) return
+    try {
+      setSavingEdit(true)
+      await eventsService.updateRegistrationDetails(id, editingRegistration._id, editRegForm)
+      showToast('success', 'Registration updated successfully')
+      setEditingRegistration(null)
+      loadRegistrations()
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to update registration')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleDeleteRegistration = async (regId: string) => {
+    if (!id) return
+    if (!window.confirm('Are you sure you want to delete this registration? This action cannot be undone.')) return
+    try {
+      await eventsService.deleteRegistration(id, regId)
+      showToast('success', 'Registration deleted')
+      loadRegistrations()
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to delete registration')
+    }
+  }
+
+  // Edit/Delete handlers for partners
+  const openEditPartner = (partner: EventPartner) => {
+    setEditPartnerForm({
+      name: partner.name || '',
+      company: partner.company || '',
+      email: partner.email || '',
+      phone: partner.phone || '',
+      interestDetails: partner.interestDetails || '',
+      notes: partner.notes || '',
+    })
+    setEditingPartner(partner)
+  }
+
+  const handleSavePartner = async () => {
+    if (!id || !editingPartner) return
+    try {
+      setSavingEdit(true)
+      await eventsService.updatePartnerDetails(id, editingPartner._id, editPartnerForm)
+      showToast('success', 'Partner updated successfully')
+      setEditingPartner(null)
+      loadPartners()
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to update partner')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleDeletePartner = async (partnerId: string) => {
+    if (!id) return
+    if (!window.confirm('Are you sure you want to delete this partner? This action cannot be undone.')) return
+    try {
+      await eventsService.deletePartner(id, partnerId)
+      showToast('success', 'Partner deleted')
+      loadPartners()
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to delete partner')
+    }
+  }
 
   const handleDeleteEvent = async () => {
     if (!id) return
@@ -923,22 +1010,22 @@ export default function EventDetail() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50/80">
                     <tr>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Attendee
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Contact
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Registered
                       </th>
-                      <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -946,38 +1033,38 @@ export default function EventDetail() {
                   <tbody className="bg-white divide-y divide-gray-100">
                     {registrations.map((reg) => (
                       <tr key={reg._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
-                              <span className="text-white font-semibold text-sm">
+                            <div className="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                              <span className="text-white font-semibold text-xs">
                                 {reg.attendeeInfo.firstName[0]}{reg.attendeeInfo.lastName[0]}
                               </span>
                             </div>
-                            <div className="ml-3">
-                              <div className="font-medium text-gray-900">
+                            <div className="ml-2.5">
+                              <div className="text-sm font-medium text-gray-900">
                                 {reg.attendeeInfo.firstName} {reg.attendeeInfo.lastName}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{reg.attendeeInfo.email}</div>
-                          <div className="text-sm text-gray-500">{reg.attendeeInfo.phone}</div>
+                          <div className="text-xs text-gray-500">{reg.attendeeInfo.phone}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <Badge variant={reg.attendeeType === 'member' ? 'success' : 'default'} className="font-medium">
                             {reg.attendeeType === 'member' ? 'Member' : 'Visitor'}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <Badge variant={statusColors[reg.status]} className="font-medium">
                             {reg.status.charAt(0).toUpperCase() + reg.status.slice(1).replace('-', ' ')}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(reg.registeredAt)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
                           <div className="flex items-center justify-end gap-2">
                             {canCheckIn && reg.status !== 'attended' && reg.status !== 'cancelled' && (
                               <Button
@@ -1007,6 +1094,27 @@ export default function EventDetail() {
                                   onClick={() => handleUpdateStatus(reg._id, 'cancelled')}
                                 >
                                   Cancel
+                                </Button>
+                              </>
+                            )}
+                            {canUpdate && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); openEditRegistration(reg) }}
+                                  title="Edit registration"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteRegistration(reg._id) }}
+                                  title="Delete registration"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </>
                             )}
@@ -1125,25 +1233,25 @@ export default function EventDetail() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50/80">
                     <tr>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Partner
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Company
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Contact
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Interest
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Submitted
                       </th>
-                      <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -1158,29 +1266,29 @@ export default function EventDetail() {
                           setShowPartnerModal(true)
                         }}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center">
-                              <UserPlus className="h-5 w-5 text-white" />
+                            <div className="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-medium text-white">{partner.name?.charAt(0)?.toUpperCase() || 'P'}</span>
                             </div>
-                            <div className="ml-3">
+                            <div className="ml-2.5">
                               <div className="font-medium text-gray-900">{partner.name}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{partner.company || '—'}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{partner.email}</div>
-                          <div className="text-sm text-gray-500">{partner.phone}</div>
+                          <div className="text-xs text-gray-500">{partner.phone}</div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3">
                           <div className="text-sm text-gray-600 max-w-xs truncate" title={partner.interestDetails}>
                             {partner.interestDetails}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <Badge
                             variant={
                               partner.status === PartnerStatus.CONFIRMED ? 'success' :
@@ -1193,10 +1301,10 @@ export default function EventDetail() {
                             {partner.status.charAt(0).toUpperCase() + partner.status.slice(1).replace('_', ' ')}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(partner.submittedAt)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
                           <div className="flex items-center justify-end gap-2">
                             {partner.status === PartnerStatus.PENDING && (
                               <Button
@@ -1238,6 +1346,27 @@ export default function EventDetail() {
                                 </Button>
                               </>
                             )}
+                            {canUpdate && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); openEditPartner(partner) }}
+                                  title="Edit partner"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={(e) => { e.stopPropagation(); handleDeletePartner(partner._id) }}
+                                  title="Delete partner"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1252,18 +1381,22 @@ export default function EventDetail() {
         {/* Sessions Tab */}
         {activeTab === 'sessions' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Event Sessions</h3>
-                <p className="text-xs text-gray-500">Manage sessions and track attendance</p>
+            <Card className="shadow-sm rounded-lg border-gray-100">
+              <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Event Sessions</h3>
+                    <p className="text-xs text-gray-500">Manage sessions and track attendance</p>
+                  </div>
+                  {canUpdate && (
+                    <Button onClick={() => navigate(`/events/${id}/sessions/new`)} size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Session
+                    </Button>
+                  )}
+                </div>
               </div>
-              {canUpdate && (
-                <Button onClick={() => navigate(`/events/${id}/sessions/new`)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Session
-                </Button>
-              )}
-            </div>
+            </Card>
 
             {loadingSessions ? (
               <div className="flex items-center justify-center h-64">
@@ -1271,7 +1404,7 @@ export default function EventDetail() {
               </div>
             ) : sessions.length === 0 ? (
               <Card className="p-8 text-center">
-                <BookOpen className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+                <BookOpen className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                 <h4 className="text-sm font-medium text-gray-900 mb-1">No Sessions Yet</h4>
                 <p className="text-xs text-gray-500 mb-4">Create sessions to track attendance for multi-day or training events.</p>
                 {canUpdate && (
@@ -1293,8 +1426,8 @@ export default function EventDetail() {
                     <Card className="p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="flex-shrink-0 w-12 h-12 bg-primary-50 rounded-lg flex items-center justify-center">
-                            <span className="text-lg font-bold text-primary-600">{session.order || index + 1}</span>
+                          <div className="flex-shrink-0 w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
+                            <span className="text-base font-bold text-primary-600">{session.order || index + 1}</span>
                           </div>
                           <div>
                             <h4 className="font-medium text-gray-900">{session.title}</h4>
@@ -1315,15 +1448,15 @@ export default function EventDetail() {
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="text-center">
-                            <div className="text-lg font-bold text-green-600">{session.attendanceCount || 0}</div>
+                            <div className="text-base font-bold text-green-600">{session.attendanceCount || 0}</div>
                             <div className="text-xs text-gray-500">Present</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-lg font-bold text-yellow-600">{session.lateCount || 0}</div>
+                            <div className="text-base font-bold text-yellow-600">{session.lateCount || 0}</div>
                             <div className="text-xs text-gray-500">Late</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-lg font-bold text-red-600">{session.absentCount || 0}</div>
+                            <div className="text-base font-bold text-red-600">{session.absentCount || 0}</div>
                             <div className="text-xs text-gray-500">Absent</div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1384,10 +1517,10 @@ export default function EventDetail() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-500">Total Registrations</p>
-                          <p className="text-2xl font-bold text-gray-900">{analytics.registrations.totalRegistrations}</p>
+                          <p className="text-xl font-bold text-gray-900">{analytics.registrations.totalRegistrations}</p>
                         </div>
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                          <Users className="h-6 w-6 text-blue-600" />
+                        <div className="p-2.5 bg-blue-50 rounded-lg">
+                          <Users className="h-5 w-5 text-blue-600" />
                         </div>
                       </div>
                     </Card>
@@ -1397,10 +1530,10 @@ export default function EventDetail() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-500">Attended</p>
-                          <p className="text-2xl font-bold text-green-600">{analytics.registrations.attendedRegistrations}</p>
+                          <p className="text-xl font-bold text-green-600">{analytics.registrations.attendedRegistrations}</p>
                         </div>
-                        <div className="p-3 bg-green-50 rounded-lg">
-                          <UserCheck className="h-6 w-6 text-green-600" />
+                        <div className="p-2.5 bg-green-50 rounded-lg">
+                          <UserCheck className="h-5 w-5 text-green-600" />
                         </div>
                       </div>
                     </Card>
@@ -1410,10 +1543,10 @@ export default function EventDetail() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-500">No Shows</p>
-                          <p className="text-2xl font-bold text-red-600">{analytics.registrations.noShowRegistrations}</p>
+                          <p className="text-xl font-bold text-red-600">{analytics.registrations.noShowRegistrations}</p>
                         </div>
-                        <div className="p-3 bg-red-50 rounded-lg">
-                          <UserX className="h-6 w-6 text-red-600" />
+                        <div className="p-2.5 bg-red-50 rounded-lg">
+                          <UserX className="h-5 w-5 text-red-600" />
                         </div>
                       </div>
                     </Card>
@@ -1423,10 +1556,10 @@ export default function EventDetail() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-gray-500">Conversion Rate</p>
-                          <p className="text-2xl font-bold text-purple-600">{analytics.registrations.conversionRate}%</p>
+                          <p className="text-xl font-bold text-purple-600">{analytics.registrations.conversionRate}%</p>
                         </div>
-                        <div className="p-3 bg-purple-50 rounded-lg">
-                          <TrendingUp className="h-6 w-6 text-purple-600" />
+                        <div className="p-2.5 bg-purple-50 rounded-lg">
+                          <TrendingUp className="h-5 w-5 text-purple-600" />
                         </div>
                       </div>
                     </Card>
@@ -1435,8 +1568,8 @@ export default function EventDetail() {
 
                 {/* Registration Breakdown */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="p-6">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Registration Status</h4>
+                  <Card className="p-5">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4">Registration Status</h4>
                     <div className="space-y-3">
                       {[
                         { label: 'Confirmed', value: analytics.registrations.confirmedRegistrations, color: 'bg-green-500' },
@@ -1461,15 +1594,15 @@ export default function EventDetail() {
                     </div>
                   </Card>
 
-                  <Card className="p-6">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Attendee Breakdown</h4>
+                  <Card className="p-5">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4">Attendee Breakdown</h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-3xl font-bold text-green-700">{analytics.registrations.memberRegistrations}</p>
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <p className="text-2xl font-bold text-green-700">{analytics.registrations.memberRegistrations}</p>
                         <p className="text-sm text-green-600">Members</p>
                       </div>
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-3xl font-bold text-blue-700">{analytics.registrations.visitorRegistrations}</p>
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-700">{analytics.registrations.visitorRegistrations}</p>
                         <p className="text-sm text-blue-600">Visitors</p>
                       </div>
                     </div>
@@ -1495,32 +1628,32 @@ export default function EventDetail() {
 
                 {/* Session Analytics (if available) */}
                 {analytics.sessions && (
-                  <Card className="p-6">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Session Analytics</h4>
+                  <Card className="p-5">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4">Session Analytics</h4>
                     <div className="grid grid-cols-3 gap-4 mb-6">
-                      <div className="text-center p-4 bg-gray-50 rounded-lg">
-                        <p className="text-2xl font-bold text-gray-900">{analytics.sessions.totalSessions}</p>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xl font-bold text-gray-900">{analytics.sessions.totalSessions}</p>
                         <p className="text-sm text-gray-500">Total Sessions</p>
                       </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-2xl font-bold text-green-700">{analytics.sessions.completedSessions}</p>
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <p className="text-xl font-bold text-green-700">{analytics.sessions.completedSessions}</p>
                         <p className="text-sm text-green-600">Completed</p>
                       </div>
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold text-blue-700">{analytics.sessions.averageAttendancePerSession}</p>
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xl font-bold text-blue-700">{analytics.sessions.averageAttendancePerSession}</p>
                         <p className="text-sm text-blue-600">Avg. Attendance</p>
                       </div>
                     </div>
                     {analytics.sessions.attendanceBySession && analytics.sessions.attendanceBySession.length > 0 && (
                       <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-gray-50/80">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Session</th>
-                              <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Present</th>
-                              <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Late</th>
-                              <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Absent</th>
-                              <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Rate</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Late</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
@@ -1553,30 +1686,30 @@ export default function EventDetail() {
 
                 {/* Completion Analytics (for training events) */}
                 {analytics.completion && (
-                  <Card className="p-6">
+                  <Card className="p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <GraduationCap className="h-5 w-5 text-purple-600" />
-                      <h4 className="text-lg font-medium text-gray-900">Training Completion</h4>
+                      <h4 className="text-sm font-semibold text-gray-900">Training Completion</h4>
                     </div>
                     <div className="grid grid-cols-5 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-2xl font-bold text-blue-700">{analytics.completion.totalEnrolled}</p>
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xl font-bold text-blue-700">{analytics.completion.totalEnrolled}</p>
                         <p className="text-sm text-blue-600">Enrolled</p>
                       </div>
-                      <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                        <p className="text-2xl font-bold text-yellow-700">{analytics.completion.totalInProgress}</p>
+                      <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                        <p className="text-xl font-bold text-yellow-700">{analytics.completion.totalInProgress}</p>
                         <p className="text-sm text-yellow-600">In Progress</p>
                       </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-2xl font-bold text-green-700">{analytics.completion.totalCompleted}</p>
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <p className="text-xl font-bold text-green-700">{analytics.completion.totalCompleted}</p>
                         <p className="text-sm text-green-600">Completed</p>
                       </div>
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <p className="text-2xl font-bold text-purple-700">{analytics.completion.totalCertified}</p>
+                      <div className="text-center p-3 bg-purple-50 rounded-lg">
+                        <p className="text-xl font-bold text-purple-700">{analytics.completion.totalCertified}</p>
                         <p className="text-sm text-purple-600">Certified</p>
                       </div>
-                      <div className="text-center p-4 bg-red-50 rounded-lg">
-                        <p className="text-2xl font-bold text-red-700">{analytics.completion.totalDropped}</p>
+                      <div className="text-center p-3 bg-red-50 rounded-lg">
+                        <p className="text-xl font-bold text-red-700">{analytics.completion.totalDropped}</p>
                         <p className="text-sm text-red-600">Dropped</p>
                       </div>
                     </div>
@@ -1587,7 +1720,7 @@ export default function EventDetail() {
                           <div className="flex-1 bg-gray-100 rounded-full h-3">
                             <div className="bg-green-500 h-3 rounded-full" style={{ width: `${analytics.completion.completionRate}%` }} />
                           </div>
-                          <span className="text-lg font-bold text-green-600">{analytics.completion.completionRate}%</span>
+                          <span className="text-base font-bold text-green-600">{analytics.completion.completionRate}%</span>
                         </div>
                       </div>
                       <div>
@@ -1596,7 +1729,7 @@ export default function EventDetail() {
                           <div className="flex-1 bg-gray-100 rounded-full h-3">
                             <div className="bg-purple-500 h-3 rounded-full" style={{ width: `${analytics.completion.certificationRate}%` }} />
                           </div>
-                          <span className="text-lg font-bold text-purple-600">{analytics.completion.certificationRate}%</span>
+                          <span className="text-base font-bold text-purple-600">{analytics.completion.certificationRate}%</span>
                         </div>
                       </div>
                     </div>
@@ -1615,16 +1748,20 @@ export default function EventDetail() {
         {/* Accountability Tab */}
         {activeTab === 'accountability' && canViewRegistrations && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Participant Accountability</h3>
-                <p className="text-xs text-gray-500">Track attendance, progress, and certification status</p>
+            <Card className="shadow-sm rounded-lg border-gray-100">
+              <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Participant Accountability</h3>
+                    <p className="text-xs text-gray-500">Track attendance, progress, and certification status</p>
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={() => loadAccountability()}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
               </div>
-              <Button variant="secondary" onClick={() => loadAccountability()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
+            </Card>
 
             {loadingAccountability ? (
               <div className="flex items-center justify-center h-64">
@@ -1633,35 +1770,35 @@ export default function EventDetail() {
             ) : accountability ? (
               <>
                 {/* Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <Card className="p-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <Card className="p-3">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900">{accountability.totalParticipants}</p>
-                      <p className="text-sm text-gray-500">Total Participants</p>
+                      <p className="text-xl font-bold text-gray-900">{accountability.totalParticipants}</p>
+                      <p className="text-xs text-gray-500">Total Participants</p>
                     </div>
                   </Card>
-                  <Card className="p-4">
+                  <Card className="p-3">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">{accountability.excellentAttendance}</p>
-                      <p className="text-sm text-green-600">Excellent (≥90%)</p>
+                      <p className="text-xl font-bold text-green-600">{accountability.excellentAttendance}</p>
+                      <p className="text-xs text-green-600">Excellent (≥90%)</p>
                     </div>
                   </Card>
-                  <Card className="p-4">
+                  <Card className="p-3">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-blue-600">{accountability.goodAttendance}</p>
-                      <p className="text-sm text-blue-600">Good (75-89%)</p>
+                      <p className="text-xl font-bold text-blue-600">{accountability.goodAttendance}</p>
+                      <p className="text-xs text-blue-600">Good (75-89%)</p>
                     </div>
                   </Card>
-                  <Card className="p-4">
+                  <Card className="p-3">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-orange-600">{accountability.atRisk}</p>
-                      <p className="text-sm text-orange-600">At Risk (40-59%)</p>
+                      <p className="text-xl font-bold text-orange-600">{accountability.atRisk}</p>
+                      <p className="text-xs text-orange-600">At Risk (40-59%)</p>
                     </div>
                   </Card>
-                  <Card className="p-4">
+                  <Card className="p-3">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-red-600">{accountability.failed}</p>
-                      <p className="text-sm text-red-600">Failed (&lt;40%)</p>
+                      <p className="text-xl font-bold text-red-600">{accountability.failed}</p>
+                      <p className="text-xs text-red-600">Failed (&lt;40%)</p>
                     </div>
                   </Card>
                 </div>
@@ -1706,33 +1843,35 @@ export default function EventDetail() {
                 )}
 
                 {/* Filter & Search */}
-                <Card className="p-4">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search participants..."
-                          value={accountabilitySearch}
-                          onChange={(e) => setAccountabilitySearch(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && loadAccountability()}
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
-                        />
+                <Card className="shadow-sm rounded-lg border-gray-100">
+                  <div className="p-3 bg-gray-50/50">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Search participants..."
+                            value={accountabilitySearch}
+                            onChange={(e) => setAccountabilitySearch(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && loadAccountability()}
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
+                          />
+                        </div>
                       </div>
+                      <select
+                        value={accountabilityFilter}
+                        onChange={(e) => setAccountabilityFilter(e.target.value as AttendanceStatusCategory | '')}
+                        className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="">All Attendance Status</option>
+                        <option value="excellent">Excellent (≥90%)</option>
+                        <option value="good">Good (75-89%)</option>
+                        <option value="needs_improvement">Needs Improvement (60-74%)</option>
+                        <option value="at_risk">At Risk (40-59%)</option>
+                        <option value="failed">Failed (&lt;40%)</option>
+                      </select>
                     </div>
-                    <select
-                      value={accountabilityFilter}
-                      onChange={(e) => setAccountabilityFilter(e.target.value as AttendanceStatusCategory | '')}
-                      className="px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="">All Attendance Status</option>
-                      <option value="excellent">Excellent (≥90%)</option>
-                      <option value="good">Good (75-89%)</option>
-                      <option value="needs_improvement">Needs Improvement (60-74%)</option>
-                      <option value="at_risk">At Risk (40-59%)</option>
-                      <option value="failed">Failed (&lt;40%)</option>
-                    </select>
                   </div>
                 </Card>
 
@@ -1740,15 +1879,15 @@ export default function EventDetail() {
                 <Card>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-gray-50/80">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Participant</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Sessions</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Attendance</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Assessments</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Progress</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Follow-up</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participant</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sessions</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Assessments</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Follow-up</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -1824,26 +1963,26 @@ export default function EventDetail() {
                 </Card>
 
                 {/* Certification Summary */}
-                <Card className="p-6">
+                <Card className="p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Award className="h-5 w-5 text-purple-600" />
-                    <h4 className="text-lg font-medium text-gray-900">Certification Summary</h4>
+                    <h4 className="text-sm font-semibold text-gray-900">Certification Summary</h4>
                   </div>
                   <div className="grid grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-gray-50 rounded-lg">
-                      <p className="text-2xl font-bold text-gray-700">{accountability.eligibleForCertification}</p>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-xl font-bold text-gray-700">{accountability.eligibleForCertification}</p>
                       <p className="text-sm text-gray-500">Eligible</p>
                     </div>
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <p className="text-2xl font-bold text-green-700">{accountability.certified}</p>
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <p className="text-xl font-bold text-green-700">{accountability.certified}</p>
                       <p className="text-sm text-green-600">Certified</p>
                     </div>
-                    <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                      <p className="text-2xl font-bold text-yellow-700">{accountability.pendingCertification}</p>
+                    <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                      <p className="text-xl font-bold text-yellow-700">{accountability.pendingCertification}</p>
                       <p className="text-sm text-yellow-600">Pending</p>
                     </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <p className="text-2xl font-bold text-purple-700">{accountability.certificationRate}%</p>
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                      <p className="text-xl font-bold text-purple-700">{accountability.certificationRate}%</p>
                       <p className="text-sm text-purple-600">Rate</p>
                     </div>
                   </div>
@@ -1859,53 +1998,71 @@ export default function EventDetail() {
         )}
 
         {activeTab === 'committee' && (
-          <Card>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-medium text-gray-900">Committee Members</h3>
-                {canManageCommittee && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => navigate(`/events/${id}/edit`)}
-                  >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Manage Committee
-                  </Button>
-                )}
-              </div>
-
-              {event.committee.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">
-                  No committee members assigned
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {event.committee.map((member, index) => {
-                    const memberData = typeof member.member === 'string' ? null : member.member
-                    return (
-                      <div
-                        key={index}
-                        className="flex items-center p-4 bg-gray-50 rounded-lg"
-                      >
-                        <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center mr-3">
-                          <Users className="h-5 w-5 text-primary-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {memberData
-                              ? `${memberData.firstName} ${memberData.lastName}`
-                              : 'Unknown Member'}
-                          </div>
-                          <div className="text-sm text-gray-500">{member.role}</div>
-                        </div>
-                      </div>
-                    )
-                  })}
+          <div className="space-y-4">
+            <Card className="shadow-sm rounded-lg border-gray-100">
+              <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Committee Members</h3>
+                    <p className="text-xs text-gray-500">Manage event committee and roles</p>
+                  </div>
+                  {canManageCommittee && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => navigate(`/events/${id}/edit`)}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Manage Committee
+                    </Button>
+                  )}
                 </div>
-              )}
-            </div>
-          </Card>
+              </div>
+            </Card>
+
+            {event.committee.length === 0 ? (
+              <Card className="p-8 text-center">
+                <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">No Committee Members</h4>
+                <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                  Committee members will appear here once assigned to this event.
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {event.committee.map((member, index) => {
+                  const memberData = typeof member.member === 'string' ? null : member.member
+                  const initials = memberData
+                    ? `${memberData.firstName?.charAt(0) || ''}${memberData.lastName?.charAt(0) || ''}`.toUpperCase()
+                    : '?'
+                  return (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Card className="p-3 hover:shadow-md transition-shadow">
+                        <div className="flex items-center">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mr-2.5">
+                            <span className="text-xs font-medium text-white">{initials}</span>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900 text-sm">
+                              {memberData
+                                ? `${memberData.firstName} ${memberData.lastName}`
+                                : 'Unknown Member'}
+                            </div>
+                            <div className="text-xs text-gray-500">{member.role}</div>
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -2164,6 +2321,193 @@ export default function EventDetail() {
                   Close
                 </Button>
               </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Edit Registration Modal */}
+      {editingRegistration && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setEditingRegistration(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900">Edit Registration</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Update attendee details</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    value={editRegForm.firstName}
+                    onChange={(e) => setEditRegForm({ ...editRegForm, firstName: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    value={editRegForm.lastName}
+                    onChange={(e) => setEditRegForm({ ...editRegForm, lastName: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editRegForm.email}
+                    onChange={(e) => setEditRegForm({ ...editRegForm, email: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={editRegForm.phone}
+                    onChange={(e) => setEditRegForm({ ...editRegForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Gender</label>
+                <select
+                  value={editRegForm.gender}
+                  onChange={(e) => setEditRegForm({ ...editRegForm, gender: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Not specified</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={editRegForm.notes}
+                  onChange={(e) => setEditRegForm({ ...editRegForm, notes: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                />
+              </div>
+            </div>
+            <div className="p-5 border-t border-gray-100 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditingRegistration(null)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveRegistration} disabled={savingEdit}>
+                {savingEdit ? <LoadingSpinner size="sm" /> : 'Save Changes'}
+              </Button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Edit Partner Modal */}
+      {editingPartner && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setEditingPartner(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900">Edit Partner</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Update partner details</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={editPartnerForm.name}
+                    onChange={(e) => setEditPartnerForm({ ...editPartnerForm, name: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Company</label>
+                  <input
+                    type="text"
+                    value={editPartnerForm.company}
+                    onChange={(e) => setEditPartnerForm({ ...editPartnerForm, company: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editPartnerForm.email}
+                    onChange={(e) => setEditPartnerForm({ ...editPartnerForm, email: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={editPartnerForm.phone}
+                    onChange={(e) => setEditPartnerForm({ ...editPartnerForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Interest Details</label>
+                <textarea
+                  value={editPartnerForm.interestDetails}
+                  onChange={(e) => setEditPartnerForm({ ...editPartnerForm, interestDetails: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={editPartnerForm.notes}
+                  onChange={(e) => setEditPartnerForm({ ...editPartnerForm, notes: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                />
+              </div>
+            </div>
+            <div className="p-5 border-t border-gray-100 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditingPartner(null)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSavePartner} disabled={savingEdit}>
+                {savingEdit ? <LoadingSpinner size="sm" /> : 'Save Changes'}
+              </Button>
             </div>
           </motion.div>
         </motion.div>

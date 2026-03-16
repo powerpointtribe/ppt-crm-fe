@@ -159,6 +159,27 @@ export const eventsService = {
     ) as EventRegistration
   },
 
+  updateRegistrationDetails: async (
+    eventId: string,
+    registrationId: string,
+    data: Record<string, any>
+  ): Promise<EventRegistration> => {
+    const response = await apiService.patch<ApiResponse<EventRegistration>>(
+      `/events/${eventId}/registrations/${registrationId}/details`,
+      data
+    )
+    return transformSingleResponse<EventRegistration>(
+      response
+    ) as EventRegistration
+  },
+
+  deleteRegistration: async (
+    eventId: string,
+    registrationId: string
+  ): Promise<void> => {
+    await apiService.delete(`/events/${eventId}/registrations/${registrationId}`)
+  },
+
   checkInAttendee: async (
     eventId: string,
     registrationId: string
@@ -490,6 +511,25 @@ export const eventsService = {
       `/events/${eventId}/admin/partners/${partnerId}/contact`,
       data
     )
+  },
+
+  updatePartnerDetails: async (
+    eventId: string,
+    partnerId: string,
+    data: Record<string, any>
+  ): Promise<any> => {
+    const response = await apiService.patch<ApiResponse<any>>(
+      `/events/${eventId}/partners/${partnerId}/details`,
+      data
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  deletePartner: async (
+    eventId: string,
+    partnerId: string
+  ): Promise<void> => {
+    await apiService.delete(`/events/${eventId}/partners/${partnerId}`)
   },
 
   sendBulkPartnerEmail: async (

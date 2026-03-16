@@ -1,14 +1,11 @@
 import { useState } from 'react'
-import { Settings, Layers, Eye, EyeOff, Users, Calendar, Link2 } from 'lucide-react'
+import { Layers, Eye, EyeOff } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   EnhancedCustomField,
   FormSection,
   FormHeader,
-  SuccessMessage,
   TermsAndConditions,
-  FormLayout,
-  FormStatus,
   CustomFieldType,
   createDefaultField,
 } from '@/types/registration-form'
@@ -18,75 +15,27 @@ import SortableFieldList from './SortableFieldList'
 import FieldConfigPanel from './FieldConfigPanel'
 import SectionManager from './SectionManager'
 import FormPreviewPanel from './FormPreviewPanel'
-import FormSettingsPanel from './FormSettingsPanel'
 
 interface FormBuilderStepProps {
-  // Basic registration settings
-  isOpen: boolean
-  maxAttendees?: number
-  deadline?: string
-  requireApproval: boolean
-  allowWaitlist: boolean
-  registrationSlug?: string
-  // Enhanced settings
   customFields: EnhancedCustomField[]
-  formLayout: FormLayout
   formSections: FormSection[]
-  qrCodeEnabled: boolean
-  formHeader?: FormHeader
-  successMessage?: SuccessMessage
-  termsAndConditions?: TermsAndConditions
-  formStatus: FormStatus
   eventTitle?: string
-  // Callbacks
-  onIsOpenChange: (value: boolean) => void
-  onMaxAttendeesChange: (value: number | undefined) => void
-  onDeadlineChange: (value: string) => void
-  onRequireApprovalChange: (value: boolean) => void
-  onAllowWaitlistChange: (value: boolean) => void
-  onRegistrationSlugChange: (value: string) => void
+  formHeader?: FormHeader
+  termsAndConditions?: TermsAndConditions
   onCustomFieldsChange: (fields: EnhancedCustomField[]) => void
-  onFormLayoutChange: (layout: FormLayout) => void
   onFormSectionsChange: (sections: FormSection[]) => void
-  onQrCodeEnabledChange: (enabled: boolean) => void
-  onFormHeaderChange: (header: FormHeader) => void
-  onSuccessMessageChange: (message: SuccessMessage) => void
-  onTermsAndConditionsChange: (terms: TermsAndConditions) => void
-  onFormStatusChange: (status: FormStatus) => void
 }
 
-type ActivePanel = 'fields' | 'sections' | 'settings'
+type ActivePanel = 'fields' | 'sections'
 
 export default function FormBuilderStep({
-  isOpen,
-  maxAttendees,
-  deadline,
-  requireApproval,
-  allowWaitlist,
-  registrationSlug,
   customFields,
-  formLayout,
   formSections,
-  qrCodeEnabled,
-  formHeader,
-  successMessage,
-  termsAndConditions,
-  formStatus,
   eventTitle,
-  onIsOpenChange,
-  onMaxAttendeesChange,
-  onDeadlineChange,
-  onRequireApprovalChange,
-  onAllowWaitlistChange,
-  onRegistrationSlugChange,
+  formHeader,
+  termsAndConditions,
   onCustomFieldsChange,
-  onFormLayoutChange,
   onFormSectionsChange,
-  onQrCodeEnabledChange,
-  onFormHeaderChange,
-  onSuccessMessageChange,
-  onTermsAndConditionsChange,
-  onFormStatusChange,
 }: FormBuilderStepProps) {
   const [activePanel, setActivePanel] = useState<ActivePanel>('fields')
   const [editingField, setEditingField] = useState<EnhancedCustomField | null>(null)
@@ -133,117 +82,10 @@ export default function FormBuilderStep({
   const panels: { id: ActivePanel; label: string; icon: React.ElementType }[] = [
     { id: 'fields', label: 'Fields', icon: Layers },
     { id: 'sections', label: 'Sections', icon: Layers },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ]
-
-  // Compact toggle switch component
-  const ToggleSwitch = ({ checked, onChange, label, description }: {
-    checked: boolean
-    onChange: (value: boolean) => void
-    label: string
-    description?: string
-  }) => (
-    <label className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
-      <div className="flex-1">
-        <span className="text-sm font-medium text-gray-900">{label}</span>
-        {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={cn(
-          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-          checked ? "bg-primary-600" : "bg-gray-200"
-        )}
-      >
-        <span
-          className={cn(
-            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
-            checked ? "translate-x-6" : "translate-x-1"
-          )}
-        />
-      </button>
-    </label>
-  )
 
   return (
     <div className="space-y-4">
-      {/* Compact Registration Settings Card */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50">
-          <h3 className="font-medium text-gray-900 flex items-center gap-2">
-            <Settings className="h-4 w-4 text-primary-600" />
-            Registration Settings
-          </h3>
-        </div>
-        <div className="p-4 space-y-3">
-          {/* Toggle Switches Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <ToggleSwitch
-              checked={isOpen}
-              onChange={onIsOpenChange}
-              label="Open"
-              description="Accept registrations"
-            />
-            <ToggleSwitch
-              checked={requireApproval}
-              onChange={onRequireApprovalChange}
-              label="Approval"
-              description="Review before confirm"
-            />
-            <ToggleSwitch
-              checked={allowWaitlist}
-              onChange={onAllowWaitlistChange}
-              label="Waitlist"
-              description="When capacity full"
-            />
-          </div>
-
-          {/* Compact Input Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                <Users className="inline h-3 w-3 mr-1" />
-                Max Attendees
-              </label>
-              <input
-                type="number"
-                value={maxAttendees || ''}
-                onChange={(e) => onMaxAttendeesChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                placeholder="Unlimited"
-                min={1}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                <Calendar className="inline h-3 w-3 mr-1" />
-                Deadline
-              </label>
-              <input
-                type="date"
-                value={deadline || ''}
-                onChange={(e) => onDeadlineChange(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                <Link2 className="inline h-3 w-3 mr-1" />
-                URL Slug
-              </label>
-              <input
-                type="text"
-                value={registrationSlug || ''}
-                onChange={(e) => onRegistrationSlugChange(e.target.value)}
-                placeholder="my-event"
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Form Builder Section */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
@@ -320,24 +162,6 @@ export default function FormBuilderStep({
                     <SectionManager
                       sections={formSections}
                       onChange={onFormSectionsChange}
-                    />
-                  )}
-
-                  {activePanel === 'settings' && (
-                    <FormSettingsPanel
-                      formLayout={formLayout}
-                      formStatus={formStatus}
-                      qrCodeEnabled={qrCodeEnabled}
-                      formHeader={formHeader}
-                      successMessage={successMessage}
-                      termsAndConditions={termsAndConditions}
-                      registrationSlug={registrationSlug}
-                      onFormLayoutChange={onFormLayoutChange}
-                      onFormStatusChange={onFormStatusChange}
-                      onQrCodeEnabledChange={onQrCodeEnabledChange}
-                      onFormHeaderChange={onFormHeaderChange}
-                      onSuccessMessageChange={onSuccessMessageChange}
-                      onTermsAndConditionsChange={onTermsAndConditionsChange}
                     />
                   )}
                 </motion.div>

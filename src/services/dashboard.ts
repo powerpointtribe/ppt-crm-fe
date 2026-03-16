@@ -17,10 +17,12 @@ export interface DashboardOverview {
   totalMembers: number
   totalGroups: number
   totalFirstTimers: number
+  totalEvents: number
   // Period-specific counts (within selected date range)
   periodMembers: number
   periodGroups: number
   periodFirstTimers: number
+  periodEvents: number
   recentFirstTimers: number
   recentActivity: ActivityItem[]
   analytics: {
@@ -33,6 +35,7 @@ export interface DashboardOverview {
     membersTrend: string
     groupsTrend: string
     firstTimersTrend: string
+    eventsTrend: string
   }
   dateRange?: DateRange
   scope?: DashboardScope
@@ -95,21 +98,24 @@ class DashboardService {
         totalMembers: response.data?.stats?.totalMembers || 0,
         totalGroups: response.data?.stats?.totalGroups || 0,
         totalFirstTimers: response.data?.stats?.totalFirstTimers || 0,
+        totalEvents: response.data?.stats?.totalEvents || 0,
         // Period-specific counts (from recentActivity which is filtered by date range)
         periodMembers: recentActivity?.recentMembers?.count || 0,
         periodGroups: recentActivity?.recentGroups?.count || 0,
         periodFirstTimers: recentActivity?.recentFirstTimers?.count || 0,
+        periodEvents: recentActivity?.recentEvents?.count || 0,
         recentFirstTimers: recentActivity?.recentFirstTimers?.count || 0,
         analytics: {
           memberEngagement: recentActivity?.recentMembers?.percentage || 0,
           groupParticipation: recentActivity?.recentGroups?.percentage || 0,
-          eventAttendance: 0, // Not provided in API
+          eventAttendance: recentActivity?.recentEvents?.percentage || 0,
           monthlyGrowth: 0 // Calculate from membershipTrends if needed
         },
         trends: {
           membersTrend: this.formatPercentage(recentActivity?.recentMembers?.percentage, recentActivity?.recentMembers?.trend),
           groupsTrend: this.formatPercentage(recentActivity?.recentGroups?.percentage, recentActivity?.recentGroups?.trend),
-          firstTimersTrend: this.formatPercentage(recentActivity?.recentFirstTimers?.percentage, recentActivity?.recentFirstTimers?.trend)
+          firstTimersTrend: this.formatPercentage(recentActivity?.recentFirstTimers?.percentage, recentActivity?.recentFirstTimers?.trend),
+          eventsTrend: this.formatPercentage(recentActivity?.recentEvents?.percentage, recentActivity?.recentEvents?.trend),
         },
         recentActivity: [], // Map from upcomingTasks if needed
         dateRange: response.data?.dateRange,
@@ -125,9 +131,11 @@ class DashboardService {
         totalMembers: 800,
         totalGroups: 45,
         totalFirstTimers: 120,
+        totalEvents: 10,
         periodMembers: 25,
         periodGroups: 3,
         periodFirstTimers: 15,
+        periodEvents: 2,
         recentFirstTimers: 15,
         analytics: {
           memberEngagement: 78,
@@ -138,7 +146,8 @@ class DashboardService {
         trends: {
           membersTrend: '+8%',
           groupsTrend: '+3%',
-          firstTimersTrend: '+15%'
+          firstTimersTrend: '+15%',
+          eventsTrend: '+10%',
         },
         recentActivity: [
           {

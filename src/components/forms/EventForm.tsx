@@ -23,7 +23,17 @@ import {
   Building,
   Hash,
   Link,
+  Settings,
+  Copy,
+  Check,
+  ExternalLink,
+  Link2,
+  QrCode,
+  MessageSquare,
+  Code,
+  KeyRound,
 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import Button from '@/components/ui/Button'
 import { cn } from '@/utils/cn'
 import {
@@ -73,11 +83,12 @@ const eventStatuses: { value: EventStatus; label: string; color: string }[] = [
   { value: 'completed', label: 'Completed', color: 'bg-blue-100 text-blue-700' },
 ]
 
-type TabId = 'details' | 'registration'
+type TabId = 'details' | 'registration' | 'settings'
 
 const tabs: { id: TabId; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'details', label: 'Event Details', icon: Calendar, description: 'Basic info, schedule & location' },
-  { id: 'registration', label: 'Registration', icon: FileText, description: 'Form builder & settings' },
+  { id: 'registration', label: 'Registration', icon: FileText, description: 'Form builder & custom fields' },
+  { id: 'settings', label: 'Settings', icon: Settings, description: 'Registration rules & sharing' },
 ]
 
 // Collapsible Section Component
@@ -181,6 +192,38 @@ const IconInput = React.forwardRef<HTMLInputElement, {
   )
 })
 
+// Toggle switch for settings
+function ToggleSwitch({ checked, onChange, label, description }: {
+  checked: boolean
+  onChange: (value: boolean) => void
+  label: string
+  description?: string
+}) {
+  return (
+    <label className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+      <div className="flex-1">
+        <span className="text-sm font-medium text-gray-900">{label}</span>
+        {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={cn(
+          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+          checked ? "bg-primary-600" : "bg-gray-200"
+        )}
+      >
+        <span
+          className={cn(
+            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
+            checked ? "translate-x-6" : "translate-x-1"
+          )}
+        />
+      </button>
+    </label>
+  )
+}
+
 export default function EventForm({
   event,
   onSubmit,
@@ -193,6 +236,7 @@ export default function EventForm({
   const [members, setMembers] = useState<Member[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [tagInput, setTagInput] = useState('')
+  const [slugCopied, setSlugCopied] = useState(false)
 
   const {
     register,
@@ -310,12 +354,25 @@ export default function EventForm({
   const [termsAndConditions, setTermsAndConditions] = useState<TermsAndConditions>(
     event?.registrationSettings?.termsAndConditions || { enabled: false }
   )
+  const [integrationMode, setIntegrationMode] = useState<'embedded' | 'api'>(
+    event?.registrationSettings?.integrationMode || 'embedded'
+  )
+  const [apiKey] = useState<string | undefined>(
+    event?.registrationSettings?.apiKey
+  )
+  const [apiKeyCopied, setApiKeyCopied] = useState(false)
 
   const watchedTags = watch('tags') || []
   const watchedIsVirtual = watch('location.isVirtual')
   const watchedType = watch('type')
   const watchedStatus = watch('status')
   const watchedTitle = watch('title')
+  const watchedIsOpen = watch('registrationSettings.isOpen')
+  const watchedMaxAttendees = watch('registrationSettings.maxAttendees')
+  const watchedDeadline = watch('registrationSettings.deadline')
+  const watchedRequireApproval = watch('registrationSettings.requireApproval')
+  const watchedAllowWaitlist = watch('registrationSettings.allowWaitlist')
+  const watchedSlug = watch('registrationSlug')
 
   useEffect(() => {
     loadMembers()
@@ -345,6 +402,17 @@ export default function EventForm({
     setValue('tags', newTags)
   }
 
+  const publicUrl = watchedSlug
+    ? `${window.location.origin}/event-registration/${watchedSlug}`
+    : null
+
+  const copyRegistrationLink = () => {
+    if (!publicUrl) return
+    navigator.clipboard.writeText(publicUrl)
+    setSlugCopied(true)
+    setTimeout(() => setSlugCopied(false), 2000)
+  }
+
   const selectedType = eventTypes.find(t => t.value === watchedType)
   const selectedStatus = eventStatuses.find(s => s.value === watchedStatus)
 
@@ -366,6 +434,7 @@ export default function EventForm({
         formHeader: formHeader,
         successMessage: successMessage,
         termsAndConditions: termsAndConditions,
+        integrationMode: integrationMode,
       },
     }
     await onSubmit(formattedData)
@@ -713,49 +782,517 @@ export default function EventForm({
     </div>
   )
 
-  // Tab: Registration Form
-  const renderRegistrationTab = () => {
-    const watchedIsOpen = watch('registrationSettings.isOpen')
-    const watchedMaxAttendees = watch('registrationSettings.maxAttendees')
-    const watchedDeadline = watch('registrationSettings.deadline')
-    const watchedRequireApproval = watch('registrationSettings.requireApproval')
-    const watchedAllowWaitlist = watch('registrationSettings.allowWaitlist')
-    const watchedSlug = watch('registrationSlug')
+  // Tab: Registration Form (now only the form builder)
+  const renderRegistrationTab = () => (
+    <FormBuilderStep
+      customFields={customFields}
+      formSections={formSections}
+      eventTitle={watchedTitle}
+      formHeader={formHeader}
+      termsAndConditions={termsAndConditions}
+      onCustomFieldsChange={setCustomFields}
+      onFormSectionsChange={setFormSections}
+    />
+  )
 
-    return (
-      <FormBuilderStep
-        isOpen={watchedIsOpen}
-        maxAttendees={watchedMaxAttendees}
-        deadline={watchedDeadline}
-        requireApproval={watchedRequireApproval}
-        allowWaitlist={watchedAllowWaitlist}
-        registrationSlug={watchedSlug}
-        customFields={customFields}
-        formLayout={formLayout}
-        formSections={formSections}
-        qrCodeEnabled={qrCodeEnabled}
-        formHeader={formHeader}
-        successMessage={successMessage}
-        termsAndConditions={termsAndConditions}
-        formStatus={formStatus}
-        eventTitle={watchedTitle}
-        onIsOpenChange={(value) => setValue('registrationSettings.isOpen', value)}
-        onMaxAttendeesChange={(value) => setValue('registrationSettings.maxAttendees', value)}
-        onDeadlineChange={(value) => setValue('registrationSettings.deadline', value)}
-        onRequireApprovalChange={(value) => setValue('registrationSettings.requireApproval', value)}
-        onAllowWaitlistChange={(value) => setValue('registrationSettings.allowWaitlist', value)}
-        onRegistrationSlugChange={(value) => setValue('registrationSlug', value)}
-        onCustomFieldsChange={setCustomFields}
-        onFormLayoutChange={setFormLayout}
-        onFormSectionsChange={setFormSections}
-        onQrCodeEnabledChange={setQrCodeEnabled}
-        onFormHeaderChange={setFormHeader}
-        onSuccessMessageChange={setSuccessMessage}
-        onTermsAndConditionsChange={setTermsAndConditions}
-        onFormStatusChange={setFormStatus}
-      />
-    )
-  }
+  // Tab: Settings
+  const renderSettingsTab = () => (
+    <div className="space-y-4">
+      {/* External Integration Mode */}
+      <CollapsibleSection title="External Integration" icon={Globe} defaultOpen={true}>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Integration Mode</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIntegrationMode('embedded')
+                  setValue('registrationSettings.integrationMode', 'embedded')
+                }}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all',
+                  integrationMode === 'embedded'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
+                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                )}
+              >
+                <Link2 className="h-5 w-5" />
+                <span>Embedded Form</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIntegrationMode('api')
+                  setValue('registrationSettings.integrationMode', 'api')
+                }}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all',
+                  integrationMode === 'api'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                )}
+              >
+                <Code className="h-5 w-5" />
+                <span>API Integration</span>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">
+              {integrationMode === 'embedded'
+                ? 'Use the built-in registration form. Share the link or embed it on your website.'
+                : 'External websites call the API directly to submit registrations and partner inquiries.'}
+            </p>
+          </div>
+
+          {/* API Key & Docs (shown only for API mode) */}
+          {integrationMode === 'api' && (
+            <div className="space-y-4 pt-3 border-t border-gray-100">
+              {apiKey ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <KeyRound className="inline h-3.5 w-3.5 mr-1" />
+                    API Key
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 bg-gray-50 rounded-lg border border-gray-200 px-3 py-2.5 overflow-hidden">
+                      <code className="text-sm text-gray-800 break-all font-mono">{apiKey}</code>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(apiKey)
+                        setApiKeyCopied(true)
+                        setTimeout(() => setApiKeyCopied(false), 2000)
+                      }}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0',
+                        apiKeyCopied
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                      )}
+                    >
+                      {apiKeyCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {apiKeyCopied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-600 mt-1.5">
+                    Keep this key secret. Include it as the <code className="bg-gray-100 px-1 rounded">x-api-key</code> header in all API requests.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <p className="text-sm text-blue-700">
+                    An API key will be generated when you save the event.
+                  </p>
+                </div>
+              )}
+
+              {/* API Endpoints Documentation */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">API Endpoints</label>
+                <div className="bg-gray-900 rounded-lg p-4 space-y-2.5 text-sm font-mono overflow-x-auto">
+                  <div>
+                    <p className="text-gray-500 text-xs"># Get event details</p>
+                    <p className="text-green-400">GET /api/v1/events/public/{watchedSlug || '{slug}'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs"># Submit registration</p>
+                    <p className="text-green-400">POST /api/v1/events/public/{watchedSlug || '{slug}'}/register</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs"># Submit partner inquiry</p>
+                    <p className="text-green-400">POST /api/v1/events/public/{watchedSlug || '{slug}'}/partner</p>
+                  </div>
+                  <div className="pt-2 border-t border-gray-700">
+                    <p className="text-gray-500 text-xs"># Required header</p>
+                    <p className="text-yellow-400">x-api-key: {apiKey || '{your-api-key}'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sample Request */}
+              <details className="text-sm">
+                <summary className="font-medium text-gray-700 cursor-pointer hover:text-gray-900">
+                  Sample Registration Request
+                </summary>
+                <pre className="mt-2 bg-gray-900 rounded-lg p-4 text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap">
+{`curl -X POST \\
+  ${window.location.origin}/api/v1/events/public/${watchedSlug || '{slug}'}/register \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: ${apiKey || '{your-api-key}'}" \\
+  -d '{
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john@example.com",
+    "phone": "08012345678"
+  }'`}
+                </pre>
+              </details>
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      {/* Registration Rules */}
+      <CollapsibleSection title="Registration Rules" icon={Users} defaultOpen={true}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <ToggleSwitch
+              checked={watchedIsOpen}
+              onChange={(value) => setValue('registrationSettings.isOpen', value)}
+              label="Accept Registrations"
+              description="Open for sign-ups"
+            />
+            <ToggleSwitch
+              checked={watchedRequireApproval}
+              onChange={(value) => setValue('registrationSettings.requireApproval', value)}
+              label="Require Approval"
+              description="Review before confirm"
+            />
+            <ToggleSwitch
+              checked={watchedAllowWaitlist}
+              onChange={(value) => setValue('registrationSettings.allowWaitlist', value)}
+              label="Allow Waitlist"
+              description="When capacity is full"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <Users className="inline h-3.5 w-3.5 mr-1" />
+                Max Attendees
+              </label>
+              <input
+                type="number"
+                value={watchedMaxAttendees || ''}
+                onChange={(e) => setValue('registrationSettings.maxAttendees', e.target.value ? parseInt(e.target.value) : undefined)}
+                placeholder="Unlimited"
+                min={1}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <Calendar className="inline h-3.5 w-3.5 mr-1" />
+                Registration Deadline
+              </label>
+              <input
+                type="date"
+                value={watchedDeadline || ''}
+                onChange={(e) => setValue('registrationSettings.deadline', e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              />
+            </div>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Registration Link & Sharing (only in embedded mode) */}
+      {integrationMode === 'embedded' && (
+      <CollapsibleSection title="Registration Link" icon={Link2} defaultOpen={true}>
+        <div className="space-y-4">
+          {/* Slug Input with Copy Button */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              URL Slug
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={watchedSlug || ''}
+                  onChange={(e) => setValue('registrationSlug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="my-event-slug"
+                  className="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+              {publicUrl && (
+                <button
+                  type="button"
+                  onClick={copyRegistrationLink}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    slugCopied
+                      ? "bg-green-100 text-green-700"
+                      : "bg-primary-100 text-primary-700 hover:bg-primary-200"
+                  )}
+                >
+                  {slugCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {slugCopied ? 'Copied' : 'Copy Link'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* URL Preview */}
+          {publicUrl && (
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-xs text-gray-500 mb-1">Public Registration URL</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm text-gray-800 break-all font-mono">{publicUrl}</p>
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Open <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          )}
+
+          {!watchedSlug && (
+            <p className="text-xs text-amber-600">
+              Enter a URL slug to generate a shareable registration link
+            </p>
+          )}
+
+          {/* QR Code */}
+          <div className="pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <QrCode className="h-4 w-4" />
+                QR Code Sharing
+              </label>
+              <button
+                type="button"
+                onClick={() => setQrCodeEnabled(!qrCodeEnabled)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                  qrCodeEnabled ? "bg-primary-600" : "bg-gray-200"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
+                    qrCodeEnabled ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+            {qrCodeEnabled && publicUrl && (
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                <div className="inline-block p-3 bg-white rounded-lg shadow-sm">
+                  <QRCodeSVG value={publicUrl} size={120} />
+                </div>
+                <p className="text-xs text-gray-500 mt-2 break-all">{publicUrl}</p>
+              </div>
+            )}
+            {qrCodeEnabled && !publicUrl && (
+              <p className="text-xs text-amber-600">
+                Set a URL slug above to enable QR code sharing
+              </p>
+            )}
+          </div>
+        </div>
+      </CollapsibleSection>
+      )}
+
+      {/* Form Configuration */}
+      <CollapsibleSection title="Form Configuration" icon={FileText} defaultOpen={true}>
+        <div className="space-y-6">
+          {/* Form Status */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Form Visibility</label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setFormStatus('draft')}
+                className={cn(
+                  'flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all',
+                  formStatus === 'draft'
+                    ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                )}
+              >
+                Draft
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormStatus('live')}
+                className={cn(
+                  'flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all',
+                  formStatus === 'live'
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                )}
+              >
+                Live
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">
+              {formStatus === 'draft' ? 'Form is not publicly visible' : 'Form is publicly accessible'}
+            </p>
+          </div>
+
+          {/* Form Layout */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Form Layout</label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setFormLayout('single-page')}
+                className={cn(
+                  'flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all',
+                  formLayout === 'single-page'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                )}
+              >
+                Single Page
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormLayout('multi-section')}
+                className={cn(
+                  'flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium transition-all',
+                  formLayout === 'multi-section'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                )}
+              >
+                Multi-Section
+              </button>
+            </div>
+          </div>
+
+          {/* Form Header */}
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <Image className="h-4 w-4" />
+              Form Header
+            </label>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Custom Title</label>
+                <input
+                  type="text"
+                  value={formHeader.title || ''}
+                  onChange={(e) => setFormHeader({ ...formHeader, title: e.target.value })}
+                  placeholder="Leave empty to use event title"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
+                <textarea
+                  value={formHeader.description || ''}
+                  onChange={(e) => setFormHeader({ ...formHeader, description: e.target.value })}
+                  placeholder="Brief description for the form"
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Logo URL</label>
+                <input
+                  type="text"
+                  value={formHeader.logoUrl || ''}
+                  onChange={(e) => setFormHeader({ ...formHeader, logoUrl: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Success Message */}
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Success Message
+            </label>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={successMessage.title || ''}
+                  onChange={(e) => setSuccessMessage({ ...successMessage, title: e.target.value })}
+                  placeholder="Registration Successful!"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Message</label>
+                <textarea
+                  value={successMessage.message || ''}
+                  onChange={(e) => setSuccessMessage({ ...successMessage, message: e.target.value })}
+                  placeholder="Thank you for registering..."
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-none"
+                />
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="showCheckInQR"
+                  checked={successMessage.showCheckInQR !== false}
+                  onChange={(e) => setSuccessMessage({ ...successMessage, showCheckInQR: e.target.checked })}
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                />
+                <label htmlFor="showCheckInQR" className="ml-2 text-sm text-gray-700">
+                  Show check-in QR code on success
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Terms and Conditions */}
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Terms & Conditions
+              </label>
+              <button
+                type="button"
+                onClick={() => setTermsAndConditions({ ...termsAndConditions, enabled: !termsAndConditions.enabled })}
+                className={cn(
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                  termsAndConditions.enabled ? "bg-primary-600" : "bg-gray-200"
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
+                    termsAndConditions.enabled ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
+            </div>
+            {termsAndConditions.enabled && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Checkbox Text</label>
+                  <input
+                    type="text"
+                    value={termsAndConditions.text || ''}
+                    onChange={(e) => setTermsAndConditions({ ...termsAndConditions, text: e.target.value })}
+                    placeholder="I agree to the terms and conditions"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Link URL (optional)</label>
+                  <input
+                    type="text"
+                    value={termsAndConditions.linkUrl || ''}
+                    onChange={(e) => setTermsAndConditions({ ...termsAndConditions, linkUrl: e.target.value })}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </CollapsibleSection>
+    </div>
+  )
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit, (validationErrors) => {
@@ -846,6 +1383,9 @@ export default function EventForm({
             <div style={{ display: activeTab === 'registration' ? 'block' : 'none' }}>
               {renderRegistrationTab()}
             </div>
+            <div style={{ display: activeTab === 'settings' ? 'block' : 'none' }}>
+              {renderSettingsTab()}
+            </div>
         </div>
       </div>
 
@@ -882,7 +1422,28 @@ export default function EventForm({
                   className="flex items-center gap-2"
                 >
                   <Calendar className="h-4 w-4" />
-                  Back to Details
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setActiveTab('settings')}
+                  className="flex items-center gap-2"
+                >
+                  Next: Settings
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            {activeTab === 'settings' && (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setActiveTab('registration')}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Back
                 </Button>
                 <Button
                   type="submit"

@@ -214,6 +214,25 @@ export const eventsService = {
     return transformSingleResponse<any>(response)
   },
 
+  publicSubmitPartner: async (
+    slug: string,
+    data: { name: string; company?: string; email: string; phone: string; interestDetails: string }
+  ): Promise<{ success: boolean; message: string }> => {
+    const response = await apiService.post<any>(
+      `/events/public/${slug}/partner`,
+      data
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  regenerateApiKey: async (eventId: string): Promise<{ apiKey: string }> => {
+    const response = await apiService.post<any>(
+      `/events/${eventId}/regenerate-api-key`,
+      {}
+    )
+    return transformSingleResponse<any>(response)
+  },
+
   // ========== SESSION MANAGEMENT ==========
 
   createSession: async (

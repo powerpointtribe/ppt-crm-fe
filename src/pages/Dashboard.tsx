@@ -263,7 +263,9 @@ export default function Dashboard() {
           totalMembers: 800,
           totalGroups: 45,
           totalFirstTimers: 120,
+          totalEvents: 10,
           recentFirstTimers: 15,
+          periodEvents: 2,
           analytics: {
             memberEngagement: 78,
             groupParticipation: 65,
@@ -273,7 +275,8 @@ export default function Dashboard() {
           trends: {
             membersTrend: '+8%',
             groupsTrend: '+3%',
-            firstTimersTrend: '+15%'
+            firstTimersTrend: '+15%',
+            eventsTrend: '+10%',
           }
         })
       }
@@ -345,6 +348,19 @@ export default function Dashboard() {
       path: '/first-timers',
       hasAccess: canAccessFirstTimers,
       requiredPermission: 'first-timers:view',
+    },
+    {
+      title: 'Events',
+      description: 'New events in period',
+      periodCount: stats?.periodEvents ?? 0,
+      totalCount: stats?.totalEvents ?? 0,
+      trend: stats?.trends?.eventsTrend || '0%',
+      icon: Calendar,
+      gradient: 'from-blue-500 to-blue-600',
+      bgColor: 'bg-blue-50',
+      path: '/events',
+      hasAccess: hasPermission('events:view'),
+      requiredPermission: 'events:view',
     },
   ]
 
@@ -571,7 +587,7 @@ export default function Dashboard() {
             </p>
           </div>
         ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${modules.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3 lg:gap-4`}>
           {modules.map((module, index) => {
             const TrendIcon = module.trend ? getTrendIcon(module.trend) : null
             const trendVariant = module.trend ? getTrendVariant(module.trend) : 'default'

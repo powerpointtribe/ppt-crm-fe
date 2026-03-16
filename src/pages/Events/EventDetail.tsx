@@ -125,9 +125,26 @@ export default function EventDetail() {
   const [exportingPartners, setExportingPartners] = useState(false)
 
   const canUpdate = hasPermission('events:update')
+  const canDelete = hasPermission('events:delete')
   const canViewRegistrations = hasPermission('events:view-registrations')
   const canCheckIn = hasPermission('events:check-in')
   const canManageCommittee = hasPermission('events:manage-committee')
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDeleteEvent = async () => {
+    if (!id) return
+    if (!window.confirm('Are you sure you want to delete this event? This will also delete all registrations.')) return
+    try {
+      setDeleting(true)
+      await eventsService.deleteEvent(id)
+      showToast('success', 'Event deleted successfully')
+      navigate('/events')
+    } catch (err) {
+      showToast('error', 'Failed to delete event')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     if (id) {
@@ -458,118 +475,107 @@ export default function EventDetail() {
               Edit
             </Button>
           )}
+          {canDelete && (
+            <Button
+              variant="destructive"
+              onClick={handleDeleteEvent}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          )}
         </div>
       }
     >
-      <div className="space-y-6">
-        {/* Modern Compact Header with Banner */}
+      <div className="space-y-3">
+        {/* Event Header */}
         <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
-          {/* Banner Image */}
-          {event.bannerImage && (
-            <div className="relative h-48 md:h-64 bg-gradient-to-br from-primary-500 to-primary-700 overflow-hidden">
-              <img
-                src={event.bannerImage}
-                alt={event.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-              {/* Floating Status Badge */}
-              <div className="absolute top-4 right-4">
-                <Badge
-                  variant={
-                    event.status === 'published'
-                      ? 'success'
-                      : event.status === 'cancelled'
-                      ? 'destructive'
-                      : 'default'
-                  }
-                  className="shadow-lg"
-                >
-                  {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                </Badge>
-              </div>
-
-              {/* Global Badge */}
-              {event.isGlobal && (
-                <div className="absolute top-4 left-4">
-                  <Badge className="bg-white/95 text-gray-800 shadow-lg border-0">
-                    Global Event
-                  </Badge>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Compact Info Section */}
-          <div className="p-6">
+          {/* Compact header bar */}
+          <div className="px-5 py-4">
             <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{event.title}</h1>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-400" />
-                    <span>{formatDate(event.startDate)}</span>
-                  </div>
-                  {event.startTime && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gray-400" />
-                      <span>{event.startTime} - {event.endTime}</span>
-                    </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <h1 className="text-lg font-bold text-gray-900 truncate">{event.title}</h1>
+                  <Badge
+                    variant={
+                      event.status === 'published' ? 'success'
+                        : event.status === 'cancelled' ? 'destructive'
+                        : 'default'
+                    }
+                    className="text-xs flex-shrink-0"
+                  >
+                    {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                  </Badge>
+                  {event.isGlobal && (
+                    <Badge className="bg-gray-100 text-gray-600 border-0 text-xs flex-shrink-0">
+                      Global
+                    </Badge>
                   )}
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-gray-400" />
-                    <span className="truncate">{event.location.name}</span>
-                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                    {formatDate(event.startDate)}
+                  </span>
+                  {event.startTime && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-gray-400" />
+                      {event.startTime}{event.endTime && ` – ${event.endTime}`}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="truncate max-w-[200px]">{event.location.name}</span>
+                  </span>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              {event.registrationSlug && event.status === 'published' && (
-                <div className="flex gap-2 flex-shrink-0">
-                  <Button variant="outline" size="sm" onClick={copyRegistrationLink}>
+              {event.registrationSlug && event.status === 'published' && event.registrationSettings?.integrationMode !== 'api' && (
+                <div className="flex gap-1 flex-shrink-0">
+                  <button
+                    onClick={copyRegistrationLink}
+                    className="p-1.5 rounded-md text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                    title="Copy registration link"
+                  >
                     <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </button>
+                  <button
                     onClick={() => window.open(`/event-registration/${event.registrationSlug}`, '_blank')}
+                    className="p-1.5 rounded-md text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                    title="Open registration page"
                   >
                     <ExternalLink className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               )}
             </div>
 
-            {/* Compact Stats Grid */}
+            {/* Inline Stats */}
             {stats && (
-              <div className="grid grid-cols-4 gap-3 mt-6">
-                <div className="bg-gray-50 rounded-lg p-3 text-center">
-                  <div className="text-xl font-bold text-gray-900">{stats.totalRegistrations}</div>
-                  <div className="text-xs text-gray-500 mt-1">Total</div>
-                </div>
-                <div className="bg-green-50 rounded-lg p-3 text-center">
-                  <div className="text-xl font-bold text-green-600">{stats.byStatus.confirmed}</div>
-                  <div className="text-xs text-green-600 mt-1">Confirmed</div>
-                </div>
-                <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <div className="text-xl font-bold text-blue-600">{stats.byStatus.attended}</div>
-                  <div className="text-xs text-blue-600 mt-1">Attended</div>
-                </div>
-                <div className="bg-yellow-50 rounded-lg p-3 text-center">
-                  <div className="text-xl font-bold text-yellow-600">{stats.byStatus.pending}</div>
-                  <div className="text-xs text-yellow-600 mt-1">Pending</div>
-                </div>
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+                {[
+                  { value: stats.totalRegistrations, label: 'Total', color: 'text-gray-900' },
+                  { value: stats.byStatus.confirmed, label: 'Confirmed', color: 'text-green-600' },
+                  { value: stats.byStatus.attended, label: 'Attended', color: 'text-blue-600' },
+                  { value: stats.byStatus.pending, label: 'Pending', color: 'text-amber-600' },
+                ].map((stat, i) => (
+                  <div key={stat.label} className="flex items-center gap-1.5">
+                    <span className={cn('text-base font-bold', stat.color)}>{stat.value}</span>
+                    <span className="text-xs text-gray-400">{stat.label}</span>
+                    {i < 3 && <span className="ml-3 text-gray-200">|</span>}
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* Modern Tabs with Counts */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-          <nav className="flex -mb-px overflow-x-auto px-4 scrollbar-thin">
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+          <nav className="flex -mb-px overflow-x-auto px-1 scrollbar-thin">
             {[
-              { id: 'info', label: 'Event Info', icon: Calendar },
+              { id: 'info', label: 'Info', icon: Calendar },
               {
                 id: 'registrations',
                 label: 'Registrations',
@@ -598,10 +604,10 @@ export default function EventDetail() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
                     className={cn(
-                      'relative flex items-center gap-2 px-4 py-4 border-b-2 font-medium text-sm whitespace-nowrap transition-all',
+                      'relative flex items-center gap-1.5 px-3 py-3 border-b-2 font-medium text-xs whitespace-nowrap transition-all',
                       isActive
                         ? 'border-primary-500 text-primary-600 bg-primary-50/50'
-                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50'
                     )}
                   >
                     <Icon className={cn('h-4 w-4', isActive && 'text-primary-600')} />
@@ -622,200 +628,220 @@ export default function EventDetail() {
           </nav>
         </div>
 
-        {/* Enhanced Tab Content */}
+        {/* Info Tab */}
         {activeTab === 'info' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Date & Time Card */}
-            <Card className="shadow-sm border-gray-100">
-              <div className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                    <Calendar className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Date & Time</h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center text-gray-700">
-                    <div className="w-20 text-sm text-gray-500 font-medium">Starts</div>
-                    <span className="font-medium">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100">
+            {/* Date & Time + Location row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+              <div className="p-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Date & Time</h3>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                    <span className="font-medium text-gray-800">
                       {formatDate(event.startDate)}
-                      {event.startTime && <span className="text-gray-500 ml-2">at {event.startTime}</span>}
+                      {event.startTime && <span className="text-gray-500 ml-1">at {event.startTime}</span>}
                     </span>
                   </div>
                   {event.endDate && event.endDate !== event.startDate && (
-                    <div className="flex items-center text-gray-700">
-                      <div className="w-20 text-sm text-gray-500 font-medium">Ends</div>
-                      <span className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-gray-300 flex-shrink-0" />
+                      <span className="text-gray-600">
                         {formatDate(event.endDate)}
-                        {event.endTime && <span className="text-gray-500 ml-2">at {event.endTime}</span>}
+                        {event.endTime && <span className="text-gray-400 ml-1">at {event.endTime}</span>}
                       </span>
                     </div>
                   )}
                 </div>
               </div>
-            </Card>
-
-            {/* Location Card */}
-            <Card className="shadow-sm border-gray-100">
-              <div className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                    <MapPin className="h-5 w-5 text-green-600" />
+              <div className="p-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Location</h3>
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                    <span className="font-medium text-gray-800">{event.location.name}</span>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Location</h3>
-                </div>
-                <div className="space-y-2">
-                  <div className="font-medium text-gray-900">{event.location.name}</div>
                   {event.location.isVirtual ? (
                     event.location.virtualLink && (
                       <a
                         href={event.location.virtualLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium text-sm"
+                        className="inline-flex items-center text-primary-600 hover:text-primary-700 text-sm font-medium ml-5"
                       >
                         Join virtual meeting
-                        <ExternalLink className="h-3.5 w-3.5 ml-1" />
+                        <ExternalLink className="h-3 w-3 ml-1" />
                       </a>
                     )
                   ) : (
-                    <>
-                      {event.location.address && <div className="text-gray-600 text-sm">{event.location.address}</div>}
-                      {event.location.city && (
-                        <div className="text-gray-600 text-sm">
-                          {event.location.city}, {event.location.state}
-                        </div>
-                      )}
-                    </>
+                    <div className="ml-5 text-gray-500 text-xs">
+                      {event.location.address && <span>{event.location.address}</span>}
+                      {event.location.city && <span>{event.location.address ? ', ' : ''}{event.location.city}{event.location.state ? `, ${event.location.state}` : ''}</span>}
+                    </div>
                   )}
                 </div>
               </div>
-            </Card>
+            </div>
 
-            {/* Description Card */}
+            {/* Description */}
             {event.description && (
-              <Card className="md:col-span-2 shadow-sm border-gray-100">
-                <div className="p-6">
-                  <div className="flex items-center mb-4">
-                    <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                      <BookOpen className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900">Description</h3>
-                  </div>
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{event.description}</p>
-                </div>
-              </Card>
+              <div className="p-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Description</h3>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{event.description}</p>
+              </div>
             )}
 
-            {/* Contact Information Card */}
-            <Card className="shadow-sm border-gray-100">
-              <div className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                    <Mail className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Contact</h3>
-                </div>
-                <div className="space-y-3">
+            {/* Contact + Registration row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+              <div className="p-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Contact</h3>
+                <div className="space-y-1.5">
                   {event.contactEmail && (
-                    <a href={`mailto:${event.contactEmail}`} className="flex items-center text-primary-600 hover:text-primary-700 group">
-                      <Mail className="h-4 w-4 mr-3 text-gray-400 group-hover:text-primary-600" />
-                      <span className="font-medium">{event.contactEmail}</span>
+                    <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-2 text-sm text-gray-700 hover:text-primary-600 transition-colors">
+                      <Mail className="h-3.5 w-3.5 text-gray-400" />
+                      <span>{event.contactEmail}</span>
                     </a>
                   )}
                   {event.contactPhone && (
-                    <a href={`tel:${event.contactPhone}`} className="flex items-center text-primary-600 hover:text-primary-700 group">
-                      <Phone className="h-4 w-4 mr-3 text-gray-400 group-hover:text-primary-600" />
-                      <span className="font-medium">{event.contactPhone}</span>
+                    <a href={`tel:${event.contactPhone}`} className="flex items-center gap-2 text-sm text-gray-700 hover:text-primary-600 transition-colors">
+                      <Phone className="h-3.5 w-3.5 text-gray-400" />
+                      <span>{event.contactPhone}</span>
                     </a>
+                  )}
+                  {!event.contactEmail && !event.contactPhone && (
+                    <p className="text-xs text-gray-400">No contact info provided</p>
                   )}
                 </div>
               </div>
-            </Card>
-
-            {/* Registration Settings Card */}
-            <Card className="shadow-sm border-gray-100">
-              <div className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                    <Users className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Registration</h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-sm text-gray-600 font-medium">Status</span>
-                    <Badge variant={event.registrationSettings.isOpen ? 'success' : 'destructive'} className="font-medium">
+              <div className="p-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Registration</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Status</span>
+                    <Badge variant={event.registrationSettings.isOpen ? 'success' : 'destructive'} className="text-xs">
                       {event.registrationSettings.isOpen ? 'Open' : 'Closed'}
                     </Badge>
                   </div>
                   {event.registrationSettings.maxAttendees && (
                     <>
-                      <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-gray-600 font-medium">Capacity</span>
-                        <span className="font-semibold text-gray-900">{event.registrationSettings.maxAttendees}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500">Capacity</span>
+                        <span className="text-xs font-semibold text-gray-900">
+                          {stats?.totalRegistrations || 0} / {event.registrationSettings.maxAttendees}
+                        </span>
                       </div>
-                      <div className="pt-2">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-gray-500">Filled</span>
-                          <span className="font-medium text-gray-700">
-                            {stats?.totalRegistrations || 0} / {event.registrationSettings.maxAttendees}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full transition-all"
-                            style={{
-                              width: `${Math.min(((stats?.totalRegistrations || 0) / event.registrationSettings.maxAttendees) * 100, 100)}%`
-                            }}
-                          />
-                        </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div
+                          className="bg-gradient-to-r from-primary-500 to-primary-600 h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${Math.min(((stats?.totalRegistrations || 0) / event.registrationSettings.maxAttendees) * 100, 100)}%`
+                          }}
+                        />
                       </div>
                     </>
                   )}
                   {event.registrationSettings.deadline && (
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-sm text-gray-600 font-medium">Deadline</span>
-                      <span className="font-medium text-gray-900">
-                        {formatDate(event.registrationSettings.deadline)}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Deadline</span>
+                      <span className="text-xs font-medium text-gray-900">{formatDate(event.registrationSettings.deadline)}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-sm text-gray-600 font-medium">Approval</span>
-                    <span className="font-medium text-gray-900">
-                      {event.registrationSettings.requireApproval ? 'Required' : 'Not Required'}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Approval</span>
+                    <span className="text-xs font-medium text-gray-700">
+                      {event.registrationSettings.requireApproval ? 'Required' : 'Auto'}
                     </span>
                   </div>
                 </div>
               </div>
-            </Card>
+            </div>
+
+            {/* Integration Info */}
+            {event.registrationSlug && (
+              <div className="p-4">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  {event.registrationSettings?.integrationMode === 'api' ? 'API Integration' : 'Registration Link'}
+                </h3>
+
+                {event.registrationSettings?.integrationMode === 'api' ? (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default" className="text-xs bg-blue-100 text-blue-700 border-0">API Mode</Badge>
+                      <span className="text-xs text-gray-500">External website submits via API</span>
+                    </div>
+                    {event.registrationSettings?.apiKey && (
+                      <div className="bg-gray-50 rounded-md px-3 py-2 border border-gray-200">
+                        <p className="text-[10px] text-gray-400 mb-0.5">API Key</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-gray-800 font-mono break-all flex-1">{event.registrationSettings.apiKey}</code>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(event.registrationSettings.apiKey!)
+                              showToast('success', 'API key copied')
+                            }}
+                            className="flex-shrink-0 p-1.5 rounded-md bg-primary-50 text-primary-600 hover:bg-primary-100 transition-colors"
+                            title="Copy API key"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      Endpoint: <code className="bg-gray-100 px-1 rounded text-[11px]">POST /api/v1/events/public/{event.registrationSlug}/register</code>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0 bg-gray-50 rounded-md px-3 py-2 border border-gray-200">
+                      <p className="text-xs text-gray-500 truncate">
+                        {window.location.origin}/event-registration/{event.registrationSlug}
+                      </p>
+                    </div>
+                    <button
+                      onClick={copyRegistrationLink}
+                      className="flex-shrink-0 p-2 rounded-md bg-primary-50 text-primary-600 hover:bg-primary-100 transition-colors"
+                      title="Copy link"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => window.open(`/event-registration/${event.registrationSlug}`, '_blank')}
+                      className="flex-shrink-0 p-2 rounded-md bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors"
+                      title="Open in new tab"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'registrations' && canViewRegistrations && (
-          <Card className="shadow-sm">
-            {/* Enhanced Toolbar */}
-            <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-              <div className="flex flex-col sm:flex-row gap-4">
+          <Card className="shadow-sm rounded-lg border-gray-100">
+            {/* Toolbar */}
+            <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                     <input
                       type="text"
                       placeholder="Search by name, email, or phone..."
                       value={registrationSearch}
                       onChange={(e) => setRegistrationSearch(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && loadRegistrations()}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
                     />
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <select
                     value={registrationFilter}
                     onChange={(e) => setRegistrationFilter(e.target.value as RegistrationStatus | '')}
-                    className="px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
@@ -879,14 +905,14 @@ export default function EventDetail() {
             </div>
 
             {loadingRegistrations ? (
-              <div className="p-12 text-center">
+              <div className="p-8 text-center">
                 <LoadingSpinner size="lg" />
               </div>
             ) : registrations.length === 0 ? (
-              <div className="p-12 text-center">
-                <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">No registrations found</h4>
-                <p className="text-gray-500 max-w-sm mx-auto">
+              <div className="p-8 text-center">
+                <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">No registrations found</h4>
+                <p className="text-xs text-gray-500 max-w-sm mx-auto">
                   {registrationFilter || registrationSearch
                     ? 'Try adjusting your filters or search query'
                     : 'Registrations will appear here once people sign up for this event'}
@@ -997,28 +1023,28 @@ export default function EventDetail() {
 
         {/* Partners Tab */}
         {activeTab === 'partners' && canViewRegistrations && (
-          <Card className="shadow-sm">
-            {/* Enhanced Toolbar */}
-            <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-              <div className="flex flex-col sm:flex-row gap-4">
+          <Card className="shadow-sm rounded-lg border-gray-100">
+            {/* Toolbar */}
+            <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                     <input
                       type="text"
                       placeholder="Search by name, company, or email..."
                       value={partnerSearch}
                       onChange={(e) => setPartnerSearch(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && loadPartners()}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
                     />
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <select
                     value={partnerFilter}
                     onChange={(e) => setPartnerFilter(e.target.value as PartnerStatus | '')}
-                    className="px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="">All Statuses</option>
                     <option value={PartnerStatus.PENDING}>Pending</option>
@@ -1081,14 +1107,14 @@ export default function EventDetail() {
             </div>
 
             {loadingPartners ? (
-              <div className="p-12 text-center">
+              <div className="p-8 text-center">
                 <LoadingSpinner size="lg" />
               </div>
             ) : partners.length === 0 ? (
-              <div className="p-12 text-center">
-                <UserPlus className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">No Partnership Inquiries</h4>
-                <p className="text-gray-500 max-w-sm mx-auto">
+              <div className="p-8 text-center">
+                <UserPlus className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">No Partnership Inquiries</h4>
+                <p className="text-xs text-gray-500 max-w-sm mx-auto">
                   {partnerFilter || partnerSearch
                     ? 'No partners match your current filters'
                     : 'Partnership inquiries will appear here when submitted'}
@@ -1225,12 +1251,11 @@ export default function EventDetail() {
 
         {/* Sessions Tab */}
         {activeTab === 'sessions' && (
-          <div className="space-y-6">
-            {/* Sessions Header */}
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Event Sessions</h3>
-                <p className="text-sm text-gray-500">Manage sessions and track attendance for this event</p>
+                <h3 className="text-sm font-semibold text-gray-900">Event Sessions</h3>
+                <p className="text-xs text-gray-500">Manage sessions and track attendance</p>
               </div>
               {canUpdate && (
                 <Button onClick={() => navigate(`/events/${id}/sessions/new`)}>
@@ -1245,10 +1270,10 @@ export default function EventDetail() {
                 <LoadingSpinner />
               </div>
             ) : sessions.length === 0 ? (
-              <Card className="p-12 text-center">
-                <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <h4 className="text-lg font-medium text-gray-900 mb-2">No Sessions Yet</h4>
-                <p className="text-gray-500 mb-6">Create sessions to track attendance for multi-day or training events.</p>
+              <Card className="p-8 text-center">
+                <BookOpen className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+                <h4 className="text-sm font-medium text-gray-900 mb-1">No Sessions Yet</h4>
+                <p className="text-xs text-gray-500 mb-4">Create sessions to track attendance for multi-day or training events.</p>
                 {canUpdate && (
                   <Button onClick={() => navigate(`/events/${id}/sessions/new`)}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -1345,7 +1370,7 @@ export default function EventDetail() {
 
         {/* Analytics Tab */}
         {activeTab === 'analytics' && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {loadingAnalytics ? (
               <div className="flex items-center justify-center h-64">
                 <LoadingSpinner />
@@ -1409,7 +1434,7 @@ export default function EventDetail() {
                 </div>
 
                 {/* Registration Breakdown */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Card className="p-6">
                     <h4 className="text-lg font-medium text-gray-900 mb-4">Registration Status</h4>
                     <div className="space-y-3">
@@ -1589,12 +1614,11 @@ export default function EventDetail() {
 
         {/* Accountability Tab */}
         {activeTab === 'accountability' && canViewRegistrations && (
-          <div className="space-y-6">
-            {/* Accountability Header */}
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Participant Accountability</h3>
-                <p className="text-sm text-gray-500">Track participant attendance, progress, and certification status</p>
+                <h3 className="text-sm font-semibold text-gray-900">Participant Accountability</h3>
+                <p className="text-xs text-gray-500">Track attendance, progress, and certification status</p>
               </div>
               <Button variant="secondary" onClick={() => loadAccountability()}>
                 <RefreshCw className="h-4 w-4 mr-2" />

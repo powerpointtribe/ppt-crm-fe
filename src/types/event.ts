@@ -99,6 +99,8 @@ export interface RegistrationSettings {
   successMessage?: SuccessMessage
   termsAndConditions?: TermsAndConditions
   formStatus?: FormStatus
+  integrationMode?: 'embedded' | 'api'
+  apiKey?: string
 }
 
 // Committee member

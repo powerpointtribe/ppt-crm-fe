@@ -201,7 +201,6 @@ export default function EventForm({
     setValue,
     formState: { errors },
   } = useForm<any>({
-    shouldUnregister: true,
     defaultValues: event
       ? {
           title: event.title,
@@ -531,7 +530,7 @@ export default function EventForm({
                 icon={Globe}
                 label="Platform Name"
                 placeholder="e.g., Zoom, Google Meet"
-                {...register('location.name', { required: 'Platform name is required' })}
+                {...register('location.name')}
                 error={(errors.location as any)?.name?.message as string}
               />
               <IconInput
@@ -548,7 +547,7 @@ export default function EventForm({
                 icon={Building}
                 label="Venue Name"
                 placeholder="e.g., Main Auditorium"
-                {...register('location.name', { required: 'Venue name is required' })}
+                {...register('location.name')}
                 error={(errors.location as any)?.name?.message as string}
               />
               <IconInput

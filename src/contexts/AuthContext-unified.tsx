@@ -162,7 +162,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setMember(memberWithPermissions);
       localStorage.setItem('cached_member', JSON.stringify(memberWithPermissions));
 
-      // Cache permissions for offline use
+      // Cache permissions for offline use — only update cache if we got actual permissions
       const permissions = {
         accessibleModules: memberProfile.accessibleModules || [],
         systemRoles: memberProfile.systemRoles || [],
@@ -170,8 +170,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         permissionsGrouped,
         role: profileRole?.name || profileRole
       };
-      setCachedPermissions(permissions);
-      localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      if (profilePermissions.length > 0) {
+        setCachedPermissions(permissions);
+        localStorage.setItem('cached_permissions', JSON.stringify(permissions));
+      }
 
       console.log('Auth check successful, permissions loaded:', profilePermissions.length);
     } catch (error: any) {
@@ -303,15 +305,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Check if user has a specific permission (e.g., 'members:create')
    */
   const hasPermission = (permission: string): boolean => {
-    // Use current member permissions if available
-    if (member?.permissions?.includes) {
-      const has = member.permissions.includes(permission);
-      return has;
+    // Use current member permissions if available and non-empty
+    if (member?.permissions?.length > 0) {
+      return member.permissions.includes(permission);
     }
-    // Fallback to cached permissions during loading
-    if (cachedPermissions?.permissions?.includes) {
-      const has = cachedPermissions.permissions.includes(permission);
-      return has;
+    // Fallback to cached permissions during loading or when profile has no permissions
+    if (cachedPermissions?.permissions?.length > 0) {
+      return cachedPermissions.permissions.includes(permission);
     }
     return false;
   };

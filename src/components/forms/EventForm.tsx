@@ -137,19 +137,19 @@ function CollapsibleSection({
   )
 }
 
-// Compact Input with Icon
-function IconInput({
+// Compact Input with Icon — uses forwardRef so RHF's register() ref is attached to the native input
+const IconInput = React.forwardRef<HTMLInputElement, {
+  icon?: React.ElementType
+  label?: string
+  error?: string
+  className?: string
+} & React.InputHTMLAttributes<HTMLInputElement>>(({
   icon: Icon,
   label,
   error,
   className,
   ...props
-}: {
-  icon?: React.ElementType
-  label?: string
-  error?: string
-  className?: string
-} & React.InputHTMLAttributes<HTMLInputElement>) {
+}, ref) => {
   return (
     <div className={className}>
       {label && (
@@ -165,6 +165,7 @@ function IconInput({
         )}
         <input
           {...props}
+          ref={ref}
           className={cn(
             "w-full rounded-lg border border-gray-300 bg-white transition-all duration-200",
             "focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500",
@@ -178,7 +179,7 @@ function IconInput({
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   )
-}
+})
 
 export default function EventForm({
   event,
@@ -524,15 +525,19 @@ export default function EventForm({
             </div>
           </label>
 
+          {/* Single location.name input — avoids dual-registration conflict */}
+          <IconInput
+            icon={watchedIsVirtual ? Globe : Building}
+            label={watchedIsVirtual ? 'Platform Name' : 'Venue Name'}
+            placeholder={watchedIsVirtual ? 'e.g., Zoom, Google Meet' : 'e.g., Main Auditorium'}
+            {...register('location.name', {
+              required: watchedIsVirtual ? 'Platform name is required' : 'Venue name is required',
+            })}
+            error={(errors.location as any)?.name?.message as string}
+          />
+
           {watchedIsVirtual ? (
             <div className="space-y-3">
-              <IconInput
-                icon={Globe}
-                label="Platform Name"
-                placeholder="e.g., Zoom, Google Meet"
-                {...register('location.name', { required: 'Platform name is required' })}
-                error={(errors.location as any)?.name?.message as string}
-              />
               <IconInput
                 icon={Globe}
                 label="Meeting Link"
@@ -543,13 +548,6 @@ export default function EventForm({
             </div>
           ) : (
             <div className="space-y-3">
-              <IconInput
-                icon={Building}
-                label="Venue Name"
-                placeholder="e.g., Main Auditorium"
-                {...register('location.name', { required: 'Venue name is required' })}
-                error={(errors.location as any)?.name?.message as string}
-              />
               <IconInput
                 icon={MapPin}
                 label="Address"

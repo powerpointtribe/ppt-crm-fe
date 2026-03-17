@@ -135,6 +135,16 @@ export const membersService = {
     return transformSingleResponse<Member>(response) as Member
   },
 
+  addRole: async (id: string, roleId: string): Promise<Member> => {
+    const response = await apiService.post<ApiResponse<Member>>(`/members/${id}/roles`, { roleId })
+    return transformSingleResponse<Member>(response) as Member
+  },
+
+  removeRole: async (id: string, roleId: string): Promise<Member> => {
+    const response = await apiService.delete<ApiResponse<Member>>(`/members/${id}/roles/${roleId}`)
+    return transformSingleResponse<Member>(response) as Member
+  },
+
   assignUnit: async (id: string, unitData: { unit: string; unitType: string; district?: string }): Promise<Member> => {
     const response = await apiService.patch<ApiResponse<Member>>(`/members/${id}/assign-unit`, unitData)
     return transformSingleResponse<Member>(response) as Member

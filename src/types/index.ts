@@ -24,9 +24,10 @@ export interface Member {
   lastLogin?: string
 
   // System access control (NEW permission-based system)
-  role?: Role // NEW: Single role with permissions
-  permissions?: string[] // NEW: Flat array of permission names (e.g., ['members:create', 'members:view'])
-  permissionsGrouped?: Record<string, string[]> // NEW: Permissions grouped by module
+  role?: Role // Primary role with permissions
+  additionalRoles?: Role[] // Additional roles — permissions merged with primary role
+  permissions?: string[] // Flat array of permission names (e.g., ['members:create', 'members:view'])
+  permissionsGrouped?: Record<string, string[]> // Permissions grouped by module
 
   // Legacy access control (deprecated, kept for backward compatibility)
   systemRoles: string[]

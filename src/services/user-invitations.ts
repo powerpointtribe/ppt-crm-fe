@@ -90,6 +90,11 @@ export interface ActiveUser {
     name: string;
     displayName: string;
   };
+  additionalRoles?: {
+    _id: string;
+    name: string;
+    displayName: string;
+  }[];
   lastLogin?: string;
   accountType?: 'member' | 'operational';
 }

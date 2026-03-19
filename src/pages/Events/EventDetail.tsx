@@ -1131,251 +1131,265 @@ export default function EventDetail() {
 
         {/* Partners Tab */}
         {activeTab === 'partners' && canViewRegistrations && (
-          <Card className="shadow-sm rounded-lg border-gray-100">
+          <div className="space-y-4">
+            {/* Summary Stats */}
+            {!loadingPartners && partners.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {[
+                  { label: 'Total', count: partners.length, color: 'bg-gray-100 text-gray-700', dot: 'bg-gray-400' },
+                  { label: 'Pending', count: partners.filter(p => p.status === PartnerStatus.PENDING).length, color: 'bg-amber-50 text-amber-700', dot: 'bg-amber-400' },
+                  { label: 'Contacted', count: partners.filter(p => p.status === PartnerStatus.CONTACTED).length, color: 'bg-blue-50 text-blue-700', dot: 'bg-blue-400' },
+                  { label: 'In Discussion', count: partners.filter(p => p.status === PartnerStatus.IN_DISCUSSION).length, color: 'bg-purple-50 text-purple-700', dot: 'bg-purple-400' },
+                  { label: 'Confirmed', count: partners.filter(p => p.status === PartnerStatus.CONFIRMED).length, color: 'bg-green-50 text-green-700', dot: 'bg-green-400' },
+                ].map((stat) => (
+                  <div key={stat.label} className={`${stat.color} rounded-xl px-3 py-2.5 flex items-center gap-2.5`}>
+                    <span className={`h-2 w-2 rounded-full ${stat.dot}`} />
+                    <span className="text-xs font-medium">{stat.label}</span>
+                    <span className="text-sm font-bold ml-auto">{stat.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Toolbar */}
-            <div className="p-3 border-b border-gray-100 bg-gray-50/50">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search by name, company, or email..."
-                      value={partnerSearch}
-                      onChange={(e) => setPartnerSearch(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && loadPartners()}
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
-                  <select
-                    value={partnerFilter}
-                    onChange={(e) => setPartnerFilter(e.target.value as PartnerStatus | '')}
-                    className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search partners..."
+                  value={partnerSearch}
+                  onChange={(e) => setPartnerSearch(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && loadPartners()}
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                />
+              </div>
+              <div className="flex gap-1.5">
+                <select
+                  value={partnerFilter}
+                  onChange={(e) => setPartnerFilter(e.target.value as PartnerStatus | '')}
+                  className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">All Statuses</option>
+                  <option value={PartnerStatus.PENDING}>Pending</option>
+                  <option value={PartnerStatus.CONTACTED}>Contacted</option>
+                  <option value={PartnerStatus.IN_DISCUSSION}>In Discussion</option>
+                  <option value={PartnerStatus.CONFIRMED}>Confirmed</option>
+                  <option value={PartnerStatus.DECLINED}>Declined</option>
+                </select>
+
+                {/* Export Dropdown */}
+                <div className="relative export-dropdown-container">
+                  <Button
+                    onClick={() => setShowPartnerExportMenu(!showPartnerExportMenu)}
+                    size="sm"
+                    variant="outline"
+                    disabled={exportingPartners || partners.length === 0}
+                    className="gap-2"
                   >
-                    <option value="">All Statuses</option>
-                    <option value={PartnerStatus.PENDING}>Pending</option>
-                    <option value={PartnerStatus.CONTACTED}>Contacted</option>
-                    <option value={PartnerStatus.IN_DISCUSSION}>In Discussion</option>
-                    <option value={PartnerStatus.CONFIRMED}>Confirmed</option>
-                    <option value={PartnerStatus.DECLINED}>Declined</option>
-                  </select>
-
-                  {/* Export Dropdown */}
-                  <div className="relative export-dropdown-container">
-                    <Button
-                      onClick={() => setShowPartnerExportMenu(!showPartnerExportMenu)}
-                      size="sm"
-                      variant="outline"
-                      disabled={exportingPartners || partners.length === 0}
-                      className="gap-2"
-                    >
-                      {exportingPartners ? (
-                        <LoadingSpinner size="sm" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                      <span className="hidden sm:inline">Export</span>
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-
-                    {showPartnerExportMenu && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                        <button
-                          onClick={() => handleExportPartners('csv')}
-                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                        >
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <span>Export as CSV</span>
-                        </button>
-                        <button
-                          onClick={() => handleExportPartners('xlsx')}
-                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                        >
-                          <FileSpreadsheet className="h-4 w-4 text-green-600" />
-                          <span>Export as Excel</span>
-                        </button>
-                        <button
-                          onClick={() => handleExportPartners('pdf')}
-                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
-                        >
-                          <FileText className="h-4 w-4 text-red-600" />
-                          <span>Export as PDF</span>
-                        </button>
-                      </div>
+                    {exportingPartners ? (
+                      <LoadingSpinner size="sm" />
+                    ) : (
+                      <Download className="h-4 w-4" />
                     )}
-                  </div>
-
-                  <Button onClick={loadPartners} size="sm" variant="outline">
-                    <RefreshCw className="h-4 w-4" />
+                    <span className="hidden sm:inline">Export</span>
+                    <ChevronDown className="h-3 w-3" />
                   </Button>
+
+                  {showPartnerExportMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                      <button
+                        onClick={() => handleExportPartners('csv')}
+                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                      >
+                        <FileText className="h-4 w-4 text-gray-500" />
+                        <span>Export as CSV</span>
+                      </button>
+                      <button
+                        onClick={() => handleExportPartners('xlsx')}
+                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                      >
+                        <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                        <span>Export as Excel</span>
+                      </button>
+                      <button
+                        onClick={() => handleExportPartners('pdf')}
+                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                      >
+                        <FileText className="h-4 w-4 text-red-600" />
+                        <span>Export as PDF</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                <Button onClick={loadPartners} size="sm" variant="outline">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
+            {/* Content */}
             {loadingPartners ? (
               <div className="p-8 text-center">
                 <LoadingSpinner size="lg" />
               </div>
             ) : partners.length === 0 ? (
-              <div className="p-8 text-center">
-                <UserPlus className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <Card className="p-10 text-center">
+                <div className="h-14 w-14 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <UserPlus className="h-7 w-7 text-indigo-400" />
+                </div>
                 <h4 className="text-sm font-semibold text-gray-900 mb-1">No Partnership Inquiries</h4>
                 <p className="text-xs text-gray-500 max-w-sm mx-auto">
                   {partnerFilter || partnerSearch
                     ? 'No partners match your current filters'
                     : 'Partnership inquiries will appear here when submitted'}
                 </p>
-              </div>
+              </Card>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50/80">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Partner
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Company
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Contact
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Interest
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Submitted
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {partners.map((partner) => (
-                      <tr
-                        key={partner._id}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+              <div className="space-y-2">
+                {partners.map((partner, index) => {
+                  const statusConfig: Record<string, { bg: string; text: string; dot: string; label: string }> = {
+                    [PartnerStatus.PENDING]: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400', label: 'Pending' },
+                    [PartnerStatus.CONTACTED]: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400', label: 'Contacted' },
+                    [PartnerStatus.IN_DISCUSSION]: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-400', label: 'In Discussion' },
+                    [PartnerStatus.CONFIRMED]: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-400', label: 'Confirmed' },
+                    [PartnerStatus.DECLINED]: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-400', label: 'Declined' },
+                  }
+                  const sc = statusConfig[partner.status] || statusConfig[PartnerStatus.PENDING]
+
+                  return (
+                    <motion.div
+                      key={partner._id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                    >
+                      <Card
+                        className="p-4 hover:shadow-md transition-all cursor-pointer border border-gray-100 hover:border-gray-200"
                         onClick={() => {
                           setSelectedPartner(partner)
                           setShowPartnerModal(true)
                         }}
                       >
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center">
-                              <span className="text-xs font-medium text-white">{partner.name?.charAt(0)?.toUpperCase() || 'P'}</span>
+                        <div className="flex items-start gap-3">
+                          {/* Avatar */}
+                          <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <span className="text-sm font-semibold text-white">{partner.name?.charAt(0)?.toUpperCase() || 'P'}</span>
+                          </div>
+
+                          {/* Main Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-sm font-semibold text-gray-900 truncate">{partner.name}</h4>
+                                  {partner.company && (
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full truncate">{partner.company}</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                  <span className="flex items-center gap-1 truncate">
+                                    <Mail className="h-3 w-3 flex-shrink-0" />
+                                    {partner.email}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="h-3 w-3 flex-shrink-0" />
+                                    {partner.phone}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Status + Date */}
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
+                                  {sc.label}
+                                </span>
+                              </div>
                             </div>
-                            <div className="ml-2.5">
-                              <div className="font-medium text-gray-900">{partner.name}</div>
+
+                            {/* Interest preview + actions row */}
+                            <div className="flex items-end justify-between gap-3 mt-2">
+                              <p className="text-xs text-gray-500 line-clamp-1 flex-1" title={partner.interestDetails}>
+                                {partner.interestDetails}
+                              </p>
+
+                              <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <span className="text-[11px] text-gray-400 mr-1.5">{formatDate(partner.submittedAt)}</span>
+                                {partner.status === PartnerStatus.PENDING && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.CONTACTED)}
+                                    className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+                                  >
+                                    Mark Contacted
+                                  </Button>
+                                )}
+                                {partner.status === PartnerStatus.CONTACTED && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.IN_DISCUSSION)}
+                                    className="h-7 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-2"
+                                  >
+                                    Start Discussion
+                                  </Button>
+                                )}
+                                {partner.status === PartnerStatus.IN_DISCUSSION && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.CONFIRMED)}
+                                      className="h-7 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 px-2"
+                                    >
+                                      Confirm
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.DECLINED)}
+                                      className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2"
+                                    >
+                                      Decline
+                                    </Button>
+                                  </>
+                                )}
+                                {canUpdate && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openEditPartner(partner)}
+                                      title="Edit"
+                                      className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600"
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeletePartner(partner._id)}
+                                      title="Delete"
+                                      className="h-7 w-7 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{partner.company || '—'}</div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{partner.email}</div>
-                          <div className="text-xs text-gray-500">{partner.phone}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm text-gray-600 max-w-xs truncate" title={partner.interestDetails}>
-                            {partner.interestDetails}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge
-                            variant={
-                              partner.status === PartnerStatus.CONFIRMED ? 'success' :
-                              partner.status === PartnerStatus.DECLINED ? 'destructive' :
-                              partner.status === PartnerStatus.PENDING ? 'warning' :
-                              'default'
-                            }
-                            className="font-medium"
-                          >
-                            {partner.status.charAt(0).toUpperCase() + partner.status.slice(1).replace('_', ' ')}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(partner.submittedAt)}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {partner.status === PartnerStatus.PENDING && (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.CONTACTED)}
-                                className="font-medium"
-                              >
-                                Mark Contacted
-                              </Button>
-                            )}
-                            {partner.status === PartnerStatus.CONTACTED && (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.IN_DISCUSSION)}
-                                className="font-medium"
-                              >
-                                In Discussion
-                              </Button>
-                            )}
-                            {partner.status === PartnerStatus.IN_DISCUSSION && (
-                              <>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.CONFIRMED)}
-                                  className="font-medium"
-                                >
-                                  Confirm
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => handleUpdatePartnerStatus(partner._id, PartnerStatus.DECLINED)}
-                                >
-                                  Decline
-                                </Button>
-                              </>
-                            )}
-                            {canUpdate && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => { e.stopPropagation(); openEditPartner(partner) }}
-                                  title="Edit partner"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={(e) => { e.stopPropagation(); handleDeletePartner(partner._id) }}
-                                  title="Delete partner"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
               </div>
             )}
-          </Card>
+          </div>
         )}
 
         {/* Sessions Tab */}

@@ -132,7 +132,7 @@ const userInvitationsService = {
       '/user-invitations',
       data
     );
-    return response.data.data;
+    return response.data;
   },
 
   async createOperationalInvitation(data: CreateOperationalInvitationData): Promise<UserInvitation> {
@@ -140,7 +140,7 @@ const userInvitationsService = {
       '/user-invitations/operational',
       data
     );
-    return response.data.data;
+    return response.data;
   },
 
   async getInvitations(params?: InvitationQueryParams): Promise<PaginatedResponse<UserInvitation>> {
@@ -155,14 +155,14 @@ const userInvitationsService = {
     const response = await apiService.get<{ success: boolean; message: string; data: UserInvitation }>(
       `/user-invitations/${id}`
     );
-    return response.data.data;
+    return response.data;
   },
 
   async resendInvitation(id: string): Promise<UserInvitation> {
     const response = await apiService.post<{ success: boolean; message: string; data: UserInvitation }>(
       `/user-invitations/${id}/resend`
     );
-    return response.data.data;
+    return response.data;
   },
 
   async revokeInvitation(id: string, data?: RevokeInvitationData): Promise<UserInvitation> {
@@ -170,7 +170,7 @@ const userInvitationsService = {
       `/user-invitations/${id}/revoke`,
       data
     );
-    return response.data.data;
+    return response.data;
   },
 
   async updateInvitationRole(id: string, data: UpdateInvitationRoleData): Promise<UserInvitation> {
@@ -178,14 +178,14 @@ const userInvitationsService = {
       `/user-invitations/${id}/role`,
       data
     );
-    return response.data.data;
+    return response.data;
   },
 
   async getStatistics(): Promise<InvitationStatistics> {
     const response = await apiService.get<{ success: boolean; message: string; data: InvitationStatistics }>(
       '/user-invitations/statistics'
     );
-    return response.data.data;
+    return response.data;
   },
 
   // User Access Management
@@ -202,33 +202,46 @@ const userInvitationsService = {
     return response;
   },
 
+  async getDeactivatedUsers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    branchId?: string;
+  }): Promise<PaginatedResponse<ActiveUser>> {
+    const response = await apiService.get<PaginatedResponse<ActiveUser>>(
+      '/user-invitations/users/deactivated',
+      { params }
+    );
+    return response;
+  },
+
   async updateUserRole(memberId: string, data: UpdateUserRoleData): Promise<ActiveUser> {
     const response = await apiService.patch<{ success: boolean; message: string; data: ActiveUser }>(
       `/user-invitations/users/${memberId}/role`,
       data
     );
-    return response.data.data;
+    return response.data;
   },
 
   async deactivateUser(memberId: string): Promise<ActiveUser> {
     const response = await apiService.patch<{ success: boolean; message: string; data: ActiveUser }>(
       `/user-invitations/users/${memberId}/deactivate`
     );
-    return response.data.data;
+    return response.data;
   },
 
   async activateUser(memberId: string): Promise<ActiveUser> {
     const response = await apiService.patch<{ success: boolean; message: string; data: ActiveUser }>(
       `/user-invitations/users/${memberId}/activate`
     );
-    return response.data.data;
+    return response.data;
   },
 
   async deleteUserAccess(memberId: string): Promise<ActiveUser> {
     const response = await apiService.delete<{ success: boolean; message: string; data: ActiveUser }>(
       `/user-invitations/users/${memberId}/access`
     );
-    return response.data.data;
+    return response.data;
   },
 };
 

@@ -1,29 +1,31 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Users, UserPlus, RefreshCw, Filter, ChevronDown } from 'lucide-react';
+import { Search, Users, UserPlus, RefreshCw, UserX, Cake } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import Input from '../components/ui/Input';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import Badge from '../components/ui/Badge';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../contexts/AuthContext-unified';
 import userInvitationsService from '../services/user-invitations';
+import { membersService } from '../services/members-unified';
 import { useAppStore } from '@/store';
 import type {
   ActiveUser,
   UserInvitation,
   InvitationStatistics,
 } from '../services/user-invitations';
+import type { Member } from '../types';
 import InviteUserModal from '../components/UserManagement/InviteUserModal';
 import ActiveUsersTable from '../components/UserManagement/ActiveUsersTable';
 import PendingInvitesTable from '../components/UserManagement/PendingInvitesTable';
+import DeactivatedUsersTable from '../components/UserManagement/DeactivatedUsersTable';
+import BirthdaysList from '../components/UserManagement/BirthdaysList';
 import EditUserRoleModal from '../components/UserManagement/EditUserRoleModal';
 
-type TabType = 'active-users' | 'pending-invites';
+type TabType = 'active-users' | 'pending-invites' | 'deactivated' | 'birthdays';
 
 export default function UserManagement() {
   const { selectedBranch, branches } = useAppStore();
@@ -32,7 +34,6 @@ export default function UserManagement() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
 
   // Show branch filter when viewing "All Campuses"
   const showBranchFilter = !selectedBranch && branches.length > 0;
@@ -48,6 +49,18 @@ export default function UserManagement() {
   const [invitesPage, setInvitesPage] = useState(1);
   const [invitesTotal, setInvitesTotal] = useState(0);
   const [invitesTotalPages, setInvitesTotalPages] = useState(0);
+
+  // Deactivated Users State
+  const [deactivatedUsers, setDeactivatedUsers] = useState<ActiveUser[]>([]);
+  const [deactivatedPage, setDeactivatedPage] = useState(1);
+  const [deactivatedTotal, setDeactivatedTotal] = useState(0);
+  const [deactivatedTotalPages, setDeactivatedTotalPages] = useState(0);
+
+  // Birthdays State
+  const [birthdayMembers, setBirthdayMembers] = useState<Member[]>([]);
+  const [birthdaysPage, setBirthdaysPage] = useState(1);
+  const [birthdaysTotal, setBirthdaysTotal] = useState(0);
+  const [birthdaysTotalPages, setBirthdaysTotalPages] = useState(0);
 
   // Statistics
   const [statistics, setStatistics] = useState<InvitationStatistics | null>(null);
@@ -80,7 +93,6 @@ export default function UserManagement() {
   const fetchActiveUsers = async (page = 1, search = '') => {
     setLoading(true);
     try {
-      // Use selectedBranch if set, otherwise use the filter dropdown
       const effectiveBranchId = selectedBranch?._id || branchFilter || undefined;
       const response = await userInvitationsService.getActiveUsers({
         page,
@@ -104,7 +116,6 @@ export default function UserManagement() {
   const fetchPendingInvites = async (page = 1) => {
     setLoading(true);
     try {
-      // Use selectedBranch if set, otherwise use the filter dropdown
       const effectiveBranchId = selectedBranch?._id || branchFilter || undefined;
       const response = await userInvitationsService.getInvitations({
         page,
@@ -124,6 +135,50 @@ export default function UserManagement() {
     }
   };
 
+  // Fetch deactivated users
+  const fetchDeactivatedUsers = async (page = 1) => {
+    setLoading(true);
+    try {
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined;
+      const response = await userInvitationsService.getDeactivatedUsers({
+        page,
+        limit: 10,
+        branchId: effectiveBranchId,
+      });
+      setDeactivatedUsers(response.data);
+      setDeactivatedPage(response?.pagination?.page || 1);
+      setDeactivatedTotal(response?.pagination?.total || 0);
+      setDeactivatedTotalPages(response?.pagination?.totalPages || 0);
+    } catch (error) {
+      console.error('Failed to fetch deactivated users:', error);
+      toast.error('Failed to load deactivated users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch birthday members
+  const fetchBirthdays = async (page = 1) => {
+    setLoading(true);
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const response = await membersService.getMembers({
+        page,
+        limit: 30,
+        birthdayMonth: currentMonth,
+      });
+      setBirthdayMembers(response.items);
+      setBirthdaysPage(response.pagination?.page || 1);
+      setBirthdaysTotal(response.pagination?.total || 0);
+      setBirthdaysTotalPages(response.pagination?.totalPages || 0);
+    } catch (error) {
+      console.error('Failed to fetch birthdays:', error);
+      toast.error('Failed to load birthdays');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch statistics on mount
   useEffect(() => {
     fetchStatistics();
@@ -133,8 +188,12 @@ export default function UserManagement() {
   useEffect(() => {
     if (activeTab === 'active-users') {
       fetchActiveUsers(1, searchQuery);
-    } else {
+    } else if (activeTab === 'pending-invites') {
       fetchPendingInvites(1);
+    } else if (activeTab === 'deactivated') {
+      fetchDeactivatedUsers(1);
+    } else if (activeTab === 'birthdays') {
+      fetchBirthdays(1);
     }
   }, [activeTab]);
 
@@ -142,8 +201,12 @@ export default function UserManagement() {
   useEffect(() => {
     if (activeTab === 'active-users') {
       fetchActiveUsers(1, searchQuery);
-    } else {
+    } else if (activeTab === 'pending-invites') {
       fetchPendingInvites(1);
+    } else if (activeTab === 'deactivated') {
+      fetchDeactivatedUsers(1);
+    } else if (activeTab === 'birthdays') {
+      fetchBirthdays(1);
     }
   }, [branchFilter, selectedBranch]);
 
@@ -166,8 +229,12 @@ export default function UserManagement() {
     fetchStatistics();
     if (activeTab === 'active-users') {
       fetchActiveUsers(activeUsersPage, searchQuery);
-    } else {
+    } else if (activeTab === 'pending-invites') {
       fetchPendingInvites(invitesPage);
+    } else if (activeTab === 'deactivated') {
+      fetchDeactivatedUsers(deactivatedPage);
+    } else if (activeTab === 'birthdays') {
+      fetchBirthdays(birthdaysPage);
     }
   };
 
@@ -215,6 +282,21 @@ export default function UserManagement() {
     }
   };
 
+  // Handle activate user
+  const handleActivateUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to reactivate this user?')) return;
+
+    try {
+      await userInvitationsService.activateUser(userId);
+      toast.success('User reactivated successfully');
+      fetchDeactivatedUsers(deactivatedPage);
+      fetchStatistics();
+    } catch (error) {
+      console.error('Failed to activate user:', error);
+      toast.error('Failed to activate user');
+    }
+  };
+
   // Handle delete user access
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to permanently remove this user\'s access? This action cannot be undone.')) return;
@@ -222,7 +304,11 @@ export default function UserManagement() {
     try {
       await userInvitationsService.deleteUserAccess(userId);
       toast.success('User access removed successfully');
-      fetchActiveUsers(activeUsersPage, searchQuery);
+      if (activeTab === 'deactivated') {
+        fetchDeactivatedUsers(deactivatedPage);
+      } else {
+        fetchActiveUsers(activeUsersPage, searchQuery);
+      }
       fetchStatistics();
     } catch (error) {
       console.error('Failed to delete user access:', error);
@@ -257,6 +343,36 @@ export default function UserManagement() {
       toast.error('Failed to revoke invitation');
     }
   };
+
+  const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
+
+  // Tab definitions
+  const tabs: { key: TabType; label: string; icon: React.ReactNode; count: number }[] = [
+    {
+      key: 'active-users',
+      label: 'Active Users',
+      icon: <Users className="w-3.5 h-3.5" />,
+      count: activeUsersTotal,
+    },
+    {
+      key: 'pending-invites',
+      label: 'Pending Invites',
+      icon: <UserPlus className="w-3.5 h-3.5" />,
+      count: statistics?.pending ?? invitesTotal,
+    },
+    {
+      key: 'deactivated',
+      label: 'Deactivated',
+      icon: <UserX className="w-3.5 h-3.5" />,
+      count: deactivatedTotal,
+    },
+    {
+      key: 'birthdays',
+      label: `${currentMonthName} Birthdays`,
+      icon: <Cake className="w-3.5 h-3.5" />,
+      count: birthdaysTotal,
+    },
+  ];
 
   // Search Section for Layout header
   const searchSection = (
@@ -390,41 +506,32 @@ export default function UserManagement() {
         </motion.div>
       )}
 
-      {/* Tabs - Compact */}
+      {/* Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="flex space-x-6" aria-label="Tabs">
-          <button
-            onClick={() => setActiveTab('active-users')}
-            className={`
-              py-2 px-1 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5
-              ${activeTab === 'active-users'
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }
-            `}
-          >
-            <Users className="w-3.5 h-3.5" />
-            Active Users
-            <span className="py-0.5 px-2 rounded-full text-[10px] bg-gray-100 text-gray-900">
-              {activeUsersTotal}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('pending-invites')}
-            className={`
-              py-2 px-1 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5
-              ${activeTab === 'pending-invites'
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }
-            `}
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            Pending Invites
-            <span className="py-0.5 px-2 rounded-full text-[10px] bg-gray-100 text-gray-900">
-              {statistics?.pending ?? invitesTotal}
-            </span>
-          </button>
+        <nav className="flex space-x-4 overflow-x-auto" aria-label="Tabs">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`
+                py-2 px-1 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5 whitespace-nowrap flex-shrink-0
+                ${activeTab === tab.key
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              {tab.icon}
+              {tab.label}
+              <span className={`py-0.5 px-2 rounded-full text-[10px] ${
+                activeTab === tab.key
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'bg-gray-100 text-gray-900'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
         </nav>
       </div>
 
@@ -447,7 +554,7 @@ export default function UserManagement() {
               canManageUsers={canManageUsers}
               canDeleteUsers={canDeleteUsers}
             />
-          ) : (
+          ) : activeTab === 'pending-invites' ? (
             <PendingInvitesTable
               invitations={pendingInvites}
               onResend={handleResendInvite}
@@ -456,6 +563,24 @@ export default function UserManagement() {
               totalPages={invitesTotalPages}
               onPageChange={fetchPendingInvites}
               canInviteUsers={canInviteUsers}
+            />
+          ) : activeTab === 'deactivated' ? (
+            <DeactivatedUsersTable
+              users={deactivatedUsers}
+              onActivate={handleActivateUser}
+              onDelete={handleDeleteUser}
+              currentPage={deactivatedPage}
+              totalPages={deactivatedTotalPages}
+              onPageChange={fetchDeactivatedUsers}
+              canManageUsers={canManageUsers}
+              canDeleteUsers={canDeleteUsers}
+            />
+          ) : (
+            <BirthdaysList
+              members={birthdayMembers}
+              currentPage={birthdaysPage}
+              totalPages={birthdaysTotalPages}
+              onPageChange={fetchBirthdays}
             />
           )}
         </div>

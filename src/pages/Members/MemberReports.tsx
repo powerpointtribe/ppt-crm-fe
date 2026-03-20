@@ -171,11 +171,11 @@ export default function MemberReports() {
   const loadFilterData = async () => {
     try {
       const [branchesRes, districtsRes, unitsRes] = await Promise.all([
-        branchesService.getBranches({ limit: 100 }),
+        branchesService.getBranches(),
         groupsService.getDistricts({ limit: 100 }),
         groupsService.getUnits({ limit: 100 }),
       ])
-      setBranches(branchesRes.items || [])
+      setBranches(branchesRes || [])
       setDistricts(districtsRes.items || [])
       setUnits(unitsRes.items || [])
     } catch (error) {
@@ -209,25 +209,55 @@ export default function MemberReports() {
     setSelectedMonth('')
   }
 
+  const getBranchName = (branch: Member['branch']) => {
+    if (!branch) return ''
+    if (typeof branch === 'string') return branch
+    return branch.name || ''
+  }
+
+  const getGroupName = (group: any) => {
+    if (!group) return ''
+    if (typeof group === 'string') return group
+    return group.name || ''
+  }
+
   const fetchMembersForReport = async (): Promise<Member[]> => {
     const baseParams: any = { limit: 100 }
 
-    // Apply filters based on selected values using correct API parameter names
+    // Apply user-selected filters
+    if (selectedBranch) baseParams.branchId = selectedBranch
     if (selectedDistrict) baseParams.districtId = selectedDistrict
     if (selectedUnit) baseParams.unitId = selectedUnit
     if (selectedStatus) baseParams.membershipStatus = selectedStatus
     if (selectedGender) baseParams.gender = selectedGender
+
+    // Report-specific filters based on report ID
+    const reportId = selectedReport?.id
+    if (reportId === 'active-members') {
+      baseParams.membershipStatus = baseParams.membershipStatus || 'MEMBER'
+    } else if (reportId === 'inactive-members') {
+      baseParams.membershipStatus = 'LEFT'
+    } else if (reportId === 'unassigned') {
+      baseParams.hasDistrict = false
+    } else if (reportId === 'unit-leaders') {
+      baseParams.leadershipRole = 'unit_head'
+    }
+
+    // Birthday month filter (use backend param)
+    if (selectedMonth) {
+      baseParams.birthdayMonth = parseInt(selectedMonth)
+    }
 
     // Date range filter
     if (dateRange !== 'all' && dateRange !== 'custom') {
       const days = parseInt(dateRange)
       const fromDate = new Date()
       fromDate.setDate(fromDate.getDate() - days)
-      baseParams.dateJoinedFrom = fromDate.toISOString().split('T')[0]
+      baseParams.dateJoinedFrom = fromDate.toISOString()
     } else if (dateRange === 'custom' && customDateFrom) {
-      baseParams.dateJoinedFrom = customDateFrom
+      baseParams.dateJoinedFrom = new Date(customDateFrom).toISOString()
       if (customDateTo) {
-        baseParams.dateJoinedTo = customDateTo
+        baseParams.dateJoinedTo = new Date(customDateTo).toISOString()
       }
     }
 
@@ -242,22 +272,11 @@ export default function MemberReports() {
         const members = response.items || []
         allMembers = [...allMembers, ...members]
 
-        // Check if there are more pages
         hasMore = response.pagination?.hasNext || false
         currentPage++
 
         // Safety limit to prevent infinite loops
         if (currentPage > 1000) break
-      }
-
-      // Client-side filtering for birthday month (if API doesn't support it)
-      if (selectedMonth) {
-        const targetMonth = parseInt(selectedMonth)
-        allMembers = allMembers.filter(member => {
-          if (!member.dateOfBirth) return false
-          const birthMonth = new Date(member.dateOfBirth).getMonth() + 1
-          return birthMonth === targetMonth
-        })
       }
 
       return allMembers
@@ -268,16 +287,71 @@ export default function MemberReports() {
   }
 
   const formatMemberData = (members: Member[]) => {
-    return members.map(member => ({
+    const reportId = selectedReport?.id
+    const categoryId = selectedCategory?.id
+
+    // Base columns for all reports
+    const base = (member: Member) => ({
       'First Name': member.firstName || '',
       'Last Name': member.lastName || '',
       'Email': member.email || '',
       'Phone': member.phone || '',
       'Gender': member.gender || '',
+    })
+
+    // Location reports: include branch/district
+    if (categoryId === 'location') {
+      return members.map(member => ({
+        ...base(member),
+        'Branch': getBranchName(member.branch),
+        'District': getGroupName(member.district),
+        'Membership Status': member.membershipStatus || '',
+      }))
+    }
+
+    // Unit reports: include unit info
+    if (categoryId === 'units') {
+      return members.map(member => ({
+        ...base(member),
+        'Unit': getGroupName(member.unit),
+        'Branch': getBranchName(member.branch),
+        'Membership Status': member.membershipStatus || '',
+      }))
+    }
+
+    // Birthday report: include date of birth and birth month
+    if (reportId === 'birthdays') {
+      return members.map(member => ({
+        ...base(member),
+        'Date of Birth': member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString() : '',
+        'Birth Month': member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString('en-US', { month: 'long' }) : '',
+        'Branch': getBranchName(member.branch),
+      }))
+    }
+
+    // Age/gender distribution: include age info
+    if (reportId === 'age-distribution') {
+      return members.map(member => {
+        const age = member.dateOfBirth
+          ? Math.floor((Date.now() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+          : null
+        return {
+          ...base(member),
+          'Date of Birth': member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString() : '',
+          'Age': age !== null ? age.toString() : '',
+          'Branch': getBranchName(member.branch),
+        }
+      })
+    }
+
+    // Default format for membership/analytics reports
+    return members.map(member => ({
+      ...base(member),
       'Date of Birth': member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString() : '',
       'Membership Status': member.membershipStatus || '',
+      'Branch': getBranchName(member.branch),
       'Address': member.address ? `${member.address.street || ''}, ${member.address.city || ''}, ${member.address.state || ''}`.replace(/^, |, $/g, '') : '',
-      'Joined Date': member.createdAt ? new Date(member.createdAt).toLocaleDateString() : '',
+      'Joined Date': member.dateJoined ? new Date(member.dateJoined).toLocaleDateString() : '',
     }))
   }
 

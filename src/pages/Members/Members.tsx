@@ -38,6 +38,7 @@ import { branchesService } from '@/services/branches'
 import { formatDate } from '@/utils/formatters'
 import { useAppStore } from '@/store'
 import { useAuth } from '@/contexts/AuthContext-unified'
+import BirthdaysList from '@/components/UserManagement/BirthdaysList'
 
 // Filter options
 const statusOptions = [
@@ -86,7 +87,6 @@ export default function Members() {
   const [error, setError] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'assigned' | 'birthdays' | 'analytics'>('assigned')
-  const [birthdayTimeFilter, setBirthdayTimeFilter] = useState<'past' | 'today' | 'future'>('today')
   const [searchParams, setSearchParams] = useState<MemberSearchParams>({
     page: 1,
     limit: 10,
@@ -239,7 +239,7 @@ export default function Members() {
 
   useEffect(() => {
     loadMembers()
-  }, [searchParams, activeTab, birthdayTimeFilter, statusFilter, leadershipRoleFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
+  }, [searchParams, activeTab, statusFilter, leadershipRoleFilter, genderFilter, maritalStatusFilter, districtFilter, branchFilter, dateFromFilter, dateToFilter, selectedBranch])
 
   useEffect(() => {
     loadCounts()
@@ -289,55 +289,6 @@ export default function Members() {
     }
   }
 
-  // Get the birth day of the month for a member
-  const getBirthDay = (member: Member): number | null => {
-    if (!member.dateOfBirth) return null
-    const dob = member.dateOfBirth
-
-    if (dob.includes('T')) {
-      // ISO date string
-      return new Date(dob).getDate()
-    } else if (dob.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // YYYY-MM-DD format
-      return parseInt(dob.split('-')[2], 10)
-    } else if (dob.match(/^\d{2}-\d{2}$/)) {
-      // MM-DD format
-      return parseInt(dob.split('-')[1], 10)
-    } else {
-      // Try to parse as date
-      const parsed = new Date(dob)
-      if (!isNaN(parsed.getTime())) {
-        return parsed.getDate()
-      }
-      return null
-    }
-  }
-
-  // Filter birthday members by past/today/future
-  const filterBirthdaysByTime = (members: Member[], filter: 'past' | 'today' | 'future'): Member[] => {
-    const today = new Date().getDate()
-
-    return members.filter(member => {
-      const birthDay = getBirthDay(member)
-      if (birthDay === null) return false
-
-      switch (filter) {
-        case 'past':
-          return birthDay < today
-        case 'today':
-          return birthDay === today
-        case 'future':
-          return birthDay > today
-        default:
-          return true
-      }
-    }).sort((a, b) => {
-      const dayA = getBirthDay(a) || 0
-      const dayB = getBirthDay(b) || 0
-      return dayA - dayB // Sort ascending by day
-    })
-  }
-
   const loadMembers = async () => {
     try {
       setError(null)
@@ -368,22 +319,15 @@ export default function Members() {
       } else if (activeTab === 'birthdays') {
         const currentMonth = new Date().getMonth() + 1
         filterParams.birthdayMonth = currentMonth
+        filterParams.limit = 100 // Fetch all birthday members at once for proper grouping
       }
 
       // Single API call with server-side pagination
       const response = await membersService.getMembers(filterParams)
 
-      let displayMembers = response.items
-      let displayPagination = response.pagination
-
-      // For birthdays tab, apply client-side past/today/future filter
-      if (activeTab === 'birthdays') {
-        displayMembers = filterBirthdaysByTime(displayMembers, birthdayTimeFilter)
-      }
-
-      setMembers(displayMembers)
-      setAllFilteredMembers(displayMembers)
-      setPagination(displayPagination)
+      setMembers(response.items)
+      setAllFilteredMembers(response.items)
+      setPagination(response.pagination)
 
       // Load counts for tab badges (lightweight parallel requests)
       loadTabCounts(filterParams)
@@ -913,64 +857,6 @@ export default function Members() {
           </nav>
         </motion.div>
 
-        {/* Birthday Time Filter Toggle - Only show on birthdays tab */}
-        {activeTab === 'birthdays' && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col sm:flex-row items-start sm:items-center gap-2"
-          >
-            <span className="text-sm text-gray-600">Show:</span>
-            <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
-              <button
-                onClick={() => {
-                  setBirthdayTimeFilter('past')
-                  setSearchParams(prev => ({ ...prev, page: 1 }))
-                }}
-                className={`
-                  px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all
-                  ${birthdayTimeFilter === 'past'
-                    ? 'bg-white text-primary-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                  }
-                `}
-              >
-                Past
-              </button>
-              <button
-                onClick={() => {
-                  setBirthdayTimeFilter('today')
-                  setSearchParams(prev => ({ ...prev, page: 1 }))
-                }}
-                className={`
-                  px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all
-                  ${birthdayTimeFilter === 'today'
-                    ? 'bg-white text-primary-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                  }
-                `}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => {
-                  setBirthdayTimeFilter('future')
-                  setSearchParams(prev => ({ ...prev, page: 1 }))
-                }}
-                className={`
-                  px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all
-                  ${birthdayTimeFilter === 'future'
-                    ? 'bg-white text-primary-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                  }
-                `}
-              >
-                Upcoming
-              </button>
-            </div>
-          </motion.div>
-        )}
-
         {/* Bulk Action Bar */}
         <AnimatePresence>
           {selectedMembers.size > 0 && activeTab !== 'analytics' && (
@@ -1304,8 +1190,25 @@ export default function Members() {
           </motion.div>
         )}
 
-        {/* Members Table */}
-        {activeTab !== 'analytics' && (
+        {/* Birthday Cards View */}
+        {activeTab === 'birthdays' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="w-full"
+        >
+          <BirthdaysList
+            members={members}
+            currentPage={pagination?.page || 1}
+            totalPages={pagination?.totalPages || 1}
+            onPageChange={handlePageChange}
+          />
+        </motion.div>
+        )}
+
+        {/* Members Table - Assigned Tab */}
+        {activeTab === 'assigned' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1315,29 +1218,12 @@ export default function Members() {
           <Card className="overflow-hidden">
             {members.length === 0 ? (
               <div className="text-center py-12">
-                {activeTab === 'birthdays' ? (
-                  <Cake className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                ) : (
-                  <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                )}
+                <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">
-                  {activeTab === 'assigned'
-                    ? 'No members with assigned districts'
-                    : birthdayTimeFilter === 'today'
-                      ? 'No birthdays today'
-                      : birthdayTimeFilter === 'past'
-                        ? 'No past birthdays this month'
-                        : 'No upcoming birthdays this month'}
+                  No members with assigned districts
                 </h3>
                 <p className="text-muted-foreground">
-                  {activeTab === 'assigned'
-                    ? 'All members have been assigned to districts or no members exist yet.'
-                    : birthdayTimeFilter === 'today'
-                      ? 'No members have birthdays today.'
-                      : birthdayTimeFilter === 'past'
-                        ? 'No past birthdays have been recorded this month.'
-                        : 'No upcoming birthdays remaining this month.'
-                  }
+                  All members have been assigned to districts or no members exist yet.
                 </p>
               </div>
             ) : (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Users, UserPlus, RefreshCw, UserX, Cake } from 'lucide-react';
+import { Search, Users, UserPlus, RefreshCw, UserX } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -10,22 +10,19 @@ import { SkeletonTable } from '@/components/ui/Skeleton';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../contexts/AuthContext-unified';
 import userInvitationsService from '../services/user-invitations';
-import { membersService } from '../services/members-unified';
 import { useAppStore } from '@/store';
 import type {
   ActiveUser,
   UserInvitation,
   InvitationStatistics,
 } from '../services/user-invitations';
-import type { Member } from '../types';
 import InviteUserModal from '../components/UserManagement/InviteUserModal';
 import ActiveUsersTable from '../components/UserManagement/ActiveUsersTable';
 import PendingInvitesTable from '../components/UserManagement/PendingInvitesTable';
 import DeactivatedUsersTable from '../components/UserManagement/DeactivatedUsersTable';
-import BirthdaysList from '../components/UserManagement/BirthdaysList';
 import EditUserRoleModal from '../components/UserManagement/EditUserRoleModal';
 
-type TabType = 'active-users' | 'pending-invites' | 'deactivated' | 'birthdays';
+type TabType = 'active-users' | 'pending-invites' | 'deactivated';
 
 export default function UserManagement() {
   const { selectedBranch, branches } = useAppStore();
@@ -55,12 +52,6 @@ export default function UserManagement() {
   const [deactivatedPage, setDeactivatedPage] = useState(1);
   const [deactivatedTotal, setDeactivatedTotal] = useState(0);
   const [deactivatedTotalPages, setDeactivatedTotalPages] = useState(0);
-
-  // Birthdays State
-  const [birthdayMembers, setBirthdayMembers] = useState<Member[]>([]);
-  const [birthdaysPage, setBirthdaysPage] = useState(1);
-  const [birthdaysTotal, setBirthdaysTotal] = useState(0);
-  const [birthdaysTotalPages, setBirthdaysTotalPages] = useState(0);
 
   // Statistics
   const [statistics, setStatistics] = useState<InvitationStatistics | null>(null);
@@ -157,28 +148,6 @@ export default function UserManagement() {
     }
   };
 
-  // Fetch birthday members
-  const fetchBirthdays = async (page = 1) => {
-    setLoading(true);
-    try {
-      const currentMonth = new Date().getMonth() + 1;
-      const response = await membersService.getMembers({
-        page,
-        limit: 30,
-        birthdayMonth: currentMonth,
-      });
-      setBirthdayMembers(response.items);
-      setBirthdaysPage(response.pagination?.page || 1);
-      setBirthdaysTotal(response.pagination?.total || 0);
-      setBirthdaysTotalPages(response.pagination?.totalPages || 0);
-    } catch (error) {
-      console.error('Failed to fetch birthdays:', error);
-      toast.error('Failed to load birthdays');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Fetch statistics on mount
   useEffect(() => {
     fetchStatistics();
@@ -192,8 +161,6 @@ export default function UserManagement() {
       fetchPendingInvites(1);
     } else if (activeTab === 'deactivated') {
       fetchDeactivatedUsers(1);
-    } else if (activeTab === 'birthdays') {
-      fetchBirthdays(1);
     }
   }, [activeTab]);
 
@@ -205,8 +172,6 @@ export default function UserManagement() {
       fetchPendingInvites(1);
     } else if (activeTab === 'deactivated') {
       fetchDeactivatedUsers(1);
-    } else if (activeTab === 'birthdays') {
-      fetchBirthdays(1);
     }
   }, [branchFilter, selectedBranch]);
 
@@ -233,8 +198,6 @@ export default function UserManagement() {
       fetchPendingInvites(invitesPage);
     } else if (activeTab === 'deactivated') {
       fetchDeactivatedUsers(deactivatedPage);
-    } else if (activeTab === 'birthdays') {
-      fetchBirthdays(birthdaysPage);
     }
   };
 
@@ -344,15 +307,13 @@ export default function UserManagement() {
     }
   };
 
-  const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
-
   // Tab definitions
   const tabs: { key: TabType; label: string; icon: React.ReactNode; count: number }[] = [
     {
       key: 'active-users',
       label: 'Active Users',
       icon: <Users className="w-3.5 h-3.5" />,
-      count: activeUsersTotal,
+      count: statistics?.accepted ?? activeUsersTotal,
     },
     {
       key: 'pending-invites',
@@ -365,12 +326,6 @@ export default function UserManagement() {
       label: 'Deactivated',
       icon: <UserX className="w-3.5 h-3.5" />,
       count: deactivatedTotal,
-    },
-    {
-      key: 'birthdays',
-      label: `${currentMonthName} Birthdays`,
-      icon: <Cake className="w-3.5 h-3.5" />,
-      count: birthdaysTotal,
     },
   ];
 
@@ -575,14 +530,7 @@ export default function UserManagement() {
               canManageUsers={canManageUsers}
               canDeleteUsers={canDeleteUsers}
             />
-          ) : (
-            <BirthdaysList
-              members={birthdayMembers}
-              currentPage={birthdaysPage}
-              totalPages={birthdaysTotalPages}
-              onPageChange={fetchBirthdays}
-            />
-          )}
+          ) : null}
         </div>
       </Card>
 

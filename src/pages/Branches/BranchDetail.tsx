@@ -40,6 +40,37 @@ export default function BranchDetail() {
   // Branch team state
   const [branchMembers, setBranchMembers] = useState<Member[]>([]);
   const [loadingBranchMembers, setLoadingBranchMembers] = useState(false);
+  const [leadershipPage, setLeadershipPage] = useState(1);
+  const leadershipLimit = 10;
+
+  // Leadership hierarchy: highest rank first
+  const leadershipHierarchy: Record<string, number> = {
+    SENIOR_PASTOR: 1,
+    CAMPUS_PASTOR: 2,
+    PASTOR: 3,
+    DIRECTOR: 4,
+    LXL: 5,
+  };
+
+  const leadershipLabels: Record<string, string> = {
+    SENIOR_PASTOR: 'Senior Pastor',
+    CAMPUS_PASTOR: 'Campus Pastor',
+    PASTOR: 'Pastor',
+    DIRECTOR: 'Director',
+    LXL: 'LXL',
+  };
+
+  // Filter and sort leadership members by hierarchy
+  const leadershipMembers = branchMembers
+    .filter((m) => m.membershipStatus in leadershipHierarchy)
+    .sort((a, b) => (leadershipHierarchy[a.membershipStatus] || 99) - (leadershipHierarchy[b.membershipStatus] || 99));
+
+  const leadershipTotal = leadershipMembers.length;
+  const leadershipTotalPages = Math.ceil(leadershipTotal / leadershipLimit);
+  const paginatedLeadership = leadershipMembers.slice(
+    (leadershipPage - 1) * leadershipLimit,
+    leadershipPage * leadershipLimit
+  );
 
 
   // Copy link state
@@ -106,7 +137,7 @@ export default function BranchDetail() {
   const fetchBranchMembers = async (branchId: string) => {
     try {
       setLoadingBranchMembers(true);
-      const response = await membersService.getMembers({ branchId, limit: 100 });
+      const response = await membersService.getMembers({ branchId, limit: 500 });
       setBranchMembers(response.items || []);
     } catch (err) {
       console.error('Error fetching branch members:', err);
@@ -114,9 +145,6 @@ export default function BranchDetail() {
       setLoadingBranchMembers(false);
     }
   };
-
-  // Get LXL members for campus leadership team
-  const membersWithRoles = branchMembers.filter((m) => m.membershipStatus === 'LXL');
 
   if (loading) {
     return (
@@ -320,9 +348,9 @@ export default function BranchDetail() {
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <Users className="h-4 w-4 text-primary-600" />
               Campus Leadership Team
-              {membersWithRoles.length > 0 && (
+              {leadershipTotal > 0 && (
                 <Badge variant="secondary" className="text-xs ml-1">
-                  {membersWithRoles.length}
+                  {leadershipTotal}
                 </Badge>
               )}
             </h2>
@@ -332,63 +360,84 @@ export default function BranchDetail() {
             <div className="flex justify-center py-4">
               <LoadingSpinner size="sm" />
             </div>
-          ) : membersWithRoles.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground">Name</th>
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden md:table-cell">Phone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {membersWithRoles.map((member) => (
-                    <tr
-                      key={member._id}
-                      className="border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/members/${member._id}`)}
-                    >
-                      <td className="py-2 px-2">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
-                            <User className="h-3.5 w-3.5 text-primary-600" />
-                          </div>
-                          <span className="font-medium">
-                            {member.firstName} {member.lastName}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-2 px-2">
-                        <Badge variant="secondary" className="text-xs">
-                          LXL
-                        </Badge>
-                      </td>
-                      <td className="py-2 px-2 text-muted-foreground hidden sm:table-cell">
-                        {member.email}
-                      </td>
-                      <td className="py-2 px-2 text-muted-foreground hidden md:table-cell">
-                        {member.phone || '-'}
-                      </td>
+          ) : paginatedLeadership.length > 0 ? (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">Name</th>
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">Role</th>
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden md:table-cell">Phone</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedLeadership.map((member) => (
+                      <tr
+                        key={member._id}
+                        className="border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => navigate(`/members/${member._id}`)}
+                      >
+                        <td className="py-2 px-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
+                              <User className="h-3.5 w-3.5 text-primary-600" />
+                            </div>
+                            <span className="font-medium">
+                              {member.firstName} {member.lastName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2 px-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {leadershipLabels[member.membershipStatus] || member.membershipStatus}
+                          </Badge>
+                        </td>
+                        <td className="py-2 px-2 text-muted-foreground hidden sm:table-cell">
+                          {member.email}
+                        </td>
+                        <td className="py-2 px-2 text-muted-foreground hidden md:table-cell">
+                          {member.phone || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {leadershipTotalPages > 1 && (
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
+                  <p className="text-xs text-muted-foreground">
+                    Page {leadershipPage} of {leadershipTotalPages}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setLeadershipPage(leadershipPage - 1)}
+                      disabled={leadershipPage <= 1}
+                      className="px-2 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setLeadershipPage(leadershipPage + 1)}
+                      disabled={leadershipPage >= leadershipTotalPages}
+                      className="px-2 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-4">
               <p className="text-muted-foreground text-sm">
-                No LXL members in this campus yet
+                No leadership members in this campus yet
               </p>
             </div>
           )}
 
-          {branchMembers.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-3 pt-2 border-t">
-              {branchMembers.length} total member{branchMembers.length !== 1 ? 's' : ''} in this campus
-            </p>
-          )}
         </Card>
 
         {/* Service Types & Metadata combined row */}

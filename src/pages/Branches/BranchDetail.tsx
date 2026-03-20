@@ -16,19 +16,15 @@ import {
   Copy,
   Check,
   QrCode,
-  Shield,
-  Search,
   FileText,
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
-import Modal from '@/components/ui/Modal';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { branchesService } from '@/services/branches';
 import { membersService } from '@/services/members-unified';
-import { rolesService, type Role } from '@/services/roles';
 import { useAuth } from '@/contexts/AuthContext-unified';
 import type { Branch } from '@/types/branch';
 import type { Member } from '@/types';
@@ -45,18 +41,6 @@ export default function BranchDetail() {
   const [branchMembers, setBranchMembers] = useState<Member[]>([]);
   const [loadingBranchMembers, setLoadingBranchMembers] = useState(false);
 
-  // Roles state (fetched on mount for display)
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [rolesMap, setRolesMap] = useState<Record<string, Role>>({});
-
-  // Role assignment modal
-  const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
-  const [allMembers, setAllMembers] = useState<Member[]>([]);
-  const [loadingModalData, setLoadingModalData] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState('');
-  const [selectedRoleId, setSelectedRoleId] = useState('');
-  const [memberSearch, setMemberSearch] = useState('');
-  const [assigning, setAssigning] = useState(false);
 
   // Copy link state
   const [copied, setCopied] = useState(false);
@@ -97,32 +81,13 @@ export default function BranchDetail() {
   };
 
   const canUpdateBranch = hasPermission('branches:update');
-  const canManageRoles = hasPermission('users:manage') || hasPermission('roles:assign-permissions');
 
   useEffect(() => {
     if (id) {
       fetchBranch(id);
       fetchBranchMembers(id);
     }
-    // Fetch roles for display
-    fetchRoles();
   }, [id]);
-
-  const fetchRoles = async () => {
-    try {
-      const rolesData = await rolesService.getRoles({ isActive: true });
-      const rolesArray = Array.isArray(rolesData) ? rolesData : [];
-      setRoles(rolesArray);
-      // Create lookup map by ID
-      const map: Record<string, Role> = {};
-      rolesArray.forEach((role) => {
-        map[role._id] = role;
-      });
-      setRolesMap(map);
-    } catch (err) {
-      console.error('Error fetching roles:', err);
-    }
-  };
 
   const fetchBranch = async (branchId: string) => {
     try {
@@ -150,64 +115,8 @@ export default function BranchDetail() {
     }
   };
 
-  const openAssignRoleModal = async () => {
-    setSelectedMemberId('');
-    setSelectedRoleId('');
-    setMemberSearch('');
-    setShowAssignRoleModal(true);
-
-    try {
-      setLoadingModalData(true);
-      // Fetch members from this branch (roles already fetched on mount)
-      const membersResponse = await membersService.getMembers({ branchId: id, limit: 100 });
-      setAllMembers(membersResponse?.items || []);
-    } catch (err) {
-      console.error('Error fetching modal data:', err);
-    } finally {
-      setLoadingModalData(false);
-    }
-  };
-
-  const handleAssignRole = async () => {
-    if (!selectedMemberId || !selectedRoleId) return;
-
-    try {
-      setAssigning(true);
-      await membersService.assignRole(selectedMemberId, { roleId: selectedRoleId });
-      setShowAssignRoleModal(false);
-      // Refresh branch members to show updated roles
-      if (id) fetchBranchMembers(id);
-    } catch (err: any) {
-      console.error('Error assigning role:', err);
-    } finally {
-      setAssigning(false);
-    }
-  };
-
-  // Filter members based on search
-  const filteredMembers = allMembers.filter((member) => {
-    if (!memberSearch) return true;
-    const searchLower = memberSearch.toLowerCase();
-    return (
-      member.firstName.toLowerCase().includes(searchLower) ||
-      member.lastName.toLowerCase().includes(searchLower) ||
-      member.email.toLowerCase().includes(searchLower)
-    );
-  });
-
-  // Get members with roles assigned (for display in team section)
-  const membersWithRoles = branchMembers.filter((m) => m.role);
-
-  // Helper to get role display name
-  const getRoleName = (role: Member['role']): string => {
-    if (!role) return 'Member';
-    if (typeof role === 'object' && role !== null) {
-      return role.displayName || role.name || 'Member';
-    }
-    // Role is an ID string, look it up in the map
-    const roleData = rolesMap[role as string];
-    return roleData?.displayName || roleData?.name || 'Member';
-  };
+  // Get LXL members for campus leadership team
+  const membersWithRoles = branchMembers.filter((m) => m.membershipStatus === 'LXL');
 
   if (loading) {
     return (
@@ -417,17 +326,6 @@ export default function BranchDetail() {
                 </Badge>
               )}
             </h2>
-            {canManageRoles && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-7 px-2"
-                onClick={openAssignRoleModal}
-              >
-                <Shield className="h-3 w-3 mr-1" />
-                Assign Role
-              </Button>
-            )}
           </div>
 
           {loadingBranchMembers ? (
@@ -440,7 +338,7 @@ export default function BranchDetail() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-2 px-2 font-medium text-muted-foreground">Name</th>
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground">Role</th>
+                    <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
                     <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
                     <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden md:table-cell">Phone</th>
                   </tr>
@@ -464,7 +362,7 @@ export default function BranchDetail() {
                       </td>
                       <td className="py-2 px-2">
                         <Badge variant="secondary" className="text-xs">
-                          {getRoleName(member.role)}
+                          LXL
                         </Badge>
                       </td>
                       <td className="py-2 px-2 text-muted-foreground hidden sm:table-cell">
@@ -480,20 +378,9 @@ export default function BranchDetail() {
             </div>
           ) : (
             <div className="text-center py-4">
-              <p className="text-muted-foreground text-sm mb-2">
-                No leadership team members assigned yet
+              <p className="text-muted-foreground text-sm">
+                No LXL members in this campus yet
               </p>
-              {canManageRoles && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={openAssignRoleModal}
-                >
-                  <Shield className="h-3 w-3 mr-1" />
-                  Assign First Role
-                </Button>
-              )}
             </div>
           )}
 
@@ -564,113 +451,6 @@ export default function BranchDetail() {
         </div>
       </div>
 
-      {/* Assign Role Modal */}
-      <Modal
-        isOpen={showAssignRoleModal}
-        onClose={() => setShowAssignRoleModal(false)}
-        title="Assign Role to Member"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Select a member from this campus and assign them a role.
-          </p>
-
-          {loadingModalData ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <>
-              {/* Member Search */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  Member {allMembers.length > 0 && <span className="text-muted-foreground font-normal">({filteredMembers.length} found)</span>}
-                </label>
-                <div className="relative mb-2">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search members..."
-                    value={memberSearch}
-                    onChange={(e) => setMemberSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-                <select
-                  value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">{allMembers.length === 0 ? 'No members found' : 'Select a member...'}</option>
-                  {filteredMembers.map((member) => (
-                    <option key={member._id} value={member._id}>
-                      {member.firstName} {member.lastName}
-                      {member.role && typeof member.role === 'object'
-                        ? ` (Current: ${member.role.displayName || member.role.name})`
-                        : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Role Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  Role {roles.length > 0 && <span className="text-muted-foreground font-normal">({roles.length} available)</span>}
-                </label>
-                <select
-                  value={selectedRoleId}
-                  onChange={(e) => setSelectedRoleId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">{roles.length === 0 ? 'No roles found' : 'Select a role...'}</option>
-                  {roles.map((role) => (
-                    <option key={role._id} value={role._id}>
-                      {role.displayName || role.name}
-                      {role.description ? ` - ${role.description}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  The selected role determines what permissions the member will have.
-                </p>
-              </div>
-
-              {/* Warning */}
-              {selectedMemberId && selectedRoleId && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-xs text-yellow-800">
-                    The member's permissions will change immediately. They may need to log out and back in to see the changes.
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" size="sm" onClick={() => setShowAssignRoleModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleAssignRole}
-              disabled={!selectedMemberId || !selectedRoleId || assigning}
-            >
-              {assigning ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Assigning...
-                </>
-              ) : (
-                <>
-                  <Shield className="h-4 w-4 mr-1.5" />
-                  Assign Role
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </Layout>
   );
 }

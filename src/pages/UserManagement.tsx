@@ -195,6 +195,11 @@ export default function UserManagement() {
     toast.success('User role updated successfully!');
   };
 
+  // Refresh user list without closing modal (for additional role changes)
+  const handleRolesRefresh = () => {
+    fetchActiveUsers(activeUsersPage, searchQuery);
+  };
+
   // Handle deactivate user
   const handleDeactivateUser = async (userId: string) => {
     if (!confirm('Are you sure you want to deactivate this user?')) return;
@@ -472,6 +477,7 @@ export default function UserManagement() {
             setSelectedUser(null);
           }}
           onSuccess={handleEditRoleSuccess}
+          onRefresh={handleRolesRefresh}
         />
       )}
       </div>

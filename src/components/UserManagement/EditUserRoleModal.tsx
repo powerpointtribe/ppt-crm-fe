@@ -22,9 +22,10 @@ interface EditUserRoleModalProps {
   user: ActiveUser;
   onClose: () => void;
   onSuccess: () => void;
+  onRefresh?: () => void;
 }
 
-export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUserRoleModalProps) {
+export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh }: EditUserRoleModalProps) {
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState(user.role?._id || '');
@@ -108,6 +109,7 @@ export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUser
       }
       setAddRoleId('');
       toast.success('Additional role added');
+      onRefresh?.();
     } catch (error: any) {
       console.error('Failed to add role:', error);
       const message = error?.response?.data?.message || 'Failed to add role';
@@ -124,6 +126,7 @@ export default function EditUserRoleModal({ user, onClose, onSuccess }: EditUser
       await membersService.removeRole(user._id, roleId);
       setAdditionalRoles((prev) => prev.filter((r) => r._id !== roleId));
       toast.success('Role removed');
+      onRefresh?.();
     } catch (error: any) {
       console.error('Failed to remove role:', error);
       const message = error?.response?.data?.message || 'Failed to remove role';

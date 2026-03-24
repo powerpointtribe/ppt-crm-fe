@@ -999,7 +999,8 @@ export default function FirstTimerDetail() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-200">
-                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Reached Out</th>
+                          <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Entered</th>
                           <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
                           <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Outcome</th>
                           <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
@@ -1016,6 +1017,9 @@ export default function FirstTimerDetail() {
                           >
                             <td className="py-3 px-2 text-sm text-gray-900 whitespace-nowrap">
                               {formatDate(followUp.date)}
+                            </td>
+                            <td className="py-3 px-2 text-sm text-gray-500 whitespace-nowrap">
+                              {followUp.dateEntered ? formatDate(followUp.dateEntered) : '—'}
                             </td>
                             <td className="py-3 px-2 text-sm whitespace-nowrap">
                               <div className="flex items-center gap-1.5">
@@ -1035,8 +1039,8 @@ export default function FirstTimerDetail() {
                                 {getOutcomeLabel(followUp.outcome)}
                               </span>
                             </td>
-                            <td className="py-3 px-2 text-sm text-gray-600 max-w-[180px]">
-                              <p className="truncate">
+                            <td className="py-3 px-2 max-w-[180px]">
+                              <p className="truncate text-sm text-gray-600">
                                 {followUp.notes || '—'}
                               </p>
                             </td>

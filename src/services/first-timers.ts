@@ -15,6 +15,7 @@ export interface FollowUpRecord {
   }
   nextFollowUpDate?: string
   visitNumber?: number
+  dateEntered?: string
 }
 
 export interface CallReport {

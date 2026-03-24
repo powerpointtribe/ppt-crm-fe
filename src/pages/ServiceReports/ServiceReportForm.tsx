@@ -51,6 +51,7 @@ export default function ServiceReportForm({
 
   const [errors, setErrors] = useState<string[]>([])
   const [autoSync, setAutoSync] = useState(true)
+  const [otherTagDescription, setOtherTagDescription] = useState(initialData?.notes?.startsWith('[Other: ') ? '' : '')
 
   // Validate attendance numbers in real-time
   useEffect(() => {
@@ -79,6 +80,9 @@ export default function ServiceReportForm({
   }
 
   const handleServiceTagToggle = (tag: ServiceTag) => {
+    if (tag === ServiceTag.OTHERS && (formData.serviceTags || []).includes(tag)) {
+      setOtherTagDescription('')
+    }
     setFormData(prev => ({
       ...prev,
       serviceTags: (prev.serviceTags || []).includes(tag)
@@ -94,7 +98,14 @@ export default function ServiceReportForm({
       return
     }
 
-    await onSubmit(formData)
+    const dataToSubmit = { ...formData }
+    if ((formData.serviceTags || []).includes(ServiceTag.OTHERS) && otherTagDescription.trim()) {
+      const prefix = `[Other: ${otherTagDescription.trim()}]`
+      dataToSubmit.notes = formData.notes
+        ? `${prefix}\n${formData.notes}`
+        : prefix
+    }
+    await onSubmit(dataToSubmit)
   }
 
   const calculateTotal = () => {
@@ -181,6 +192,26 @@ export default function ServiceReportForm({
             </button>
           ))}
         </div>
+        <AnimatePresence>
+          {(formData.serviceTags || []).includes(ServiceTag.OTHERS) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15 }}
+              className="mt-2"
+            >
+              <input
+                type="text"
+                value={otherTagDescription}
+                onChange={(e) => setOtherTagDescription(e.target.value)}
+                placeholder="Describe the service tag..."
+                maxLength={100}
+                className="w-full px-2.5 py-2 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-gray-400 bg-indigo-50/40"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Attendance Section - Compact Grid */}

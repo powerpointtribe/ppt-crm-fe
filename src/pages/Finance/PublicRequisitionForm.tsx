@@ -854,11 +854,12 @@ export default function PublicRequisitionForm() {
               />
 
               <Input
-                label="Last Similar Request (optional)"
+                label="Date of Last Request *"
                 type="text"
                 icon={Calendar}
                 placeholder="e.g., About 3 months ago"
-                hint="When was a similar expense last requested?"
+                hint='If not applicable, enter "N/A"'
+                error={errors.lastRequest?.message}
                 {...register('lastRequest')}
               />
             </div>

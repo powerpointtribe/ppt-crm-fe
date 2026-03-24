@@ -12,7 +12,7 @@ const followUpSchema = z.object({
   method: z.enum(['phone', 'email', 'sms', 'whatsapp', 'visit', 'in_visit'], {
     required_error: 'Select a contact method'
   }),
-  notes: z.string().min(1, 'Notes are required'),
+  notes: z.string().optional(),
   outcome: z.enum(['successful', 'no_answer', 'busy', 'not_interested', 'interested', 'follow_up_needed'], {
     required_error: 'Select an outcome'
   }),
@@ -48,12 +48,11 @@ const contactMethods = [
 ]
 
 const outcomes = [
-  { value: 'successful', label: 'Successful' },
   { value: 'interested', label: 'Interested' },
   { value: 'no_answer', label: 'No Answer' },
   { value: 'busy', label: 'Busy' },
   { value: 'not_interested', label: 'Not Interested' },
-  { value: 'follow_up_needed', label: 'Follow-up' }
+  { value: 'follow_up_needed', label: 'Churched' }
 ]
 
 const visitNumbers = [
@@ -258,22 +257,14 @@ export default function FollowUpForm({
           {/* Notes */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Notes
+              Notes <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <textarea
               {...register('notes')}
               rows={2}
               placeholder="Brief summary of the follow-up..."
-              className={cn(
-                "w-full px-2.5 py-1.5 text-xs border rounded-lg resize-none transition-colors",
-                "focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent",
-                "placeholder:text-gray-400",
-                errors.notes ? "border-red-300" : "border-gray-200"
-              )}
+              className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg resize-none transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
             />
-            {errors.notes && (
-              <p className="text-xs text-red-600 mt-1">{errors.notes.message}</p>
-            )}
           </div>
 
           {/* Actions */}

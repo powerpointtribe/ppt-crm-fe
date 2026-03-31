@@ -23,6 +23,7 @@ import PublicRequisitionForm from '@/pages/Finance/PublicRequisitionForm'
 import PublicRequisitionAction from '@/pages/Finance/PublicRequisitionAction'
 import PublicActionResult from '@/pages/Finance/PublicActionResult'
 import PublicEventRegistration from '@/pages/PublicEventRegistration'
+import DocsPage from '@/pages/DocsPage'
 
 // Dashboard - Load immediately (most visited)
 import Dashboard from '@/pages/Dashboard'
@@ -180,6 +181,7 @@ function App() {
           <Route path="/requisition-action" element={<PublicRequisitionAction />} />
           <Route path="/requisition-result" element={<PublicActionResult />} />
           <Route path="/event-registration/:slug" element={<PublicEventRegistration />} />
+          <Route path="/docs" element={<DocsPage />} />
 
           {/* Dashboard - Requires Login Only */}
           <Route path="/dashboard" element={

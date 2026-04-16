@@ -589,14 +589,14 @@ export const eventsService = {
     format: 'csv' | 'xlsx' | 'pdf' = 'xlsx',
     params?: RegistrationSearchParams
   ): Promise<Blob> => {
-    const response = await apiService.get(
+    const data = await apiService.get<Blob>(
       `/events/${eventId}/admin/registrations/export`,
       {
         params: { format, ...params },
         responseType: 'blob',
       }
     )
-    return response.data
+    return data
   },
 
   updateRegistrationStatusAdmin: async (

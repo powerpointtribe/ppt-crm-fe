@@ -118,6 +118,9 @@ export default function EventDetail() {
   const [selectedPartner, setSelectedPartner] = useState<EventPartner | null>(null)
   const [showPartnerModal, setShowPartnerModal] = useState(false)
 
+  // View registration detail
+  const [viewingRegistration, setViewingRegistration] = useState<EventRegistration | null>(null)
+
   // Edit/Delete state
   const [editingRegistration, setEditingRegistration] = useState<EventRegistration | null>(null)
   const [editingPartner, setEditingPartner] = useState<EventPartner | null>(null)
@@ -1042,7 +1045,7 @@ export default function EventDetail() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
                     {registrations.map((reg) => (
-                      <tr key={reg._id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={reg._id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setViewingRegistration(reg)}>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
@@ -1074,7 +1077,7 @@ export default function EventDetail() {
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(reg.registeredAt)}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <td className="px-4 py-3 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-2">
                             {canCheckIn && reg.status !== 'attended' && reg.status !== 'cancelled' && (
                               <Button
@@ -2532,6 +2535,166 @@ export default function EventDetail() {
               <Button size="sm" onClick={handleSavePartner} disabled={savingEdit}>
                 {savingEdit ? <LoadingSpinner size="sm" /> : 'Save Changes'}
               </Button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+      {/* Registration Detail Modal */}
+      {viewingRegistration && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setViewingRegistration(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">
+                    {viewingRegistration.attendeeInfo.firstName[0]}{viewingRegistration.attendeeInfo.lastName[0]}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">
+                    {viewingRegistration.attendeeInfo.firstName} {viewingRegistration.attendeeInfo.lastName}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Badge variant={statusColors[viewingRegistration.status]} className="font-medium text-xs">
+                      {viewingRegistration.status.charAt(0).toUpperCase() + viewingRegistration.status.slice(1).replace('-', ' ')}
+                    </Badge>
+                    <Badge variant={viewingRegistration.attendeeType === 'member' ? 'success' : 'default'} className="text-xs">
+                      {viewingRegistration.attendeeType === 'member' ? 'Member' : 'Visitor'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingRegistration(null)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              {/* Check-in Code */}
+              {viewingRegistration.checkInCode && (
+                <div className="bg-primary-50 border border-primary-100 rounded-lg p-4 text-center">
+                  <p className="text-xs font-medium text-primary-600 uppercase tracking-wider mb-1">Check-in Code</p>
+                  <p className="text-2xl font-bold text-primary-700 tracking-widest font-mono">{viewingRegistration.checkInCode}</p>
+                </div>
+              )}
+
+              {/* Contact Info */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2.5">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact Information</h4>
+                {viewingRegistration.attendeeInfo.email && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <Mail className="h-4 w-4 text-gray-400 shrink-0" />
+                    <span className="text-gray-700">{viewingRegistration.attendeeInfo.email}</span>
+                  </div>
+                )}
+                {viewingRegistration.attendeeInfo.phone && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <Phone className="h-4 w-4 text-gray-400 shrink-0" />
+                    <span className="text-gray-700">{viewingRegistration.attendeeInfo.phone}</span>
+                  </div>
+                )}
+                {viewingRegistration.attendeeInfo.gender && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <Users className="h-4 w-4 text-gray-400 shrink-0" />
+                    <span className="text-gray-700 capitalize">{viewingRegistration.attendeeInfo.gender}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Dates */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2.5">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Timeline</h4>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
+                  <span className="text-gray-500 w-24 shrink-0">Registered</span>
+                  <span className="text-gray-700">{formatDate(viewingRegistration.registeredAt)}</span>
+                </div>
+                {viewingRegistration.confirmedAt && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <CheckCircle className="h-4 w-4 text-green-400 shrink-0" />
+                    <span className="text-gray-500 w-24 shrink-0">Confirmed</span>
+                    <span className="text-gray-700">{formatDate(viewingRegistration.confirmedAt)}</span>
+                  </div>
+                )}
+                {viewingRegistration.checkedInAt && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <UserCheck className="h-4 w-4 text-blue-400 shrink-0" />
+                    <span className="text-gray-500 w-24 shrink-0">Checked In</span>
+                    <span className="text-gray-700">{formatDate(viewingRegistration.checkedInAt)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Custom Field Responses */}
+              {viewingRegistration.customFieldResponses && Object.keys(viewingRegistration.customFieldResponses).length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2.5">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Registration Details</h4>
+                  {Object.entries(viewingRegistration.customFieldResponses).map(([key, value]) => (
+                    <div key={key} className="flex items-start gap-2.5 text-sm">
+                      <span className="text-gray-500 w-32 shrink-0 capitalize">{key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}</span>
+                      <span className="text-gray-700">{value || '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Notes */}
+              {viewingRegistration.notes && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Notes</h4>
+                  <p className="text-sm text-gray-700">{viewingRegistration.notes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-4 border-t border-gray-100 flex items-center justify-between">
+              <Button variant="outline" size="sm" onClick={() => setViewingRegistration(null)}>
+                Close
+              </Button>
+              <div className="flex gap-2">
+                {canCheckIn && viewingRegistration.status !== 'attended' && viewingRegistration.status !== 'cancelled' && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      handleCheckIn(viewingRegistration._id)
+                      setViewingRegistration(null)
+                    }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1.5" />
+                    Check In
+                  </Button>
+                )}
+                {canUpdate && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      openEditRegistration(viewingRegistration)
+                      setViewingRegistration(null)
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-1.5" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </div>
           </motion.div>
         </motion.div>

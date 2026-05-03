@@ -16,9 +16,9 @@ export const publicVisitorRegistrationSchema = z.object({
     if (!val || val === '') return true; // Allow empty values
     return /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(val);
   }, { message: 'dateOfBirth must be in MM-DD format (month and day only)' }),
-  gender: z.enum(['male', 'female']).optional(),
+  gender: z.enum(['male', 'female'], { required_error: 'Please select your gender' }),
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
-  occupation: z.string().optional(),
+  occupation: z.string().min(1, 'Occupation is required'),
   alternateContactMethod: z.string().optional(),
 
 

@@ -349,6 +349,44 @@ export default function PublicVisitorRegistrationForm({
         </motion.div>
 
         <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.36 }}
+          className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 border border-pink-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">👤</div>
+            <h4 className="font-semibold text-gray-800">Gender <span className="text-red-500">*</span></h4>
+          </div>
+          <div className="flex gap-3">
+            {[
+              { value: 'male', label: '👨 Male' },
+              { value: 'female', label: '👩 Female' },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                  watch('gender') === option.value
+                    ? 'border-purple-500 bg-purple-50 text-purple-700 font-medium'
+                    : 'border-gray-200 hover:border-purple-300 text-gray-600'
+                }`}
+              >
+                <input
+                  type="radio"
+                  value={option.value}
+                  {...register('gender')}
+                  className="sr-only"
+                />
+                <span className="text-sm">{option.label}</span>
+              </label>
+            ))}
+          </div>
+          {errors.gender && (
+            <p className="text-red-500 text-sm mt-1">{errors.gender.message}</p>
+          )}
+        </motion.div>
+
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.37 }}
@@ -356,14 +394,16 @@ export default function PublicVisitorRegistrationForm({
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">💼</div>
-            <h4 className="font-semibold text-gray-800">Occupation?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+            <h4 className="font-semibold text-gray-800">Occupation? <span className="text-red-500">*</span></h4>
           </div>
           <Input
             {...register('occupation')}
             placeholder="What do you do for work?"
             className="transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
+          {errors.occupation && (
+            <p className="text-red-500 text-sm mt-1">{errors.occupation.message}</p>
+          )}
         </motion.div>
 
 

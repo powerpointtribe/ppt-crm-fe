@@ -152,7 +152,7 @@ export default function FirstTimerDetail() {
     setShowStatusDropdown(false)
     setMembersLoading(true)
     try {
-      const result = await membersService.getMembers({ limit: 100, sortBy: 'firstName', sortOrder: 'asc' })
+      const result = await membersService.getMembers({ limit: 500, sortBy: 'firstName', sortOrder: 'asc' })
       setMembers(result.items || [])
     } catch (error) {
       toast.error('Failed to load members')

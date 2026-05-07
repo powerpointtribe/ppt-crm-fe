@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Plus, Phone, Mail, Calendar, User,
-  MoreHorizontal, Trash2, UserPlus, Edit,
+  MoreHorizontal, Trash2, UserPlus, Edit, Eye,
   Users, Clock, CheckCircle, TrendingUp, UserCheck,
   X, Filter, RefreshCw, UserCog, Archive, ArchiveRestore, Upload
 } from 'lucide-react'
@@ -189,7 +189,7 @@ export default function FirstTimers() {
   const loadMembers = useCallback(async () => {
     try {
       setMembersLoading(true)
-      const response = await membersService.getMembers({ limit: 100 })
+      const response = await membersService.getMembers({ limit: 500 })
       setMembers(response.items || [])
     } catch (error: any) {
       console.error('Error loading members:', error)
@@ -1284,7 +1284,6 @@ export default function FirstTimers() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.03 }}
                   className={`bg-white border border-gray-100 rounded-xl p-4 space-y-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1),0_1px_3px_-1px_rgba(0,0,0,0.06)] ${selectedIds.includes(visitor._id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
-                  onClick={() => navigate(`/first-timers/${visitor._id}`)}
                 >
                   {/* Header: Name and Checkbox */}
                   <div className="flex items-start justify-between">
@@ -1363,8 +1362,18 @@ export default function FirstTimers() {
                   </div>
 
                   {/* Actions */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/first-timers/${visitor._id}`)}
+                      className="flex-1 text-xs"
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Button>
                   {visitor.status !== 'CLOSED' && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+                    <>
                       <Button
                         variant="outline"
                         size="sm"
@@ -1385,8 +1394,9 @@ export default function FirstTimers() {
                           Integrate
                         </Button>
                       )}
-                    </div>
+                    </>
                   )}
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -1422,8 +1432,7 @@ export default function FirstTimers() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2, delay: index * 0.02 }}
-                      className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                      onClick={() => navigate(`/first-timers/${visitor._id}`)}
+                      className="hover:bg-gray-50 transition-colors duration-150"
                     >
                       <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                         {activeTab !== 'closed' && visitor.status !== 'CLOSED' && (
@@ -1519,6 +1528,17 @@ export default function FirstTimers() {
                                   index >= firstTimers.length - 2 ? 'bottom-full mb-1' : 'top-full mt-1'
                                 }`}>
                                   <div className="py-1">
+                                    {/* View */}
+                                    <button
+                                      onClick={() => {
+                                        navigate(`/first-timers/${visitor._id}`)
+                                        setActionMenuOpen(null)
+                                      }}
+                                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <Eye className="h-3 w-3 mr-2" />
+                                      View
+                                    </button>
                                     {/* Edit - always shown */}
                                     <button
                                       onClick={() => {

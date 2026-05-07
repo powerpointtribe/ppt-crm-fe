@@ -121,7 +121,7 @@ export default function GroupForm({
     const fetchMembers = async () => {
       setLoadingMembers(true)
       try {
-        const response = await membersService.getMembers({ limit: 100 })
+        const response = await membersService.getMembers({ limit: 500 })
         console.log('Members fetched:', response)
         const membersList = response.items || response.data || []
         console.log('Members list:', membersList)

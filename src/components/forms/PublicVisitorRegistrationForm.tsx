@@ -56,6 +56,7 @@ export default function PublicVisitorRegistrationForm({
       dateOfVisit: new Date().toISOString().split('T')[0],
       serviceType: '',
       howDidYouHear: undefined,
+      invitedBy: '',
       familyMembers: [],
       interests: [],
       servingInterests: [],
@@ -446,6 +447,22 @@ export default function PublicVisitorRegistrationForm({
               </motion.label>
             ))}
           </div>
+
+          {/* Show "Who invited you?" when Friend or Family is selected */}
+          {(watch('howDidYouHear') === 'friend' || watch('howDidYouHear') === 'family') && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-3"
+            >
+              <Input
+                {...register('invitedBy')}
+                placeholder="Who invited you? (Name of friend/family member)"
+                className="transition-all duration-300 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </motion.div>
+          )}
         </motion.div>
 
         <motion.div

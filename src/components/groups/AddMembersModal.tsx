@@ -44,7 +44,7 @@ export default function AddMembersModal({
     try {
       setLoading(true)
       setError(null)
-      const response = await membersService.getMembers({ limit: 100 })
+      const response = await membersService.getMembers({ limit: 500 })
       setMembers(response.items)
     } catch (err: any) {
       setError(err.message || 'Failed to load members')

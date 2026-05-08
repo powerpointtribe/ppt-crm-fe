@@ -51,7 +51,7 @@ const COLORS = {
   pink: '#EC4899',
 }
 
-const CHART_COLORS = ['#6366F1', '#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EC4899']
+const CHART_COLORS = ['#6366F1', '#F59E0B', '#06B6D4', '#10B981', '#EC4899', '#8B5CF6']
 
 interface ReportFilters {
   startDate: string

@@ -410,9 +410,18 @@ export default function ServiceReports() {
           </motion.div>
         )}
 
-        {/* Chart Toggle */}
-        {chartData.length > 0 && (
-          <div className="flex justify-end mb-4">
+        {/* Chart Toggle + Show Inactive */}
+        <div className="flex justify-between items-center mb-4">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeInactive}
+              onChange={(e) => setIncludeInactive(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Show inactive/deleted reports
+          </label>
+          {chartData.length > 0 && (
             <button
               onClick={() => setShowChart(!showChart)}
               className={cn(
@@ -425,8 +434,8 @@ export default function ServiceReports() {
               <BarChart3 className="w-4 h-4" />
               {showChart ? 'Hide Chart' : 'Show Chart'}
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Collapsible Chart */}
         <AnimatePresence>

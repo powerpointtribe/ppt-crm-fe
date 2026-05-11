@@ -39,6 +39,7 @@ export interface ServiceReport {
     email: string
   }
   notes?: string
+  branch?: { _id: string; name: string } | string
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -63,6 +64,7 @@ export interface CreateServiceReportData {
   numberOfChildren: number
   numberOfFirstTimers: number
   notes?: string
+  branchId?: string
 }
 
 export interface UpdateServiceReportData extends Partial<CreateServiceReportData> {}
@@ -82,6 +84,7 @@ export interface ServiceReportSearchParams {
   branchId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+  includeInactive?: boolean
 }
 
 export interface PaginatedResponse<T> {

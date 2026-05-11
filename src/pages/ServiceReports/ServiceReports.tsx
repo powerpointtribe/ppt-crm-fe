@@ -54,7 +54,7 @@ import { cn } from '@/utils/cn'
 export default function ServiceReports() {
   const navigate = useNavigate()
   const { selectedBranch, branches } = useAppStore()
-  const { hasPermission } = useAuth()
+  const { hasPermission, member } = useAuth()
   const [reports, setReports] = useState<ServiceReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -636,6 +636,11 @@ export default function ServiceReports() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Date
                         </th>
+                        {canViewAllBranches && (
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                            Branch
+                          </th>
+                        )}
                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Total
                         </th>
@@ -685,6 +690,13 @@ export default function ServiceReports() {
                           <td className="px-4 py-3.5">
                             <span className="text-sm text-gray-600">{formatDate(report.date)}</span>
                           </td>
+                          {canViewAllBranches && (
+                            <td className="px-4 py-3.5 hidden md:table-cell">
+                              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                {typeof report.branch === 'object' ? report.branch?.name : '—'}
+                              </span>
+                            </td>
+                          )}
                           <td className="px-4 py-3.5 text-center">
                             <span className="text-sm font-semibold text-gray-900">{report.totalAttendance}</span>
                           </td>
@@ -837,6 +849,9 @@ export default function ServiceReports() {
             onSubmit={handleQuickCreate}
             onCancel={() => setShowQuickCreateModal(false)}
             loading={quickCreateLoading}
+            branches={branches}
+            canSelectBranch={canViewAllBranches}
+            defaultBranchId={member?.branch?._id || member?.branch}
           />
         )}
       </AnimatePresence>

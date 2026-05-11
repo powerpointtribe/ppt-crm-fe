@@ -10,12 +10,20 @@ import {
   SERVICE_TAG_LABELS
 } from '@/services/service-reports'
 
+interface Branch {
+  _id: string
+  name: string
+}
+
 interface ServiceReportFormProps {
   onSubmit: (data: CreateServiceReportData) => Promise<void>
   onCancel: () => void
   initialData?: Partial<CreateServiceReportData>
   loading?: boolean
   isModal?: boolean
+  branches?: Branch[]
+  canSelectBranch?: boolean
+  defaultBranchId?: string
 }
 
 // Compact tag labels for buttons
@@ -34,7 +42,10 @@ export default function ServiceReportForm({
   onCancel,
   initialData = {},
   loading = false,
-  isModal = false
+  isModal = false,
+  branches = [],
+  canSelectBranch = false,
+  defaultBranchId,
 }: ServiceReportFormProps) {
   const [formData, setFormData] = useState<CreateServiceReportData>({
     date: new Date().toISOString().split('T')[0],
@@ -46,6 +57,7 @@ export default function ServiceReportForm({
     numberOfChildren: 0,
     numberOfFirstTimers: 0,
     notes: '',
+    branchId: defaultBranchId || '',
     ...initialData
   })
 
@@ -168,6 +180,27 @@ export default function ServiceReportForm({
           />
         </div>
       </div>
+
+      {/* Branch Selector - only shown if user can select branch */}
+      {canSelectBranch && branches.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Branch
+          </label>
+          <select
+            value={formData.branchId || ''}
+            onChange={(e) => handleInputChange('branchId', e.target.value)}
+            className="w-full px-2.5 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white"
+          >
+            <option value="">Select branch</option>
+            {branches.map((branch) => (
+              <option key={branch._id} value={branch._id}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Service Tags - Button Grid */}
       <div>

@@ -1,12 +1,16 @@
 import { apiService } from './api'
 import { ApiResponse } from '@/types/api'
-import { transformPaginatedResponse, transformSingleResponse } from '@/utils/apiResponseTransform'
+import { transformSingleResponse } from '@/utils/apiResponseTransform'
 
 export interface MessageDraft {
   _id: string
   title: string
   message: string
-  scheduledDate: string
+  subject?: string
+  templateId?: 1 | 2 | 3
+  recipientMode?: 'by_date' | 'individual'
+  recipientIds?: string[]
+  scheduledDate?: string
   scheduledTime: string
   status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed'
   createdBy?: {
@@ -33,13 +37,21 @@ export interface MessageDraft {
 export interface CreateMessageDraftData {
   title?: string
   message: string
-  scheduledDate: string // YYYY-MM-DD
-  scheduledTime: string // HH:mm
+  subject?: string
+  templateId?: number
+  recipientMode?: 'by_date' | 'individual'
+  recipientIds?: string[]
+  scheduledDate?: string
+  scheduledTime: string
 }
 
 export interface UpdateMessageDraftData {
   title?: string
   message?: string
+  subject?: string
+  templateId?: number
+  recipientMode?: 'by_date' | 'individual'
+  recipientIds?: string[]
   scheduledDate?: string
   scheduledTime?: string
 }
@@ -50,25 +62,25 @@ export interface MessageDraftSearchParams {
   status?: MessageDraft['status']
 }
 
-export interface PaginatedResponse<T> {
-  items: T[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-    hasNext: boolean
-    hasPrev: boolean
-  }
-}
-
 export interface PreviewResponse {
   preview: string
   htmlPreview: string
   availableVariables: string[]
 }
 
+export interface EmailTemplate {
+  id: 1 | 2 | 3
+  name: string
+  description: string
+  previewHtml: string
+}
+
 export const messageDraftsService = {
+  getTemplates: async (): Promise<EmailTemplate[]> => {
+    const response = await apiService.get<ApiResponse<EmailTemplate[]>>('/first-timers/message-drafts/templates')
+    return transformSingleResponse<EmailTemplate[]>(response) as EmailTemplate[]
+  },
+
   getMessageDrafts: async (params?: MessageDraftSearchParams): Promise<{
     data: MessageDraft[]
     total: number
@@ -84,14 +96,12 @@ export const messageDraftsService = {
       totalPages: number
     }>>('/first-timers/message-drafts', { params })
     const result = transformSingleResponse(response)
-    // Backend returns { drafts, total, page, limit, totalPages }
-    // Transform to { data, total, page, limit, totalPages }
     return {
       data: result.drafts || [],
       total: result.total || 0,
       page: result.page || 1,
       limit: result.limit || 10,
-      totalPages: result.totalPages || 0
+      totalPages: result.totalPages || 0,
     }
   },
 
@@ -114,9 +124,13 @@ export const messageDraftsService = {
     await apiService.delete(`/first-timers/message-drafts/${id}`)
   },
 
-  previewMessage: async (data: { message: string }): Promise<PreviewResponse> => {
+  previewMessage: async (data: { message: string; templateId?: number; subject?: string }): Promise<PreviewResponse> => {
     const response = await apiService.post<ApiResponse<PreviewResponse>>('/first-timers/message-drafts/preview', data)
     return transformSingleResponse<PreviewResponse>(response) as PreviewResponse
+  },
+
+  sendTestEmail: async (data: { email: string; message: string; templateId?: number; subject?: string }): Promise<void> => {
+    await apiService.post('/first-timers/message-drafts/send-test', data)
   },
 
   sendMessageNow: async (id: string): Promise<void> => {

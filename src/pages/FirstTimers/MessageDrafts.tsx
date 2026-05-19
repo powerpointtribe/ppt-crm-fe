@@ -282,7 +282,10 @@ export default function MessageDrafts() {
                       Title
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Scheduled Date
+                      Template
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Service Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Time
@@ -311,11 +314,26 @@ export default function MessageDrafts() {
                       >
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{draft.title}</div>
+                          {draft.subject && (
+                            <div className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">{draft.subject}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                            draft.templateId === 1 ? 'bg-emerald-100 text-emerald-700' :
+                            draft.templateId === 2 ? 'bg-blue-100 text-blue-700' :
+                            draft.templateId === 3 ? 'bg-purple-100 text-purple-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {draft.templateId === 1 ? 'Warm' :
+                             draft.templateId === 2 ? 'Professional' :
+                             draft.templateId === 3 ? 'Vibrant' : 'Classic'}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2 text-sm text-gray-900">
                             <Calendar className="w-4 h-4 text-gray-400" />
-                            {formatDate(draft.scheduledDate)}
+                            {draft.scheduledDate ? formatDate(draft.scheduledDate) : '—'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

@@ -11,19 +11,65 @@ import { messageDraftsService, EmailTemplate, CreateMessageDraftData } from '@/s
 import { firstTimersService, FirstTimer } from '@/services/first-timers'
 import { useToast } from '@/hooks/useToast'
 
-const DEFAULT_MESSAGES: Record<number, { subject: string; message: string }> = {
+const BUILTIN_DEFAULTS: Record<number, { subject: string; message: string }> = {
   1: {
-    subject: 'So glad you visited us! 🎉',
-    message: `We hope you had an amazing time at the service! It was such a blessing having you with us.\n\nAt The PowerPoint Tribe, we are a community of believers committed to raising global leaders who transform their communities, industries, and nations through faith, excellence, and purpose.\n\nWe would love to know — how was your experience? Did anything stand out to you during the service?\n\nOne of our friendly team members will be reaching out to you soon. We're genuinely excited to connect with you and help you find your place in this family.`,
+    subject: 'So glad you visited us!',
+    message: `We're so glad you joined us! It was wonderful having you, and we hope the experience left you feeling inspired and uplifted.
+
+At The PowerPoint Tribe, we are a community of believers committed to raising global leaders who transform their communities, industries, and nations through faith, excellence, and purpose.
+
+We would love to know — how was your experience? Did anything stand out to you during the service?
+
+One of our friendly team members will be reaching out to you soon. We're genuinely excited to connect with you and help you find your place in this family.`,
   },
   2: {
     subject: 'Welcome to The PowerPoint Tribe',
-    message: `Thank you for joining us at the service. We appreciate you taking the time to worship with us, and we hope the experience was meaningful.\n\nThe PowerPoint Tribe is a faith-driven community raising leaders who transform their world through excellence and purpose. Whether you are a professional, entrepreneur, or student — there is a place for you here.\n\nWe would value your feedback on the service and would love to answer any questions you may have. A member of our team will be in touch shortly to connect with you personally.`,
+    message: `Thank you for joining us at the service. We appreciate you taking the time to worship with us, and we hope the experience was meaningful.
+
+The PowerPoint Tribe is a faith-driven community raising leaders who transform their world through excellence and purpose. Whether you are a professional, entrepreneur, or student — there is a place for you here.
+
+We would value your feedback on the service and would love to answer any questions you may have. A member of our team will be in touch shortly to connect with you personally.`,
   },
   3: {
-    subject: 'You made our day! Welcome to the Tribe 🙌',
-    message: `What a joy it was to have you with us! Your presence truly made the service even more special.\n\nThe PowerPoint Tribe is not just a church — it's a vibrant community of dreamers, builders, and world-changers united by faith and purpose. We believe God has something incredible in store for you, and we'd love to be part of your journey!\n\nHow did you find the experience? We'd love to hear your thoughts! One of our awesome team members will be reaching out soon — we can't wait to connect with you and share more about what makes this community so special.`,
+    subject: 'You made our day! Welcome to the Tribe',
+    message: `What a joy it was to have you with us! Your presence truly made the service even more special.
+
+The PowerPoint Tribe is not just a church — it's a vibrant community of dreamers, builders, and world-changers united by faith and purpose. We believe God has something incredible in store for you, and we'd love to be part of your journey!
+
+How did you find the experience? We'd love to hear your thoughts! One of our awesome team members will be reaching out soon — we can't wait to connect with you and share more about what makes this community so special.`,
   },
+}
+
+// Load saved defaults from localStorage, falling back to built-in
+function getDefaultForTemplate(templateId: number): { subject: string; message: string } {
+  try {
+    const saved = localStorage.getItem(`draft_default_template_${templateId}`)
+    if (saved) return JSON.parse(saved)
+  } catch {}
+  return BUILTIN_DEFAULTS[templateId] || BUILTIN_DEFAULTS[1]
+}
+
+function saveDefaultForTemplate(templateId: number, data: { subject: string; message: string }) {
+  localStorage.setItem(`draft_default_template_${templateId}`, JSON.stringify(data))
+}
+
+function isBuiltinDefault(templateId: number, message: string): boolean {
+  return BUILTIN_DEFAULTS[templateId]?.message === message
+}
+
+function isSavedDefault(templateId: number, message: string): boolean {
+  try {
+    const saved = localStorage.getItem(`draft_default_template_${templateId}`)
+    if (saved) return JSON.parse(saved).message === message
+  } catch {}
+  return false
+}
+
+function isAnyDefault(message: string): boolean {
+  return Object.keys(BUILTIN_DEFAULTS).some(id => {
+    const tid = Number(id)
+    return isBuiltinDefault(tid, message) || isSavedDefault(tid, message)
+  })
 }
 
 export default function MessageDraftForm() {
@@ -100,11 +146,9 @@ export default function MessageDraftForm() {
       if (data.length > 0 && !selectedTemplateId && !isEditing) {
         const firstId = data[0].id
         setSelectedTemplateId(firstId)
-        const defaults = DEFAULT_MESSAGES[firstId]
-        if (defaults) {
-          setMessage(defaults.message)
-          setSubject(defaults.subject)
-        }
+        const defaults = getDefaultForTemplate(firstId)
+        setMessage(defaults.message)
+        setSubject(defaults.subject)
       }
     } catch (err) {
       console.error('Failed to load templates:', err)
@@ -317,15 +361,11 @@ export default function MessageDraftForm() {
                   whileHover={{ y: -2 }}
                   onClick={() => {
                     setSelectedTemplateId(tpl.id)
-                    // Pre-fill with default message for the selected template
-                    const defaults = DEFAULT_MESSAGES[tpl.id]
-                    if (defaults) {
-                      // Only replace if message is empty or is a default from another template
-                      const isCurrentDefault = Object.values(DEFAULT_MESSAGES).some(d => d.message === message)
-                      if (!message.trim() || isCurrentDefault) {
-                        setMessage(defaults.message)
-                        setSubject(defaults.subject)
-                      }
+                    // Pre-fill with saved/default message — only if current text is empty or is another template's default
+                    const defaults = getDefaultForTemplate(tpl.id)
+                    if (!message.trim() || isAnyDefault(message)) {
+                      setMessage(defaults.message)
+                      setSubject(defaults.subject)
                     }
                   }}
                   className={`rounded-xl p-4 cursor-pointer transition-all ${
@@ -417,7 +457,22 @@ export default function MessageDraftForm() {
                     placeholder={'Dear {{firstName}},\n\nThank you for visiting our church! We are delighted to have you...'}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0D7770] focus:border-transparent outline-none resize-none"
                   />
-                  <p className="text-xs text-gray-400 mt-1 text-right">{message.length} characters</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedTemplateId && message.trim()) {
+                          saveDefaultForTemplate(selectedTemplateId, { subject, message })
+                          toast.success('Saved as default for this template')
+                        }
+                      }}
+                      className="text-xs text-[#0D7770] hover:text-[#095D58] font-medium flex items-center gap-1"
+                    >
+                      <Check className="w-3 h-3" />
+                      Save as default for this template
+                    </button>
+                    <p className="text-xs text-gray-400">{message.length} characters</p>
+                  </div>
                 </div>
               </div>
             </Card>

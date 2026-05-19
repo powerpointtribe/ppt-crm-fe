@@ -283,9 +283,9 @@ export default function MemberForm({
         membershipStatus: data.membershipStatus,
       }
 
-      // Only include phone if it's a valid Nigerian number format
-      if (isValidNigerianPhone(data.phone)) {
-        transformedData.phone = data.phone
+      // Include phone if provided
+      if (data.phone?.trim()) {
+        transformedData.phone = data.phone.trim()
       }
 
       // Handle dates

@@ -93,7 +93,7 @@ export default function Members() {
     search: ''
   })
   const [pagination, setPagination] = useState<any>(null)
-  const [assignedCount, setAssignedCount] = useState(0)
+  const assignedCount = pagination?.total || 0
   const [birthdayCount, setBirthdayCount] = useState(0)
   const [allFilteredMembers, setAllFilteredMembers] = useState<Member[]>([])
   const [analyticsStats, setAnalyticsStats] = useState<any>(null)
@@ -314,9 +314,7 @@ export default function Members() {
       }
 
       // Apply tab-specific server-side filters
-      if (activeTab === 'assigned') {
-        filterParams.hasDistrict = true
-      } else if (activeTab === 'birthdays') {
+      if (activeTab === 'birthdays') {
         const currentMonth = new Date().getMonth() + 1
         filterParams.birthdayMonth = currentMonth
         filterParams.limit = 100 // Fetch all birthday members at once for proper grouping
@@ -344,15 +342,12 @@ export default function Members() {
     try {
       const countParams = { ...baseParams, page: 1, limit: 1 }
       // Remove tab-specific filters for count queries
-      delete countParams.hasDistrict
       delete countParams.birthdayMonth
 
-      const [assignedRes, birthdayRes] = await Promise.all([
-        membersService.getMembers({ ...countParams, hasDistrict: true }),
+      const [birthdayRes] = await Promise.all([
         membersService.getMembers({ ...countParams, birthdayMonth: new Date().getMonth() + 1 }),
       ])
 
-      setAssignedCount(assignedRes.pagination.total)
       setBirthdayCount(birthdayRes.pagination.total)
     } catch {
       // Non-critical, keep existing counts
@@ -618,9 +613,7 @@ export default function Members() {
       }
 
       // Apply tab-specific server-side filters for export
-      if (activeTab === 'assigned') {
-        filterParams.hasDistrict = true
-      } else if (activeTab === 'birthdays') {
+      if (activeTab === 'birthdays') {
         filterParams.birthdayMonth = new Date().getMonth() + 1
       }
 

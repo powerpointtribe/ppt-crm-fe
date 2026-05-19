@@ -283,9 +283,9 @@ export default function MemberForm({
         membershipStatus: data.membershipStatus,
       }
 
-      // Include phone if provided
+      // Include phone if provided — strip invisible Unicode characters (LTR marks, etc.)
       if (data.phone?.trim()) {
-        transformedData.phone = data.phone.trim()
+        transformedData.phone = data.phone.trim().replace(/[\u200B-\u200D\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')
       }
 
       // Handle dates

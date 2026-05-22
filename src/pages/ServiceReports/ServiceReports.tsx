@@ -370,41 +370,40 @@ export default function ServiceReports() {
               <p className="text-xl sm:text-3xl font-bold text-gray-900">{stats?.overall?.totalFirstTimers || 0}</p>
             </div>
 
-            {/* Gender Breakdown */}
+            {/* Gender Breakdown (Average per Service) */}
             <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 sm:col-span-2 lg:col-span-4">
-              <span className="text-xs sm:text-sm font-medium text-gray-500 mb-3 block">Gender Breakdown</span>
+              <span className="text-xs sm:text-sm font-medium text-gray-500 mb-3 block">Average Gender Breakdown (per service)</span>
               <div className="flex items-center gap-6 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span className="text-sm text-gray-600">Male:</span>
-                  <span className="text-sm font-bold text-gray-900">{(stats?.overall?.totalMales || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-                  <span className="text-sm text-gray-600">Female:</span>
-                  <span className="text-sm font-bold text-gray-900">{(stats?.overall?.totalFemales || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                  <span className="text-sm text-gray-600">Children:</span>
-                  <span className="text-sm font-bold text-gray-900">{(stats?.overall?.totalChildren || 0).toLocaleString()}</span>
-                </div>
-                {(stats?.overall?.totalMales > 0 || stats?.overall?.totalFemales > 0) && (
-                  <div className="flex-1 min-w-[200px] h-3 bg-gray-100 rounded-full overflow-hidden flex">
-                    <div
-                      className="bg-blue-500 h-full transition-all"
-                      style={{ width: `${((stats?.overall?.totalMales || 0) / ((stats?.overall?.totalMales || 0) + (stats?.overall?.totalFemales || 0) + (stats?.overall?.totalChildren || 0))) * 100}%` }}
-                    />
-                    <div
-                      className="bg-pink-500 h-full transition-all"
-                      style={{ width: `${((stats?.overall?.totalFemales || 0) / ((stats?.overall?.totalMales || 0) + (stats?.overall?.totalFemales || 0) + (stats?.overall?.totalChildren || 0))) * 100}%` }}
-                    />
-                    <div
-                      className="bg-amber-500 h-full transition-all"
-                      style={{ width: `${((stats?.overall?.totalChildren || 0) / ((stats?.overall?.totalMales || 0) + (stats?.overall?.totalFemales || 0) + (stats?.overall?.totalChildren || 0))) * 100}%` }}
-                    />
-                  </div>
-                )}
+                {(() => {
+                  const m = Math.round(stats?.overall?.avgMales || 0)
+                  const f = Math.round(stats?.overall?.avgFemales || 0)
+                  const c = Math.round(stats?.overall?.avgChildren || 0)
+                  const total = m + f + c
+                  return (<>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span className="text-sm text-gray-600">Male:</span>
+                      <span className="text-sm font-bold text-gray-900">{m.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-pink-500"></div>
+                      <span className="text-sm text-gray-600">Female:</span>
+                      <span className="text-sm font-bold text-gray-900">{f.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                      <span className="text-sm text-gray-600">Children:</span>
+                      <span className="text-sm font-bold text-gray-900">{c.toLocaleString()}</span>
+                    </div>
+                    {total > 0 && (
+                      <div className="flex-1 min-w-[200px] h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                        <div className="bg-blue-500 h-full transition-all" style={{ width: `${(m / total) * 100}%` }} />
+                        <div className="bg-pink-500 h-full transition-all" style={{ width: `${(f / total) * 100}%` }} />
+                        <div className="bg-amber-500 h-full transition-all" style={{ width: `${(c / total) * 100}%` }} />
+                      </div>
+                    )}
+                  </>)
+                })()}
               </div>
             </div>
           </motion.div>

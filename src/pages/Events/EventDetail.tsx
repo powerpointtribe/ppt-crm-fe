@@ -35,6 +35,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
+import SocialAccountabilitySection from '@/components/events/SocialAccountabilitySection'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
@@ -2021,6 +2022,9 @@ export default function EventDetail() {
                 <p className="text-gray-500">No accountability data available</p>
               </Card>
             )}
+
+            {/* Social Media Accountability Section */}
+            <SocialAccountabilitySection eventId={id!} registrations={registrations} />
           </div>
         )}
 

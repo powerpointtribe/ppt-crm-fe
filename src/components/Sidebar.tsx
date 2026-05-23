@@ -40,6 +40,10 @@ import {
   Calendar,
   Mail,
   Send,
+  BookOpen,
+  GraduationCap,
+  BookMarked,
+  Clock,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -175,11 +179,53 @@ const menuGroups: MenuGroup[] = [
         path: '/events',
         requiredPermission: 'events:view',
       },
+      {
+        icon: GraduationCap,
+        label: 'Workers Training',
+        path: '/workers-training',
+        requiredPermission: 'workers-training:view-cohorts',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: Users,
+            label: 'Trainees',
+            path: '/workers-training/trainees',
+            requiredPermission: 'workers-training:view-trainees',
+          },
+        ],
+      },
     ],
   },
   {
     label: 'Resources',
     items: [
+      {
+        icon: BookOpen,
+        label: 'Library',
+        path: '/library',
+        requiredPermission: 'library:view-books',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: BookMarked,
+            label: 'Borrowings',
+            path: '/library/borrowings',
+            requiredPermission: 'library:view-borrowings',
+          },
+          {
+            icon: Clock,
+            label: 'Overdue',
+            path: '/library/overdue',
+            requiredPermission: 'library:view-overdue',
+          },
+          {
+            icon: Archive,
+            label: 'Categories',
+            path: '/library/categories',
+            requiredPermission: 'library:view-categories',
+          },
+        ],
+      },
       {
         icon: Boxes,
         label: 'Inventory',

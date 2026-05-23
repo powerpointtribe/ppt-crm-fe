@@ -115,7 +115,50 @@ export const bulkEmailService = {
 
   // Statistics
   async getStatistics(): Promise<BulkEmailStatistics> {
-    const response = await apiService.get<BulkEmailStatistics>(`${BASE_URL}/statistics`)
+    const response = await apiService.get<BulkEmailStatistics>(`${BASE_URL}/campaigns/statistics`)
     return response
+  },
+
+  // ========== MAILING LISTS ==========
+
+  async getMailingLists(params?: { page?: number; limit?: number; search?: string }): Promise<any> {
+    const response = await apiService.get<any>(`${BASE_URL}/mailing-lists`, { params })
+    return response?.data || response
+  },
+
+  async getMailingListById(id: string): Promise<any> {
+    const response = await apiService.get<any>(`${BASE_URL}/mailing-lists/${id}`)
+    return response?.data || response
+  },
+
+  async createMailingList(data: { name: string; description?: string }): Promise<any> {
+    const response = await apiService.post<any>(`${BASE_URL}/mailing-lists`, data)
+    return response?.data || response
+  },
+
+  async importCsvMailingList(formData: FormData): Promise<any> {
+    const response = await apiService.post<any>(`${BASE_URL}/mailing-lists/import-csv`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response?.data || response
+  },
+
+  async createMailingListFromEvent(data: { name: string; description?: string; eventId: string }): Promise<any> {
+    const response = await apiService.post<any>(`${BASE_URL}/mailing-lists/from-event`, data)
+    return response?.data || response
+  },
+
+  async addContactsToMailingList(id: string, contacts: Array<{ email: string; firstName?: string; lastName?: string }>): Promise<any> {
+    const response = await apiService.post<any>(`${BASE_URL}/mailing-lists/${id}/contacts`, { contacts })
+    return response?.data || response
+  },
+
+  async removeContactsFromMailingList(id: string, emails: string[]): Promise<any> {
+    const response = await apiService.delete<any>(`${BASE_URL}/mailing-lists/${id}/contacts`, { data: { emails } })
+    return response?.data || response
+  },
+
+  async deleteMailingList(id: string): Promise<void> {
+    await apiService.delete(`${BASE_URL}/mailing-lists/${id}`)
   },
 }

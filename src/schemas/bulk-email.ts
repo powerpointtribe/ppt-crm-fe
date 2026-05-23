@@ -21,6 +21,7 @@ export const recipientFilterSchema = z.object({
   districtIds: z.array(z.string()).optional(),
   membershipStatuses: z.array(z.string()).optional(),
   customMemberIds: z.array(z.string()).optional(),
+  mailingListIds: z.array(z.string()).optional(),
 })
 
 export const emailCampaignSchema = z.object({

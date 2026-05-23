@@ -292,23 +292,11 @@ const menuGroups: MenuGroup[] = [
     items: [
       {
         icon: Mail,
-        label: 'Bulk Email',
+        label: 'Messaging',
         path: '/bulk-email',
         requiredPermission: 'bulk-email:view-campaigns',
         hasDropdown: true,
         subItems: [
-          {
-            icon: FileText,
-            label: 'Templates',
-            path: '/bulk-email/templates',
-            requiredPermission: 'bulk-email:view-templates',
-          },
-          {
-            icon: Send,
-            label: 'Campaigns',
-            path: '/bulk-email/campaigns',
-            requiredPermission: 'bulk-email:view-campaigns',
-          },
           {
             icon: Activity,
             label: 'Send History',

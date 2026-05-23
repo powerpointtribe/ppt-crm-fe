@@ -1,318 +1,293 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Send,
-  Plus,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  Clock,
-  Users,
-  Play,
-  XCircle
+  Send, Plus, Search, Eye, Edit, Trash2, Clock, Users, Play, XCircle,
+  MoreHorizontal, CheckCircle, AlertCircle, Loader, Mail, ChevronLeft, ChevronRight, Sparkles
 } from 'lucide-react'
 import Layout from '@/components/Layout'
-import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import Badge from '@/components/ui/Badge'
-import Input from '@/components/ui/Input'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
-import Pagination from '@/components/ui/Pagination'
+import Modal from '@/components/ui/Modal'
 import { bulkEmailService } from '@/services/bulk-email'
-import { EmailCampaign, CampaignStatus, CampaignQueryParams } from '@/types/bulk-email'
+import { EmailCampaign, CampaignStatus } from '@/types/bulk-email'
 import { showToast } from '@/utils/toast'
 import { formatDate } from '@/utils/formatters'
 
-function getStatusBadge(status: CampaignStatus) {
-  switch (status) {
-    case CampaignStatus.DRAFT:
-      return <Badge variant="secondary">Draft</Badge>
-    case CampaignStatus.SCHEDULED:
-      return <Badge variant="info">Scheduled</Badge>
-    case CampaignStatus.SENDING:
-      return <Badge variant="warning">Sending</Badge>
-    case CampaignStatus.SENT:
-      return <Badge variant="success">Sent</Badge>
-    case CampaignStatus.FAILED:
-      return <Badge variant="error">Failed</Badge>
-    case CampaignStatus.CANCELLED:
-      return <Badge variant="secondary">Cancelled</Badge>
-    default:
-      return <Badge>{status}</Badge>
-  }
+const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; icon: any; label: string }> = {
+  draft: { bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400', icon: Edit, label: 'Draft' },
+  scheduled: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500', icon: Clock, label: 'Scheduled' },
+  sending: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', icon: Loader, label: 'Sending' },
+  sent: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', icon: CheckCircle, label: 'Sent' },
+  failed: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', icon: AlertCircle, label: 'Failed' },
+  cancelled: { bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-400', icon: XCircle, label: 'Cancelled' },
 }
 
 export default function Campaigns() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<any>(null)
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
-  const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || '')
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0,
-  })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{ type: string; campaign: EmailCampaign } | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
-  const fetchCampaigns = useCallback(async () => {
+  const loadCampaigns = useCallback(async (page = currentPage) => {
     try {
       setLoading(true)
-      const params: CampaignQueryParams = {
-        page: pagination.page,
-        limit: pagination.limit,
-        search: searchTerm || undefined,
-        status: selectedStatus as CampaignStatus || undefined,
-      }
-
-      const response = await bulkEmailService.getCampaigns(params)
-      setCampaigns(response.items)
-      setPagination((prev) => ({
-        ...prev,
-        total: response.pagination.total,
-        totalPages: response.pagination.totalPages,
-      }))
-    } catch (error: any) {
-      console.error('Error fetching campaigns:', error)
-      setError(error)
+      const params: any = { page, limit: 15, sortBy: 'createdAt', sortOrder: 'desc' }
+      if (statusFilter) params.status = statusFilter
+      if (searchTerm) params.search = searchTerm
+      const res = await bulkEmailService.getCampaigns(params)
+      setCampaigns(res.items || [])
+      setTotalPages(res.pagination?.totalPages || 1)
+      setCurrentPage(page)
+    } catch (err) {
+      showToast('error', 'Failed to load campaigns')
     } finally {
       setLoading(false)
     }
-  }, [pagination.page, pagination.limit, searchTerm, selectedStatus])
+  }, [currentPage, statusFilter, searchTerm])
 
-  useEffect(() => {
-    fetchCampaigns()
-  }, [fetchCampaigns])
+  useEffect(() => { setCurrentPage(1); loadCampaigns(1) }, [statusFilter])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setPagination((prev) => ({ ...prev, page: 1 }))
-    setSearchParams({
-      ...(searchTerm && { search: searchTerm }),
-      ...(selectedStatus && { status: selectedStatus }),
-    })
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this campaign?')) return
-
+  const handleAction = async () => {
+    if (!confirmModal) return
     try {
-      await bulkEmailService.deleteCampaign(id)
-      showToast('success', 'Campaign deleted successfully')
-      fetchCampaigns()
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to delete campaign')
-    }
-  }
-
-  const handleSend = async (id: string) => {
-    if (!window.confirm('Send this campaign now?')) return
-
-    try {
-      await bulkEmailService.sendCampaign(id)
-      showToast('success', 'Campaign is being sent')
-      fetchCampaigns()
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to send campaign')
-    }
-  }
-
-  const handleCancel = async (id: string) => {
-    if (!window.confirm('Cancel this scheduled campaign?')) return
-
-    try {
-      await bulkEmailService.cancelCampaign(id)
-      showToast('success', 'Campaign cancelled')
-      fetchCampaigns()
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to cancel campaign')
+      setActionLoading(true)
+      const { type, campaign } = confirmModal
+      if (type === 'send') await bulkEmailService.sendCampaign(campaign._id)
+      else if (type === 'cancel') await bulkEmailService.cancelCampaign(campaign._id)
+      else if (type === 'delete') await bulkEmailService.deleteCampaign(campaign._id)
+      showToast('success', `Campaign ${type === 'delete' ? 'deleted' : type === 'send' ? 'sent' : 'cancelled'}`)
+      setConfirmModal(null)
+      loadCampaigns(currentPage)
+    } catch (err: any) {
+      showToast('error', err?.message || `Failed to ${confirmModal.type} campaign`)
+    } finally {
+      setActionLoading(false)
     }
   }
 
   return (
     <Layout title="Email Campaigns">
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Email Campaigns</h1>
-            <p className="text-gray-600">Manage and send email campaigns</p>
+            <h1 className="text-xl font-bold text-gray-900">Campaigns</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Create and manage email campaigns</p>
           </div>
-          <Link to="/bulk-email/campaigns/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Campaign
-            </Button>
-          </Link>
+          <Button onClick={() => navigate('/bulk-email/campaigns/new')} className="shrink-0">
+            <Plus className="h-4 w-4 mr-1.5" /> New Campaign
+          </Button>
         </div>
 
-        {/* Filters */}
-        <Card className="p-4">
-          <form onSubmit={handleSearch} className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-64">
-              <Input
-                placeholder="Search campaigns..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                icon={<Search className="h-4 w-4" />}
-              />
-            </div>
-            <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-            >
-              <option value="">All Status</option>
-              {Object.values(CampaignStatus).map((status) => (
-                <option key={status} value={status}>
-                  {status.toLowerCase().replace('_', ' ')}
-                </option>
-              ))}
-            </select>
-            <Button type="submit">
-              <Filter className="h-4 w-4 mr-2" />
-              Apply
-            </Button>
-          </form>
-        </Card>
-
-        {/* Campaigns List */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <LoadingSpinner size="lg" />
+        {/* Search + Filter */}
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search campaigns..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              onKeyPress={e => e.key === 'Enter' && loadCampaigns(1)}
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] outline-none bg-white"
+            />
           </div>
-        ) : error ? (
-          <Card className="p-8 text-center">
-            <p className="text-red-600">{error.message}</p>
-            <Button variant="outline" onClick={fetchCampaigns} className="mt-4">
-              Retry
-            </Button>
-          </Card>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] outline-none"
+          >
+            <option value="">All</option>
+            <option value="draft">Draft</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="sent">Sent</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex justify-center py-16"><LoadingSpinner /></div>
         ) : campaigns.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Send className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-500 mb-4">No campaigns found</p>
-            <Link to="/bulk-email/campaigns/new">
-              <Button>Create First Campaign</Button>
-            </Link>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-gray-100 p-12 text-center">
+            <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-6 h-6 text-gray-400" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">No campaigns yet</h3>
+            <p className="text-sm text-gray-500 mb-5 max-w-xs mx-auto">
+              {searchTerm || statusFilter ? 'Try adjusting your filters' : 'Create your first email campaign'}
+            </p>
+            {!searchTerm && !statusFilter && (
+              <Button size="sm" onClick={() => navigate('/bulk-email/campaigns/new')}>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Create Campaign
+              </Button>
+            )}
+          </motion.div>
         ) : (
-          <div className="space-y-4">
-            {campaigns.map((campaign, index) => (
-              <motion.div
-                key={campaign._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <Card className="p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-gray-900">{campaign.name}</h3>
-                        {getStatusBadge(campaign.status)}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">{campaign.subject}</p>
-                      <div className="flex items-center gap-6 text-sm text-gray-500">
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-1" />
-                          {campaign.stats.totalRecipients} recipients
-                        </div>
-                        {campaign.status === CampaignStatus.SCHEDULED && campaign.scheduledAt && (
-                          <div className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1" />
-                            Scheduled: {formatDate(campaign.scheduledAt)}
-                          </div>
-                        )}
-                        {campaign.status === CampaignStatus.SENT && campaign.sentAt && (
-                          <div className="flex items-center text-green-600">
-                            <Send className="h-4 w-4 mr-1" />
-                            Sent: {formatDate(campaign.sentAt)}
-                          </div>
-                        )}
-                        {campaign.status === CampaignStatus.SENT && (
-                          <div className="text-gray-600">
-                            {campaign.stats.delivered}/{campaign.stats.sent} delivered
-                          </div>
-                        )}
-                      </div>
+          <div className="space-y-2">
+            {campaigns.map((campaign, index) => {
+              const status = STATUS_CONFIG[campaign.status] || STATUS_CONFIG.draft
+              const stats = campaign.stats || { totalRecipients: 0, sent: 0, delivered: 0, failed: 0 }
+              const deliveryRate = stats.sent > 0 ? Math.round((stats.delivered / stats.sent) * 100) : 0
+
+              return (
+                <motion.div
+                  key={campaign._id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center gap-4 px-4 py-3">
+                    {/* Status icon */}
+                    <div className={`w-9 h-9 rounded-lg ${status.bg} flex items-center justify-center shrink-0`}>
+                      <status.icon className={`w-4 h-4 ${status.text}`} />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/bulk-email/campaigns/${campaign._id}`)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                    {/* Main content */}
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/bulk-email/campaigns/${campaign._id}`)}>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-900 truncate">{campaign.name}</h3>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate max-w-[300px]">{campaign.subject}</p>
+                    </div>
 
-                      {campaign.status === CampaignStatus.DRAFT && (
+                    {/* Meta */}
+                    <div className="hidden md:flex items-center gap-4 shrink-0">
+                      {campaign.status === 'sent' && (
                         <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/bulk-email/campaigns/${campaign._id}/edit`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleSend(campaign._id)}
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Send
-                          </Button>
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Users className="w-3.5 h-3.5" />
+                            {stats.totalRecipients}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${deliveryRate}%` }} />
+                            </div>
+                            <span className="text-emerald-600 font-medium">{deliveryRate}%</span>
+                          </div>
                         </>
                       )}
-
-                      {campaign.status === CampaignStatus.SCHEDULED && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCancel(campaign._id)}
-                          className="text-orange-600 hover:bg-orange-50"
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Cancel
-                        </Button>
+                      {campaign.scheduledAt && campaign.status === 'scheduled' && (
+                        <div className="flex items-center gap-1.5 text-xs text-blue-600">
+                          <Clock className="w-3.5 h-3.5" />
+                          {formatDate(campaign.scheduledAt)}
+                        </div>
                       )}
-
-                      {(campaign.status === CampaignStatus.DRAFT ||
-                        campaign.status === CampaignStatus.CANCELLED) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(campaign._id)}
-                          className="text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      {campaign.sentAt && campaign.status === 'sent' && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          {formatDate(campaign.sentAt)}
+                        </div>
                       )}
                     </div>
+
+                    {/* Status badge */}
+                    <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${status.bg} ${status.text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`}></span>
+                      {status.label}
+                    </span>
+
+                    {/* Actions */}
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={() => setOpenMenuId(openMenuId === campaign._id ? null : campaign._id)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                      <AnimatePresence>
+                        {openMenuId === campaign._id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-20"
+                          >
+                            <button onClick={() => { navigate(`/bulk-email/campaigns/${campaign._id}`); setOpenMenuId(null) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                              <Eye className="w-3.5 h-3.5" /> View
+                            </button>
+                            {campaign.status === 'draft' && (
+                              <>
+                                <button onClick={() => { navigate(`/bulk-email/campaigns/${campaign._id}/edit`); setOpenMenuId(null) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                                  <Edit className="w-3.5 h-3.5" /> Edit
+                                </button>
+                                <button onClick={() => { setConfirmModal({ type: 'send', campaign }); setOpenMenuId(null) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50">
+                                  <Send className="w-3.5 h-3.5" /> Send Now
+                                </button>
+                              </>
+                            )}
+                            {campaign.status === 'scheduled' && (
+                              <button onClick={() => { setConfirmModal({ type: 'cancel', campaign }); setOpenMenuId(null) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-amber-700 hover:bg-amber-50">
+                                <XCircle className="w-3.5 h-3.5" /> Cancel
+                              </button>
+                            )}
+                            {(campaign.status === 'draft' || campaign.status === 'cancelled') && (
+                              <>
+                                <div className="h-px bg-gray-100 my-1"></div>
+                                <button onClick={() => { setConfirmModal({ type: 'delete', campaign }); setOpenMenuId(null) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              </>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
-                </Card>
-              </motion.div>
-            ))}
+                </motion.div>
+              )
+            })}
           </div>
         )}
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <Pagination
-            currentPage={pagination.page}
-            totalPages={pagination.totalPages}
-            onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-          />
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs text-gray-500">Page {currentPage} of {totalPages}</p>
+            <div className="flex gap-1">
+              <button onClick={() => loadCampaigns(currentPage - 1)} disabled={currentPage === 1} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={() => loadCampaigns(p)} className={`w-8 h-8 rounded-lg text-xs font-medium ${p === currentPage ? 'bg-[#0D7770] text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                  {p}
+                </button>
+              ))}
+              <button onClick={() => loadCampaigns(currentPage + 1)} disabled={currentPage === totalPages} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
+
+      {openMenuId && <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />}
+
+      {/* Confirm Modal */}
+      <Modal isOpen={!!confirmModal} onClose={() => setConfirmModal(null)} title={confirmModal ? `${confirmModal.type.charAt(0).toUpperCase() + confirmModal.type.slice(1)} Campaign` : ''}>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            {confirmModal?.type === 'send' && 'This will send the email to all matching recipients immediately.'}
+            {confirmModal?.type === 'cancel' && 'This will cancel the scheduled campaign.'}
+            {confirmModal?.type === 'delete' && 'This cannot be undone.'}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setConfirmModal(null)} disabled={actionLoading}>Cancel</Button>
+            <Button variant={confirmModal?.type === 'delete' ? 'danger' : 'primary'} size="sm" onClick={handleAction} disabled={actionLoading}>
+              {actionLoading ? 'Processing...' : confirmModal?.type === 'send' ? 'Send Now' : confirmModal?.type === 'cancel' ? 'Cancel Campaign' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </Layout>
   )
 }

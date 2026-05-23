@@ -8,12 +8,12 @@ export enum EmailTemplateCategory {
 }
 
 export enum CampaignStatus {
-  DRAFT = 'DRAFT',
-  SCHEDULED = 'SCHEDULED',
-  SENDING = 'SENDING',
-  SENT = 'SENT',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED',
+  DRAFT = 'draft',
+  SCHEDULED = 'scheduled',
+  SENDING = 'sending',
+  SENT = 'sent',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
 }
 
 export enum SendLogStatus {
@@ -25,13 +25,14 @@ export enum SendLogStatus {
 }
 
 export enum RecipientFilterType {
-  ALL_MEMBERS = 'ALL_MEMBERS',
-  BY_BRANCH = 'BY_BRANCH',
-  BY_GROUP = 'BY_GROUP',
-  BY_UNIT = 'BY_UNIT',
-  BY_DISTRICT = 'BY_DISTRICT',
-  BY_MEMBERSHIP_STATUS = 'BY_MEMBERSHIP_STATUS',
-  CUSTOM = 'CUSTOM',
+  ALL_MEMBERS = 'all_members',
+  BY_BRANCH = 'by_branch',
+  BY_GROUP = 'by_group',
+  BY_UNIT = 'by_unit',
+  BY_DISTRICT = 'by_district',
+  BY_MEMBERSHIP_STATUS = 'by_membership_status',
+  BY_MAILING_LIST = 'by_mailing_list',
+  CUSTOM = 'custom',
 }
 
 export interface EmailTemplate {
@@ -58,6 +59,7 @@ export interface RecipientFilter {
   districtIds?: string[]
   membershipStatuses?: string[]
   customMemberIds?: string[]
+  mailingListIds?: string[]
 }
 
 export interface CampaignStats {

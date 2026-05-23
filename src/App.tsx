@@ -128,6 +128,9 @@ const EmailCampaignNew = lazy(() => import('@/pages/BulkEmail/CampaignNew'))
 const EmailCampaignDetail = lazy(() => import('@/pages/BulkEmail/CampaignDetail'))
 const EmailCampaignEdit = lazy(() => import('@/pages/BulkEmail/CampaignEdit'))
 const EmailSendHistory = lazy(() => import('@/pages/BulkEmail/SendHistory'))
+const MailingLists = lazy(() => import('@/pages/BulkEmail/MailingLists'))
+const MailingListNew = lazy(() => import('@/pages/BulkEmail/MailingListNew'))
+const MailingListDetail = lazy(() => import('@/pages/BulkEmail/MailingListDetail'))
 
 // Wrapper for lazy components with smooth loading
 function LazyPage({ children }: { children: React.ReactNode }) {
@@ -671,6 +674,21 @@ function App() {
           <Route path="/bulk-email/history" element={
             <ProtectedRoute>
               <LazyPage><EmailSendHistory /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/mailing-lists" element={
+            <ProtectedRoute>
+              <LazyPage><MailingLists /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/mailing-lists/new" element={
+            <ProtectedRoute>
+              <LazyPage><MailingListNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/mailing-lists/:id" element={
+            <ProtectedRoute>
+              <LazyPage><MailingListDetail /></LazyPage>
             </ProtectedRoute>
           } />
       </Routes>

@@ -1,73 +1,45 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  Mail,
-  FileText,
-  Send,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Plus,
-  TrendingUp,
-  Users,
-  BarChart3
+  Mail, FileText, Send, Clock, CheckCircle, Plus, TrendingUp, Users,
+  ArrowRight, Sparkles, BookOpen, MailPlus
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
-import Button from '@/components/ui/Button'
-import Badge from '@/components/ui/Badge'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import Badge from '@/components/ui/Badge'
 import { bulkEmailService } from '@/services/bulk-email'
-import {
-  BulkEmailStatistics,
-  EmailCampaign,
-  CampaignStatus,
-  EmailTemplateCategory
-} from '@/types/bulk-email'
+import { EmailCampaign } from '@/types/bulk-email'
 import { formatDate } from '@/utils/formatters'
 
-function getStatusBadge(status: CampaignStatus) {
-  switch (status) {
-    case CampaignStatus.DRAFT:
-      return <Badge variant="secondary">Draft</Badge>
-    case CampaignStatus.SCHEDULED:
-      return <Badge variant="info">Scheduled</Badge>
-    case CampaignStatus.SENDING:
-      return <Badge variant="warning">Sending</Badge>
-    case CampaignStatus.SENT:
-      return <Badge variant="success">Sent</Badge>
-    case CampaignStatus.FAILED:
-      return <Badge variant="error">Failed</Badge>
-    case CampaignStatus.CANCELLED:
-      return <Badge variant="secondary">Cancelled</Badge>
-    default:
-      return <Badge>{status}</Badge>
-  }
+const STATUS_DOT: Record<string, string> = {
+  draft: 'bg-gray-400',
+  scheduled: 'bg-blue-500',
+  sending: 'bg-amber-500',
+  sent: 'bg-emerald-500',
+  failed: 'bg-red-500',
+  cancelled: 'bg-gray-400',
 }
 
 export default function BulkEmailDashboard() {
-  const [statistics, setStatistics] = useState<BulkEmailStatistics | null>(null)
+  const navigate = useNavigate()
+  const [statistics, setStatistics] = useState<any>(null)
   const [recentCampaigns, setRecentCampaigns] = useState<EmailCampaign[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<any>(null)
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
+  useEffect(() => { fetchData() }, [])
 
-  const fetchDashboardData = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true)
-      const [stats, campaignsResponse] = await Promise.all([
-        bulkEmailService.getStatistics(),
-        bulkEmailService.getCampaigns({ limit: 5 })
+      const [stats, campaignsRes] = await Promise.all([
+        bulkEmailService.getStatistics().catch(() => null),
+        bulkEmailService.getCampaigns({ limit: 5 }).catch(() => ({ items: [] })),
       ])
       setStatistics(stats)
-      setRecentCampaigns(campaignsResponse.items)
-    } catch (error: any) {
-      console.error('Error fetching dashboard data:', error)
-      setError(error)
+      setRecentCampaigns(campaignsRes.items || [])
+    } catch {
     } finally {
       setLoading(false)
     }
@@ -75,265 +47,176 @@ export default function BulkEmailDashboard() {
 
   if (loading) {
     return (
-      <Layout title="Bulk Email">
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner size="lg" />
-        </div>
+      <Layout title="Messaging">
+        <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
       </Layout>
     )
   }
 
-  if (error) {
-    return (
-      <Layout title="Bulk Email">
-        <Card className="p-8 text-center">
-          <p className="text-red-600">{error.message}</p>
-          <Button variant="outline" onClick={fetchDashboardData} className="mt-4">
-            Retry
-          </Button>
-        </Card>
-      </Layout>
-    )
-  }
+  const s: any = statistics || {}
+  const ds = s.deliveryStats || {}
+  const statusMap = s.statusBreakdown || {}
+  const totalSent = ds.totalSent || 0
+  const totalDelivered = ds.totalDelivered || 0
+  const deliveryRate = totalSent > 0 ? ((totalDelivered / totalSent) * 100).toFixed(1) : '0'
+
+  const NAV_CARDS = [
+    {
+      icon: Send,
+      title: 'Campaigns',
+      desc: 'Create, schedule, and send bulk emails to your audience',
+      path: '/bulk-email/campaigns',
+      color: 'from-blue-500 to-blue-600',
+      stat: `${s.totalCampaigns || 0} campaigns`,
+      action: 'View Campaigns',
+    },
+    {
+      icon: FileText,
+      title: 'Templates',
+      desc: 'Design reusable email templates with variables and styling',
+      path: '/bulk-email/templates',
+      color: 'from-purple-500 to-purple-600',
+      stat: null,
+      action: 'Manage Templates',
+    },
+    {
+      icon: Users,
+      title: 'Mailing Lists',
+      desc: 'Import CSV contacts, create lists from events, or paste emails',
+      path: '/bulk-email/mailing-lists',
+      color: 'from-emerald-500 to-emerald-600',
+      stat: null,
+      action: 'Manage Lists',
+    },
+  ]
 
   return (
-    <Layout title="Bulk Email">
+    <Layout title="Messaging">
       <div className="space-y-6">
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Bulk Email</h1>
-            <p className="text-gray-600">Manage email templates and campaigns</p>
+            <h1 className="text-xl font-bold text-gray-900">Messaging Hub</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage email campaigns, templates, and mailing lists</p>
           </div>
-          <div className="flex gap-2">
-            <Link to="/bulk-email/templates/new">
-              <Button variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
-                New Template
-              </Button>
-            </Link>
-            <Link to="/bulk-email/campaigns/new">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Campaign
-              </Button>
-            </Link>
-          </div>
+          <button
+            onClick={() => navigate('/bulk-email/campaigns/new')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#0D7770] hover:bg-[#095D58] text-white text-sm font-medium rounded-xl transition-colors shadow-sm"
+          >
+            <MailPlus className="w-4 h-4" />
+            New Campaign
+          </button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Templates</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {statistics?.templates.total || 0}
-                  </p>
-                  <p className="text-xs text-green-600 mt-1">
-                    {statistics?.templates.active || 0} active
-                  </p>
+        {/* Quick stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Campaigns', value: s.totalCampaigns || 0, icon: Send, color: 'text-blue-600 bg-blue-50' },
+            { label: 'Sent', value: statusMap.sent || 0, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50' },
+            { label: 'Emails Delivered', value: totalDelivered.toLocaleString(), icon: Mail, color: 'text-purple-600 bg-purple-50' },
+            { label: 'Delivery Rate', value: `${deliveryRate}%`, icon: TrendingUp, color: 'text-amber-600 bg-amber-50' },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="bg-white rounded-xl border border-gray-100 p-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg ${stat.color} flex items-center justify-center`}>
+                  <stat.icon className="w-4 h-4" />
                 </div>
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-blue-600" />
+                <div>
+                  <p className="text-lg font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-xs text-gray-500">{stat.label}</p>
                 </div>
               </div>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Campaigns</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {statistics?.campaigns.total || 0}
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    {statistics?.campaigns.thisMonth || 0} this month
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                  <Send className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Emails Sent</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {statistics?.emails.totalSent.toLocaleString() || 0}
-                  </p>
-                  <p className="text-xs text-green-600 mt-1">
-                    {statistics?.emails.delivered.toLocaleString() || 0} delivered
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                  <Mail className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Delivery Rate</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {statistics?.emails.deliveryRate.toFixed(1) || 0}%
-                  </p>
-                  <p className="text-xs text-red-600 mt-1">
-                    {statistics?.emails.failed || 0} failed
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-orange-600" />
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+            </motion.div>
+          ))}
         </div>
 
-        {/* Quick Actions & Recent Campaigns */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Quick Actions */}
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <Link to="/bulk-email/templates" className="block">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">Manage Templates</p>
-                    <p className="text-sm text-gray-600">Create and edit email templates</p>
+        {/* Navigation cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {NAV_CARDS.map((card, i) => (
+            <motion.div
+              key={card.title}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + i * 0.08 }}
+            >
+              <Link to={card.path} className="block group">
+                <div className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all p-5 h-full">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center mb-4`}>
+                    <card.icon className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">{card.title}</h3>
+                  <p className="text-sm text-gray-500 mb-4 leading-relaxed">{card.desc}</p>
+                  <div className="flex items-center justify-between">
+                    {card.stat && (
+                      <span className="text-xs font-medium text-gray-400">{card.stat}</span>
+                    )}
+                    <span className="text-xs font-medium text-[#0D7770] group-hover:text-[#095D58] flex items-center gap-1 ml-auto">
+                      {card.action} <ArrowRight className="w-3 h-3" />
+                    </span>
                   </div>
                 </div>
               </Link>
-              <Link to="/bulk-email/campaigns" className="block">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <Send className="h-5 w-5 text-purple-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">View Campaigns</p>
-                    <p className="text-sm text-gray-600">Manage email campaigns</p>
-                  </div>
-                </div>
-              </Link>
-              <Link to="/bulk-email/history" className="block">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <BarChart3 className="h-5 w-5 text-green-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">Send History</p>
-                    <p className="text-sm text-gray-600">View campaign analytics</p>
-                  </div>
-                </div>
-              </Link>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Recent campaigns */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-900">Recent Campaigns</h2>
+            <Link to="/bulk-email/campaigns" className="text-xs text-[#0D7770] hover:text-[#095D58] font-medium flex items-center gap-1">
+              View all <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {recentCampaigns.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+              <Sparkles className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No campaigns yet. Create your first one!</p>
             </div>
-          </Card>
+          ) : (
+            <div className="space-y-2">
+              {recentCampaigns.map((c, i) => {
+                const stats = c.stats || { totalRecipients: 0, sent: 0, delivered: 0 }
+                const rate = stats.sent > 0 ? Math.round((stats.delivered / stats.sent) * 100) : 0
 
-          {/* Recent Campaigns */}
-          <div className="lg:col-span-2">
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Recent Campaigns</h3>
-                <Link to="/bulk-email/campaigns">
-                  <Button variant="ghost" size="sm">View All</Button>
-                </Link>
-              </div>
-
-              {recentCampaigns.length === 0 ? (
-                <div className="text-center py-8">
-                  <Mail className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-500">No campaigns yet</p>
-                  <Link to="/bulk-email/campaigns/new">
-                    <Button variant="outline" className="mt-4">Create First Campaign</Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {recentCampaigns.map((campaign, index) => (
-                    <motion.div
-                      key={campaign._id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Link to={`/bulk-email/campaigns/${campaign._id}`}>
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                              <Send className="h-5 w-5 text-purple-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{campaign.name}</p>
-                              <div className="flex items-center gap-2 text-sm text-gray-500">
-                                <Users className="h-3 w-3" />
-                                <span>{campaign.stats.totalRecipients} recipients</span>
-                                <span>•</span>
-                                <span>{formatDate(campaign.createdAt)}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {getStatusBadge(campaign.status)}
-                            {campaign.status === CampaignStatus.SENT && (
-                              <span className="text-xs text-gray-500">
-                                {campaign.stats.delivered}/{campaign.stats.sent}
-                              </span>
-                            )}
-                          </div>
+                return (
+                  <motion.div
+                    key={c._id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + i * 0.04 }}
+                  >
+                    <Link to={`/bulk-email/campaigns/${c._id}`} className="block">
+                      <div className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all px-4 py-3 flex items-center gap-3">
+                        <span className={`w-2 h-2 rounded-full ${STATUS_DOT[c.status] || 'bg-gray-400'} shrink-0`}></span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{c.subject}</p>
                         </div>
-                      </Link>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </div>
-        </div>
-
-        {/* Template Categories */}
-        {statistics && (
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Templates by Category</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {Object.values(EmailTemplateCategory).map((category) => (
-                <div
-                  key={category}
-                  className="text-center p-4 bg-gray-50 rounded-lg"
-                >
-                  <p className="text-2xl font-bold text-gray-900">
-                    {statistics.templates.byCategory[category] || 0}
-                  </p>
-                  <p className="text-sm text-gray-600 capitalize">
-                    {category.toLowerCase().replace('_', ' ')}
-                  </p>
-                </div>
-              ))}
+                        <div className="hidden sm:flex items-center gap-3 shrink-0 text-xs text-gray-500">
+                          {c.status === 'sent' && (
+                            <span className="text-emerald-600 font-medium">{rate}% delivered</span>
+                          )}
+                          <span className="capitalize">{c.status}</span>
+                          {c.sentAt && <span>{formatDate(c.sentAt)}</span>}
+                        </div>
+                        <ArrowRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                      </div>
+                    </Link>
+                  </motion.div>
+                )
+              })}
             </div>
-          </Card>
-        )}
+          )}
+        </div>
       </div>
     </Layout>
   )

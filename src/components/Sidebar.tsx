@@ -38,6 +38,8 @@ import {
   Wallet,
   Upload,
   Calendar,
+  Mail,
+  Send,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -234,6 +236,38 @@ const menuGroups: MenuGroup[] = [
             label: 'Disbursements',
             path: '/finance/disbursements',
             requiredPermission: 'finance:disburse',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Communication',
+    items: [
+      {
+        icon: Mail,
+        label: 'Bulk Email',
+        path: '/bulk-email',
+        requiredPermission: 'bulk-email:view-campaigns',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: FileText,
+            label: 'Templates',
+            path: '/bulk-email/templates',
+            requiredPermission: 'bulk-email:view-templates',
+          },
+          {
+            icon: Send,
+            label: 'Campaigns',
+            path: '/bulk-email/campaigns',
+            requiredPermission: 'bulk-email:view-campaigns',
+          },
+          {
+            icon: Activity,
+            label: 'Send History',
+            path: '/bulk-email/history',
+            requiredPermission: 'bulk-email:view-campaigns',
           },
         ],
       },

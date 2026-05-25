@@ -37,6 +37,16 @@ export const bulkEmailService = {
     return response.items
   },
 
+  async getModuleCounts(): Promise<{ module: string; count: number }[]> {
+    const response = await apiService.get<{ module: string; count: number }[]>(`${BASE_URL}/templates/modules`)
+    return response
+  },
+
+  async getTemplateBySlug(slug: string): Promise<EmailTemplate> {
+    const response = await apiService.get<EmailTemplate>(`${BASE_URL}/templates/by-slug/${slug}`)
+    return response
+  },
+
   async createTemplate(data: CreateEmailTemplateData): Promise<EmailTemplate> {
     const response = await apiService.post<EmailTemplate>(`${BASE_URL}/templates`, data)
     return response

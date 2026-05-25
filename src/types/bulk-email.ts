@@ -7,6 +7,22 @@ export enum EmailTemplateCategory {
   NEWSLETTER = 'NEWSLETTER',
 }
 
+export enum TemplateModule {
+  FIRST_TIMERS = 'first-timers',
+  MEMBERS = 'members',
+  EVENTS = 'events',
+  FINANCE = 'finance',
+  AUTH = 'auth',
+  GROUPS = 'groups',
+  BULK_EMAIL = 'bulk-email',
+}
+
+export interface VariableDefinition {
+  name: string
+  description?: string
+  sampleValue?: string
+}
+
 export enum CampaignStatus {
   DRAFT = 'draft',
   SCHEDULED = 'scheduled',
@@ -37,14 +53,18 @@ export enum RecipientFilterType {
 
 export interface EmailTemplate {
   _id: string
-  branch: string | { _id: string; name: string }
+  branch?: string | { _id: string; name: string }
   name: string
   subject: string
   htmlContent: string
   plainTextContent?: string
   availableVariables: string[]
   category: EmailTemplateCategory
+  module?: TemplateModule
+  slug?: string
+  isSystem?: boolean
   isActive: boolean
+  variableDefinitions?: VariableDefinition[]
   createdBy: string | { _id: string; firstName: string; lastName: string }
   updatedBy?: string | { _id: string; firstName: string; lastName: string }
   createdAt: string
@@ -79,6 +99,8 @@ export interface EmailCampaign {
   htmlContent: string
   template?: string | EmailTemplate
   recipientFilter: RecipientFilter
+  ccEmails?: string[]
+  bccEmails?: string[]
   status: CampaignStatus
   scheduledAt?: string
   sentAt?: string
@@ -107,12 +129,15 @@ export interface EmailSendLog {
 
 // DTOs
 export interface CreateEmailTemplateData {
-  branch: string
+  branch?: string
   name: string
   subject: string
   htmlContent: string
   plainTextContent?: string
   category: EmailTemplateCategory
+  module?: TemplateModule
+  slug?: string
+  variableDefinitions?: VariableDefinition[]
   isActive?: boolean
 }
 
@@ -122,6 +147,9 @@ export interface UpdateEmailTemplateData {
   htmlContent?: string
   plainTextContent?: string
   category?: EmailTemplateCategory
+  module?: TemplateModule
+  slug?: string
+  variableDefinitions?: VariableDefinition[]
   isActive?: boolean
 }
 
@@ -132,6 +160,8 @@ export interface CreateEmailCampaignData {
   htmlContent: string
   template?: string
   recipientFilter: RecipientFilter
+  ccEmails?: string[]
+  bccEmails?: string[]
 }
 
 export interface UpdateEmailCampaignData {
@@ -152,6 +182,7 @@ export interface TemplateQueryParams {
   limit?: number
   search?: string
   category?: EmailTemplateCategory
+  module?: TemplateModule | 'uncategorized'
   isActive?: boolean
 }
 

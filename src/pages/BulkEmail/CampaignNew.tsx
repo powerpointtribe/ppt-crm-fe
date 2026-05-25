@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Mail, Send, Clock, Eye, Users, Search, Check, X, FileText, Sparkles, ArrowLeft, Filter } from 'lucide-react'
+import { Mail, Send, Clock, Eye, Users, Search, Check, X, FileText, Sparkles, ArrowLeft, Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -43,6 +43,8 @@ export default function CampaignNew() {
   const [filterType, setFilterType] = useState<RecipientFilterType>(RecipientFilterType.ALL_MEMBERS)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [ccEmails, setCcEmails] = useState('')
+  const [bccEmails, setBccEmails] = useState('')
   const [schedDate, setSchedDate] = useState('')
   const [schedTime, setSchedTime] = useState('')
 
@@ -50,6 +52,7 @@ export default function CampaignNew() {
   const [listItems, setListItems] = useState<ListItem[]>([])
   const [listSearch, setListSearch] = useState('')
 
+  const [showAllTemplates, setShowAllTemplates] = useState(false)
   const [saving, setSaving] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
   const [showTestModal, setShowTestModal] = useState(false)
@@ -149,8 +152,15 @@ export default function CampaignNew() {
     else if (filterType === RecipientFilterType.BY_MEMBERSHIP_STATUS) rf.membershipStatuses = selectedStatuses
     else if (filterType === RecipientFilterType.BY_MAILING_LIST) rf.mailingListIds = selectedIds
     else if (filterType === RecipientFilterType.CUSTOM) rf.customMemberIds = selectedIds
-    return { branch: selectedBranch?._id || '', name: campaignName.trim(), subject: subject.trim(),
-      htmlContent: htmlContent.trim(), template: templateId || undefined, recipientFilter: rf }
+    const data: any = { name: campaignName.trim(), subject: subject.trim(),
+      htmlContent: htmlContent.trim(), recipientFilter: rf }
+    if (selectedBranch?._id) data.branch = selectedBranch._id
+    if (templateId) data.template = templateId
+    const parsedCc = ccEmails.split(',').map(e => e.trim()).filter(Boolean)
+    const parsedBcc = bccEmails.split(',').map(e => e.trim()).filter(Boolean)
+    if (parsedCc.length) data.ccEmails = parsedCc
+    if (parsedBcc.length) data.bccEmails = parsedBcc
+    return data
   }
 
   const validate = () => {
@@ -238,9 +248,14 @@ export default function CampaignNew() {
 
         {/* A. Template Selector */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#0D7770]" /> Choose a Template
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[#0D7770]" /> Choose a Template
+            </h2>
+            {templates.length > 0 && (
+              <span className="text-xs text-gray-400">{templates.length} templates available</span>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <motion.div whileHover={{ y: -2 }} onClick={() => setTemplateId(null)}
               className={`rounded-xl p-4 cursor-pointer transition-all ${!templateId
@@ -254,7 +269,7 @@ export default function CampaignNew() {
                 <FileText className="w-8 h-8 text-gray-300" />
               </div>
             </motion.div>
-            {templates.map(tpl => {
+            {(showAllTemplates ? templates : templates.slice(0, 5)).map(tpl => {
               const sel = templateId === tpl._id
               return (
                 <motion.div key={tpl._id} whileHover={{ y: -2 }} onClick={() => selectTemplate(tpl)}
@@ -271,6 +286,19 @@ export default function CampaignNew() {
             })}
             {!templates.length && <div className="col-span-2 text-center py-8 text-gray-400"><FileText className="w-8 h-8 mx-auto mb-2" /><p className="text-sm">Loading templates...</p></div>}
           </div>
+          {templates.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setShowAllTemplates(!showAllTemplates)}
+              className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-[#0D7770] hover:bg-[#0D7770]/5 rounded-lg transition-colors"
+            >
+              {showAllTemplates ? (
+                <><ChevronUp className="w-4 h-4" /> Show Less</>
+              ) : (
+                <><ChevronDown className="w-4 h-4" /> View All {templates.length} Templates</>
+              )}
+            </button>
+          )}
         </section>
 
         {/* B. Campaign Details */}
@@ -287,6 +315,16 @@ export default function CampaignNew() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject Line <span className="text-red-500">*</span></label>
                 <input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g., Important Update from Church" className={inputCls} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CC <span className="text-xs text-gray-400 font-normal">(comma-separated)</span></label>
+                  <input type="text" value={ccEmails} onChange={e => setCcEmails(e.target.value)} placeholder="e.g., pastor@church.org, admin@church.org" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">BCC <span className="text-xs text-gray-400 font-normal">(comma-separated)</span></label>
+                  <input type="text" value={bccEmails} onChange={e => setBccEmails(e.target.value)} placeholder="e.g., records@church.org" className={inputCls} />
+                </div>
               </div>
             </div>
           </Card>

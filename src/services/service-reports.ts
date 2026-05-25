@@ -184,29 +184,53 @@ export const serviceReportsService = {
         throw new Error('No HTML content received from server')
       }
 
-      // Create a new window/tab with the HTML content for printing
-      const printWindow = window.open('', '_blank')
-      if (printWindow) {
-        printWindow.document.open()
-        printWindow.document.write(htmlContent)
-        printWindow.document.close()
+      const { default: jsPDF } = await import('jspdf')
+      const { default: html2canvas } = await import('html2canvas')
 
-        // Auto-trigger print dialog after content loads
-        printWindow.onload = () => {
-          printWindow.print()
-        }
-      } else {
-        // Fallback: create a blob and download as HTML
-        const blob = new Blob([htmlContent], { type: 'text/html' })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `service-report-${id}.html`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+      // Create a hidden container to render the HTML
+      const container = document.createElement('div')
+      container.style.position = 'fixed'
+      container.style.left = '-9999px'
+      container.style.top = '0'
+      container.style.width = '800px'
+      container.innerHTML = htmlContent
+      document.body.appendChild(container)
+
+      // Wait for images/fonts to load
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Render to canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: 800,
+      })
+
+      document.body.removeChild(container)
+
+      // Convert canvas to PDF
+      const imgData = canvas.toDataURL('image/png')
+      const imgWidth = 210 // A4 width in mm
+      const pageHeight = 297 // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+
+      // Add extra pages if content overflows
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
       }
+
+      pdf.save(`service-report-${id}.pdf`)
     } catch (error) {
       console.error('Error generating PDF:', error)
       throw error

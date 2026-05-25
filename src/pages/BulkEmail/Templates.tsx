@@ -1,44 +1,40 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  FileText,
-  Plus,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  CheckCircle,
-  XCircle
+  FileText, Plus, Search, Eye, Edit, Trash2, CheckCircle, XCircle,
+  Lock, LayoutGrid, MoreHorizontal, ChevronLeft, ChevronRight, Sparkles,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
-import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
-import Input from '@/components/ui/Input'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
-import Pagination from '@/components/ui/Pagination'
+import Modal from '@/components/ui/Modal'
 import { bulkEmailService } from '@/services/bulk-email'
-import { EmailTemplate, EmailTemplateCategory, TemplateQueryParams } from '@/types/bulk-email'
+import { EmailTemplate, EmailTemplateCategory, TemplateModule, TemplateQueryParams } from '@/types/bulk-email'
 import { showToast } from '@/utils/toast'
 import { formatDate } from '@/utils/formatters'
 
-function getCategoryBadge(category: EmailTemplateCategory) {
-  const colors: Record<EmailTemplateCategory, string> = {
-    [EmailTemplateCategory.GENERAL]: 'bg-gray-100 text-gray-700',
-    [EmailTemplateCategory.WELCOME]: 'bg-green-100 text-green-700',
-    [EmailTemplateCategory.ANNOUNCEMENT]: 'bg-blue-100 text-blue-700',
-    [EmailTemplateCategory.EVENT]: 'bg-purple-100 text-purple-700',
-    [EmailTemplateCategory.REMINDER]: 'bg-orange-100 text-orange-700',
-    [EmailTemplateCategory.NEWSLETTER]: 'bg-pink-100 text-pink-700',
-  }
+const MODULE_LABELS: Record<string, string> = {
+  [TemplateModule.FIRST_TIMERS]: 'First Timers',
+  [TemplateModule.MEMBERS]: 'Members',
+  [TemplateModule.EVENTS]: 'Events',
+  [TemplateModule.FINANCE]: 'Finance',
+  [TemplateModule.AUTH]: 'Auth',
+  [TemplateModule.GROUPS]: 'Groups',
+  [TemplateModule.BULK_EMAIL]: 'Bulk Email',
+  uncategorized: 'Uncategorized',
+}
 
-  return (
-    <Badge className={colors[category]}>
-      {category.toLowerCase().replace('_', ' ')}
-    </Badge>
-  )
+const MODULE_COLORS: Record<string, { bg: string; text: string }> = {
+  [TemplateModule.FIRST_TIMERS]: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  [TemplateModule.MEMBERS]: { bg: 'bg-blue-50', text: 'text-blue-700' },
+  [TemplateModule.EVENTS]: { bg: 'bg-purple-50', text: 'text-purple-700' },
+  [TemplateModule.FINANCE]: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
+  [TemplateModule.AUTH]: { bg: 'bg-red-50', text: 'text-red-700' },
+  [TemplateModule.GROUPS]: { bg: 'bg-teal-50', text: 'text-teal-700' },
+  [TemplateModule.BULK_EMAIL]: { bg: 'bg-indigo-50', text: 'text-indigo-700' },
+  uncategorized: { bg: 'bg-gray-50', text: 'text-gray-700' },
 }
 
 export default function Templates() {
@@ -50,12 +46,21 @@ export default function Templates() {
   const [error, setError] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
+  const [selectedModule, setSelectedModule] = useState(searchParams.get('module') || '')
+  const [moduleCounts, setModuleCounts] = useState<{ module: string; count: number }[]>([])
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{ id: string; name: string } | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
     total: 0,
     totalPages: 0,
   })
+
+  useEffect(() => {
+    bulkEmailService.getModuleCounts().then(setModuleCounts).catch(() => {})
+  }, [])
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -65,6 +70,7 @@ export default function Templates() {
         limit: pagination.limit,
         search: searchTerm || undefined,
         category: selectedCategory as EmailTemplateCategory || undefined,
+        module: selectedModule as TemplateModule || undefined,
       }
 
       const response = await bulkEmailService.getTemplates(params)
@@ -80,168 +86,272 @@ export default function Templates() {
     } finally {
       setLoading(false)
     }
-  }, [pagination.page, pagination.limit, searchTerm, selectedCategory])
+  }, [pagination.page, pagination.limit, searchTerm, selectedCategory, selectedModule])
 
-  useEffect(() => {
-    fetchTemplates()
-  }, [fetchTemplates])
+  useEffect(() => { fetchTemplates() }, [fetchTemplates])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSearch = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      setPagination((prev) => ({ ...prev, page: 1 }))
+      setSearchParams({
+        ...(searchTerm && { search: searchTerm }),
+        ...(selectedCategory && { category: selectedCategory }),
+        ...(selectedModule && { module: selectedModule }),
+      })
+    }
+  }
+
+  const handleModuleFilter = (mod: string) => {
+    const next = mod === selectedModule ? '' : mod
+    setSelectedModule(next)
     setPagination((prev) => ({ ...prev, page: 1 }))
     setSearchParams({
       ...(searchTerm && { search: searchTerm }),
       ...(selectedCategory && { category: selectedCategory }),
+      ...(next && { module: next }),
     })
   }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this template?')) return
-
+  const handleDelete = async () => {
+    if (!deleteModal) return
     try {
-      await bulkEmailService.deleteTemplate(id)
+      setDeleteLoading(true)
+      await bulkEmailService.deleteTemplate(deleteModal.id)
       showToast('success', 'Template deleted successfully')
+      setDeleteModal(null)
       fetchTemplates()
     } catch (error: any) {
       showToast('error', error.message || 'Failed to delete template')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
+  const totalTemplates = moduleCounts.reduce((sum, m) => sum + m.count, 0)
+
   return (
     <Layout title="Email Templates">
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Email Templates</h1>
-            <p className="text-gray-600">Manage reusable email templates</p>
+            <h1 className="text-xl font-bold text-gray-900">Email Templates</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage reusable email templates across all modules</p>
           </div>
-          <Link to="/bulk-email/templates/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Template
-            </Button>
-          </Link>
+          <Button onClick={() => navigate('/bulk-email/templates/new')} className="shrink-0">
+            <Plus className="h-4 w-4 mr-1.5" /> New Template
+          </Button>
         </div>
 
-        {/* Filters */}
-        <Card className="p-4">
-          <form onSubmit={handleSearch} className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-64">
-              <Input
-                placeholder="Search templates..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                icon={<Search className="h-4 w-4" />}
-              />
-            </div>
-            <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+        {/* Module Tabs */}
+        {moduleCounts.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleModuleFilter('')}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                !selectedModule
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              <option value="">All Categories</option>
-              {Object.values(EmailTemplateCategory).map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat.toLowerCase().replace('_', ' ')}
-                </option>
-              ))}
-            </select>
-            <Button type="submit">
-              <Filter className="h-4 w-4 mr-2" />
-              Apply
-            </Button>
-          </form>
-        </Card>
+              <LayoutGrid className="h-3 w-3 inline mr-1" />
+              All ({totalTemplates})
+            </button>
+            {moduleCounts.map(({ module: mod, count }) => {
+              const colors = MODULE_COLORS[mod] || MODULE_COLORS.uncategorized
+              return (
+                <button
+                  key={mod}
+                  onClick={() => handleModuleFilter(mod)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    selectedModule === mod
+                      ? 'bg-gray-900 text-white'
+                      : `${colors.bg} ${colors.text} hover:opacity-80`
+                  }`}
+                >
+                  {MODULE_LABELS[mod] || mod} ({count})
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Search + Filter */}
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search templates..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={handleSearch}
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] outline-none bg-white"
+            />
+          </div>
+          <select
+            value={selectedCategory}
+            onChange={(e) => {
+              setSelectedCategory(e.target.value)
+              setPagination((prev) => ({ ...prev, page: 1 }))
+            }}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] outline-none"
+          >
+            <option value="">All Categories</option>
+            {Object.values(EmailTemplateCategory).map((cat) => (
+              <option key={cat} value={cat}>
+                {cat.charAt(0) + cat.slice(1).toLowerCase().replace('_', ' ')}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Templates List */}
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <LoadingSpinner size="lg" />
-          </div>
+          <div className="flex justify-center py-16"><LoadingSpinner /></div>
         ) : error ? (
-          <Card className="p-8 text-center">
-            <p className="text-red-600">{error.message}</p>
-            <Button variant="outline" onClick={fetchTemplates} className="mt-4">
-              Retry
-            </Button>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-gray-100 p-12 text-center">
+            <p className="text-sm text-red-600 mb-3">{error.message}</p>
+            <Button size="sm" variant="secondary" onClick={fetchTemplates}>Retry</Button>
+          </motion.div>
         ) : templates.length === 0 ? (
-          <Card className="p-8 text-center">
-            <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-500 mb-4">No templates found</p>
-            <Link to="/bulk-email/templates/new">
-              <Button>Create First Template</Button>
-            </Link>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-gray-100 p-12 text-center">
+            <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-6 h-6 text-gray-400" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">No templates found</h3>
+            <p className="text-sm text-gray-500 mb-5 max-w-xs mx-auto">
+              {searchTerm || selectedCategory || selectedModule ? 'Try adjusting your filters' : 'Create your first email template'}
+            </p>
+            {!searchTerm && !selectedCategory && !selectedModule && (
+              <Button size="sm" onClick={() => navigate('/bulk-email/templates/new')}>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Create Template
+              </Button>
+            )}
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.map((template, index) => (
-              <motion.div
-                key={template._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card className="p-4 hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      {getCategoryBadge(template.category)}
-                      {template.isActive ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-gray-400" />
+          <div className="space-y-2">
+            {templates.map((template, index) => {
+              const modColors = MODULE_COLORS[template.module || ''] || MODULE_COLORS.uncategorized
+              return (
+                <motion.div
+                  key={template._id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center gap-4 px-4 py-3">
+                    {/* Module icon */}
+                    <div className={`w-9 h-9 rounded-lg ${modColors.bg} flex items-center justify-center shrink-0`}>
+                      <FileText className={`w-4 h-4 ${modColors.text}`} />
+                    </div>
+
+                    {/* Main content */}
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/bulk-email/templates/${template._id}`)}>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-900 truncate">{template.name}</h3>
+                        {template.isSystem && <Lock className="w-3.5 h-3.5 text-gray-400 shrink-0" title="System template" />}
+                        {template.isActive ? (
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 truncate max-w-[400px]">{template.subject}</p>
+                    </div>
+
+                    {/* Meta */}
+                    <div className="hidden md:flex items-center gap-3 shrink-0">
+                      {template.module && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${modColors.bg} ${modColors.text}`}>
+                          {MODULE_LABELS[template.module] || template.module}
+                        </span>
                       )}
+                      {template.slug && (
+                        <span className="text-[11px] text-gray-400 font-mono max-w-[140px] truncate">{template.slug}</span>
+                      )}
+                      <span className="text-xs text-gray-400">{formatDate(template.createdAt)}</span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={() => setOpenMenuId(openMenuId === template._id ? null : template._id)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                      <AnimatePresence>
+                        {openMenuId === template._id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-20"
+                          >
+                            <button onClick={() => { navigate(`/bulk-email/templates/${template._id}`); setOpenMenuId(null) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                              <Eye className="w-3.5 h-3.5" /> View
+                            </button>
+                            <button onClick={() => { navigate(`/bulk-email/templates/${template._id}/edit`); setOpenMenuId(null) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                              <Edit className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            {!template.isSystem && (
+                              <>
+                                <div className="h-px bg-gray-100 my-1"></div>
+                                <button onClick={() => { setDeleteModal({ id: template._id, name: template.name }); setOpenMenuId(null) }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
+                              </>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
-
-                  <h3 className="font-semibold text-gray-900 mb-1">{template.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-1">{template.subject}</p>
-
-                  <div className="text-xs text-gray-500 mb-4">
-                    Created: {formatDate(template.createdAt)}
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-4 border-t border-gray-100">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/bulk-email/templates/${template._id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/bulk-email/templates/${template._id}/edit`)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(template._id)}
-                      className="text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+                </motion.div>
+              )
+            })}
           </div>
         )}
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <Pagination
-            currentPage={pagination.page}
-            totalPages={pagination.totalPages}
-            onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-          />
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs text-gray-500">Page {pagination.page} of {pagination.totalPages} &middot; {pagination.total} total</p>
+            <div className="flex gap-1">
+              <button onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))} disabled={pagination.page === 1} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={() => setPagination(prev => ({ ...prev, page: p }))} className={`w-8 h-8 rounded-lg text-xs font-medium ${p === pagination.page ? 'bg-[#0D7770] text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                  {p}
+                </button>
+              ))}
+              <button onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))} disabled={pagination.page === pagination.totalPages} className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
+
+      {openMenuId && <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />}
+
+      {/* Delete Modal */}
+      <Modal isOpen={!!deleteModal} onClose={() => setDeleteModal(null)} title="Delete Template">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Are you sure you want to delete <span className="font-semibold">"{deleteModal?.name}"</span>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setDeleteModal(null)} disabled={deleteLoading}>Cancel</Button>
+            <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleteLoading}>
+              {deleteLoading ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </Layout>
   )
 }

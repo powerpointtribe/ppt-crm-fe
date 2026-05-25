@@ -199,6 +199,7 @@ export interface SendLogQueryParams {
   page?: number
   limit?: number
   status?: SendLogStatus
+  email?: string
 }
 
 // Response types

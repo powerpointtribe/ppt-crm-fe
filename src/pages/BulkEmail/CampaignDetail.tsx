@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft, Edit, Trash2, Send, Clock, Users, Eye, Play, XCircle,
-  CheckCircle, AlertTriangle, Mail, Calendar, TrendingUp, ChevronLeft, ChevronRight,
+  CheckCircle, AlertTriangle, Mail, TrendingUp, ChevronLeft, ChevronRight, Search,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
-import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { bulkEmailService } from '@/services/bulk-email'
 import {
-  EmailCampaign, CampaignStatus, EmailSendLog, SendLogStatus, RecipientPreview,
+  EmailCampaign, CampaignStatus, EmailSendLog, RecipientPreview,
 } from '@/types/bulk-email'
 import { showToast } from '@/utils/toast'
 import { formatDate } from '@/utils/formatters'
@@ -46,6 +45,8 @@ export default function CampaignDetail() {
   const [showPreview, setShowPreview] = useState(false)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [scheduleDate, setScheduleDate] = useState('')
+  const [logSearch, setLogSearch] = useState('')
+  const [logSearchInput, setLogSearchInput] = useState('')
   const [logsPagination, setLogsPagination] = useState({
     page: 1, limit: 10, total: 0, totalPages: 0,
   })
@@ -56,7 +57,7 @@ export default function CampaignDetail() {
     if (id && campaign && (campaign.status === CampaignStatus.SENT || campaign.status === CampaignStatus.SENDING)) {
       fetchSendLogs()
     }
-  }, [id, campaign?.status, logsPagination.page])
+  }, [id, campaign?.status, logsPagination.page, logSearch])
 
   const fetchCampaignDetails = async () => {
     try {
@@ -78,9 +79,9 @@ export default function CampaignDetail() {
 
   const fetchSendLogs = async () => {
     try {
-      const response = await bulkEmailService.getCampaignLogs(id!, {
-        page: logsPagination.page, limit: logsPagination.limit,
-      })
+      const params: any = { page: logsPagination.page, limit: logsPagination.limit }
+      if (logSearch) params.email = logSearch
+      const response = await bulkEmailService.getCampaignLogs(id!, params)
       setSendLogs(response.items)
       setLogsPagination((prev) => ({
         ...prev, total: response.pagination.total, totalPages: response.pagination.totalPages,
@@ -231,7 +232,7 @@ export default function CampaignDetail() {
                 { label: 'Sent', value: stats.sent, icon: Send, color: 'text-purple-600 bg-purple-50' },
                 { label: 'Delivered', value: stats.delivered, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50' },
                 { label: 'Delivery Rate', value: `${deliveryRate}%`, icon: TrendingUp, color: 'text-amber-600 bg-amber-50' },
-              ].map((stat, i) => (
+              ].map((stat) => (
                 <div key={stat.label} className="bg-white rounded-xl border border-gray-100 p-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-lg ${stat.color} flex items-center justify-center`}>
@@ -315,9 +316,35 @@ export default function CampaignDetail() {
         {/* Delivery Log */}
         {(campaign.status === CampaignStatus.SENT || campaign.status === CampaignStatus.SENDING) && sendLogs.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
               <h2 className="text-sm font-semibold text-gray-900">Delivery Log</h2>
-              <span className="text-xs text-gray-500">{logsPagination.total} entries</span>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by email..."
+                    value={logSearchInput}
+                    onChange={e => setLogSearchInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        setLogSearch(logSearchInput)
+                        setLogsPagination(p => ({ ...p, page: 1 }))
+                      }
+                    }}
+                    className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] outline-none bg-white w-48"
+                  />
+                  {logSearch && (
+                    <button
+                      onClick={() => { setLogSearchInput(''); setLogSearch(''); setLogsPagination(p => ({ ...p, page: 1 })) }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500">{logsPagination.total} entries</span>
+              </div>
             </div>
             <div className="space-y-1.5">
               {sendLogs.map((log) => {

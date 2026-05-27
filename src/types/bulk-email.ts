@@ -7,13 +7,29 @@ export enum EmailTemplateCategory {
   NEWSLETTER = 'NEWSLETTER',
 }
 
+export enum TemplateModule {
+  FIRST_TIMERS = 'first-timers',
+  MEMBERS = 'members',
+  EVENTS = 'events',
+  FINANCE = 'finance',
+  AUTH = 'auth',
+  GROUPS = 'groups',
+  BULK_EMAIL = 'bulk-email',
+}
+
+export interface VariableDefinition {
+  name: string
+  description?: string
+  sampleValue?: string
+}
+
 export enum CampaignStatus {
-  DRAFT = 'DRAFT',
-  SCHEDULED = 'SCHEDULED',
-  SENDING = 'SENDING',
-  SENT = 'SENT',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED',
+  DRAFT = 'draft',
+  SCHEDULED = 'scheduled',
+  SENDING = 'sending',
+  SENT = 'sent',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
 }
 
 export enum SendLogStatus {
@@ -25,25 +41,30 @@ export enum SendLogStatus {
 }
 
 export enum RecipientFilterType {
-  ALL_MEMBERS = 'ALL_MEMBERS',
-  BY_BRANCH = 'BY_BRANCH',
-  BY_GROUP = 'BY_GROUP',
-  BY_UNIT = 'BY_UNIT',
-  BY_DISTRICT = 'BY_DISTRICT',
-  BY_MEMBERSHIP_STATUS = 'BY_MEMBERSHIP_STATUS',
-  CUSTOM = 'CUSTOM',
+  ALL_MEMBERS = 'all_members',
+  BY_BRANCH = 'by_branch',
+  BY_GROUP = 'by_group',
+  BY_UNIT = 'by_unit',
+  BY_DISTRICT = 'by_district',
+  BY_MEMBERSHIP_STATUS = 'by_membership_status',
+  BY_MAILING_LIST = 'by_mailing_list',
+  CUSTOM = 'custom',
 }
 
 export interface EmailTemplate {
   _id: string
-  branch: string | { _id: string; name: string }
+  branch?: string | { _id: string; name: string }
   name: string
   subject: string
   htmlContent: string
   plainTextContent?: string
   availableVariables: string[]
   category: EmailTemplateCategory
+  module?: TemplateModule
+  slug?: string
+  isSystem?: boolean
   isActive: boolean
+  variableDefinitions?: VariableDefinition[]
   createdBy: string | { _id: string; firstName: string; lastName: string }
   updatedBy?: string | { _id: string; firstName: string; lastName: string }
   createdAt: string
@@ -58,6 +79,7 @@ export interface RecipientFilter {
   districtIds?: string[]
   membershipStatuses?: string[]
   customMemberIds?: string[]
+  mailingListIds?: string[]
 }
 
 export interface CampaignStats {
@@ -77,6 +99,8 @@ export interface EmailCampaign {
   htmlContent: string
   template?: string | EmailTemplate
   recipientFilter: RecipientFilter
+  ccEmails?: string[]
+  bccEmails?: string[]
   status: CampaignStatus
   scheduledAt?: string
   sentAt?: string
@@ -105,12 +129,15 @@ export interface EmailSendLog {
 
 // DTOs
 export interface CreateEmailTemplateData {
-  branch: string
+  branch?: string
   name: string
   subject: string
   htmlContent: string
   plainTextContent?: string
   category: EmailTemplateCategory
+  module?: TemplateModule
+  slug?: string
+  variableDefinitions?: VariableDefinition[]
   isActive?: boolean
 }
 
@@ -120,6 +147,9 @@ export interface UpdateEmailTemplateData {
   htmlContent?: string
   plainTextContent?: string
   category?: EmailTemplateCategory
+  module?: TemplateModule
+  slug?: string
+  variableDefinitions?: VariableDefinition[]
   isActive?: boolean
 }
 
@@ -130,6 +160,8 @@ export interface CreateEmailCampaignData {
   htmlContent: string
   template?: string
   recipientFilter: RecipientFilter
+  ccEmails?: string[]
+  bccEmails?: string[]
 }
 
 export interface UpdateEmailCampaignData {
@@ -150,6 +182,7 @@ export interface TemplateQueryParams {
   limit?: number
   search?: string
   category?: EmailTemplateCategory
+  module?: TemplateModule | 'uncategorized'
   isActive?: boolean
 }
 
@@ -166,6 +199,7 @@ export interface SendLogQueryParams {
   page?: number
   limit?: number
   status?: SendLogStatus
+  email?: string
 }
 
 // Response types

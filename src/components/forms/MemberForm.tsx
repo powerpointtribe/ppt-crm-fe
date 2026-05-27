@@ -12,6 +12,7 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { memberSchema, memberEditSchema, MemberFormData } from '@/schemas/member'
 import { Member, CreateMemberData, UpdateMemberData } from '@/services/members'
+import { membersService } from '@/services/members'
 import { groupsService, Group } from '@/services/groups'
 import { cn } from '@/utils/cn'
 import FormSummary from '@/components/ui/FormSummary'
@@ -35,6 +36,8 @@ export default function MemberForm({
   const totalSteps = 7
   const [districts, setDistricts] = useState<Group[]>([])
   const [units, setUnits] = useState<Group[]>([])
+  const [allMembers, setAllMembers] = useState<Member[]>([])
+  const [memberSearch, setMemberSearch] = useState({ spouse: '', parent: '', child: '' })
   const [loadingData, setLoadingData] = useState(false)
 
   const {
@@ -44,7 +47,8 @@ export default function MemberForm({
     control,
     trigger,
     formState: { errors },
-    getValues
+    getValues,
+    setValue,
   } = useForm<MemberFormData>({
     resolver: zodResolver(mode === 'edit' ? memberEditSchema : memberSchema),
     defaultValues: member ? {
@@ -145,26 +149,28 @@ export default function MemberForm({
 
   const watchedMaritalStatus = watch('maritalStatus')
 
-  // Fetch districts and units on component mount
+  // Fetch districts, units, and members on component mount
   useEffect(() => {
-    const fetchGroupsData = async () => {
+    const fetchData = async () => {
       try {
         setLoadingData(true)
-        const [districtsResponse, unitsResponse] = await Promise.all([
-          groupsService.getDistricts({ limit: 100 }), // Get all districts
-          groupsService.getUnits({ limit: 100 }) // Get all units
+        const [districtsResponse, unitsResponse, membersResponse] = await Promise.all([
+          groupsService.getDistricts({ limit: 100 }),
+          groupsService.getUnits({ limit: 100 }),
+          membersService.getMembers({ limit: 500, sortBy: 'firstName', sortOrder: 'asc' }),
         ])
 
         setDistricts(districtsResponse.items || [])
         setUnits(unitsResponse.items || [])
+        setAllMembers(membersResponse.items || [])
       } catch (error) {
-        console.error('Error fetching districts and units:', error)
+        console.error('Error fetching form data:', error)
       } finally {
         setLoadingData(false)
       }
     }
 
-    fetchGroupsData()
+    fetchData()
   }, [])
 
   // Function to count errors per step
@@ -277,9 +283,9 @@ export default function MemberForm({
         membershipStatus: data.membershipStatus,
       }
 
-      // Only include phone if it's a valid Nigerian number format
-      if (isValidNigerianPhone(data.phone)) {
-        transformedData.phone = data.phone
+      // Include phone if provided — strip invisible Unicode characters (LTR marks, etc.)
+      if (data.phone?.trim()) {
+        transformedData.phone = data.phone.trim().replace(/[\u200B-\u200D\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')
       }
 
       // Handle dates
@@ -1069,11 +1075,62 @@ export default function MemberForm({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Spouse
             </label>
-            <Input
-              {...register('spouse')}
-              placeholder="Enter spouse name"
-              error={errors.spouse?.message}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={memberSearch.spouse || (allMembers.find(m => m._id === watch('spouse'))
+                  ? `${allMembers.find(m => m._id === watch('spouse'))?.firstName} ${allMembers.find(m => m._id === watch('spouse'))?.lastName}`
+                  : '')}
+                onChange={(e) => {
+                  setMemberSearch(prev => ({ ...prev, spouse: e.target.value }))
+                  if (!e.target.value) setValue('spouse', '')
+                }}
+                onFocus={() => setMemberSearch(prev => ({ ...prev, spouse: prev.spouse || '' }))}
+                placeholder="Search for a member..."
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {memberSearch.spouse && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {allMembers
+                    .filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(memberSearch.spouse.toLowerCase()) && m._id !== member?._id)
+                    .slice(0, 10)
+                    .map(m => (
+                      <button
+                        key={m._id}
+                        type="button"
+                        onClick={() => {
+                          setValue('spouse', m._id)
+                          setMemberSearch(prev => ({ ...prev, spouse: '' }))
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2"
+                      >
+                        <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-700">
+                          {m.firstName[0]}{m.lastName[0]}
+                        </div>
+                        {m.firstName} {m.lastName}
+                      </button>
+                    ))
+                  }
+                  {allMembers.filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(memberSearch.spouse.toLowerCase())).length === 0 && (
+                    <p className="px-3 py-2 text-sm text-gray-500">No members found</p>
+                  )}
+                </div>
+              )}
+              {watch('spouse') && (
+                <button
+                  type="button"
+                  onClick={() => { setValue('spouse', ''); setMemberSearch(prev => ({ ...prev, spouse: '' })) }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            {watch('spouse') && (
+              <p className="text-xs text-green-600 mt-1">
+                Linked to: {allMembers.find(m => m._id === watch('spouse'))?.firstName} {allMembers.find(m => m._id === watch('spouse'))?.lastName}
+              </p>
+            )}
           </div>
         )}
 
@@ -1081,23 +1138,83 @@ export default function MemberForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Parent
           </label>
-          <Input
-            {...register('parent')}
-            placeholder="Enter parent name"
-            error={errors.parent?.message}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={memberSearch.parent || (allMembers.find(m => m._id === watch('parent'))
+                ? `${allMembers.find(m => m._id === watch('parent'))?.firstName} ${allMembers.find(m => m._id === watch('parent'))?.lastName}`
+                : '')}
+              onChange={(e) => {
+                setMemberSearch(prev => ({ ...prev, parent: e.target.value }))
+                if (!e.target.value) setValue('parent', '')
+              }}
+              onFocus={() => setMemberSearch(prev => ({ ...prev, parent: prev.parent || '' }))}
+              placeholder="Search for a member..."
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {memberSearch.parent && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {allMembers
+                  .filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(memberSearch.parent.toLowerCase()) && m._id !== member?._id)
+                  .slice(0, 10)
+                  .map(m => (
+                    <button
+                      key={m._id}
+                      type="button"
+                      onClick={() => {
+                        setValue('parent', m._id)
+                        setMemberSearch(prev => ({ ...prev, parent: '' }))
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2"
+                    >
+                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-700">
+                        {m.firstName[0]}{m.lastName[0]}
+                      </div>
+                      {m.firstName} {m.lastName}
+                    </button>
+                  ))
+                }
+              </div>
+            )}
+            {watch('parent') && (
+              <button
+                type="button"
+                onClick={() => { setValue('parent', ''); setMemberSearch(prev => ({ ...prev, parent: '' })) }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          {watch('parent') && (
+            <p className="text-xs text-green-600 mt-1">
+              Linked to: {allMembers.find(m => m._id === watch('parent'))?.firstName} {allMembers.find(m => m._id === watch('parent'))?.lastName}
+            </p>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Children
           </label>
-          {childrenFields.map((field, index) => (
-            <div key={field.id} className="flex gap-2 mb-2">
-              <Input
-                {...register(`children.${index}` as const)}
-                placeholder="Enter child name"
-              />
+          {childrenFields.map((field, index) => {
+            const childId = watch(`children.${index}` as const)
+            const childMember = allMembers.find(m => m._id === childId)
+            return (
+              <div key={field.id} className="flex gap-2 mb-2 items-center">
+              {childMember ? (
+                <div className="flex-1 px-3 py-2 text-sm bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs font-medium text-green-700">
+                    {childMember.firstName[0]}{childMember.lastName[0]}
+                  </div>
+                  {childMember.firstName} {childMember.lastName}
+                </div>
+              ) : (
+                <Input
+                  {...register(`children.${index}` as const)}
+                  placeholder="Enter child member ID"
+                />
+              )}
               <Button
                 type="button"
                 variant="secondary"
@@ -1107,16 +1224,44 @@ export default function MemberForm({
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
-          ))}
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => appendChild('')}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Child
-          </Button>
+            )
+          })}
+          <div className="relative">
+            <input
+              type="text"
+              value={memberSearch.child}
+              onChange={(e) => setMemberSearch(prev => ({ ...prev, child: e.target.value }))}
+              placeholder="Search to add a child..."
+              className="w-full px-3 py-2 text-sm border border-dashed border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {memberSearch.child && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {allMembers
+                  .filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(memberSearch.child.toLowerCase()) && m._id !== member?._id)
+                  .slice(0, 10)
+                  .map(m => (
+                    <button
+                      key={m._id}
+                      type="button"
+                      onClick={() => {
+                        appendChild(m._id)
+                        setMemberSearch(prev => ({ ...prev, child: '' }))
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2"
+                    >
+                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-700">
+                        {m.firstName[0]}{m.lastName[0]}
+                      </div>
+                      {m.firstName} {m.lastName}
+                    </button>
+                  ))
+                }
+                {allMembers.filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(memberSearch.child.toLowerCase())).length === 0 && (
+                  <p className="px-3 py-2 text-sm text-gray-500">No members found</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-4">

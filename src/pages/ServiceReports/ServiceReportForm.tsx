@@ -10,12 +10,20 @@ import {
   SERVICE_TAG_LABELS
 } from '@/services/service-reports'
 
+interface Branch {
+  _id: string
+  name: string
+}
+
 interface ServiceReportFormProps {
   onSubmit: (data: CreateServiceReportData) => Promise<void>
   onCancel: () => void
   initialData?: Partial<CreateServiceReportData>
   loading?: boolean
   isModal?: boolean
+  branches?: Branch[]
+  canSelectBranch?: boolean
+  defaultBranchId?: string
 }
 
 // Compact tag labels for buttons
@@ -34,7 +42,10 @@ export default function ServiceReportForm({
   onCancel,
   initialData = {},
   loading = false,
-  isModal = false
+  isModal = false,
+  branches = [],
+  canSelectBranch = false,
+  defaultBranchId,
 }: ServiceReportFormProps) {
   const [formData, setFormData] = useState<CreateServiceReportData>({
     date: new Date().toISOString().split('T')[0],
@@ -46,11 +57,13 @@ export default function ServiceReportForm({
     numberOfChildren: 0,
     numberOfFirstTimers: 0,
     notes: '',
+    branchId: defaultBranchId || '',
     ...initialData
   })
 
   const [errors, setErrors] = useState<string[]>([])
   const [autoSync, setAutoSync] = useState(true)
+  const [otherTagDescription, setOtherTagDescription] = useState(initialData?.notes?.startsWith('[Other: ') ? '' : '')
 
   // Validate attendance numbers in real-time
   useEffect(() => {
@@ -79,6 +92,9 @@ export default function ServiceReportForm({
   }
 
   const handleServiceTagToggle = (tag: ServiceTag) => {
+    if (tag === ServiceTag.OTHERS && (formData.serviceTags || []).includes(tag)) {
+      setOtherTagDescription('')
+    }
     setFormData(prev => ({
       ...prev,
       serviceTags: (prev.serviceTags || []).includes(tag)
@@ -94,7 +110,14 @@ export default function ServiceReportForm({
       return
     }
 
-    await onSubmit(formData)
+    const dataToSubmit = { ...formData }
+    if ((formData.serviceTags || []).includes(ServiceTag.OTHERS) && otherTagDescription.trim()) {
+      const prefix = `[Other: ${otherTagDescription.trim()}]`
+      dataToSubmit.notes = formData.notes
+        ? `${prefix}\n${formData.notes}`
+        : prefix
+    }
+    await onSubmit(dataToSubmit)
   }
 
   const calculateTotal = () => {
@@ -158,6 +181,27 @@ export default function ServiceReportForm({
         </div>
       </div>
 
+      {/* Branch Selector - only shown if user can select branch */}
+      {canSelectBranch && branches.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Branch
+          </label>
+          <select
+            value={formData.branchId || ''}
+            onChange={(e) => handleInputChange('branchId', e.target.value)}
+            className="w-full px-2.5 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white"
+          >
+            <option value="">Select branch</option>
+            {branches.map((branch) => (
+              <option key={branch._id} value={branch._id}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Service Tags - Button Grid */}
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1.5">
@@ -181,6 +225,26 @@ export default function ServiceReportForm({
             </button>
           ))}
         </div>
+        <AnimatePresence>
+          {(formData.serviceTags || []).includes(ServiceTag.OTHERS) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15 }}
+              className="mt-2"
+            >
+              <input
+                type="text"
+                value={otherTagDescription}
+                onChange={(e) => setOtherTagDescription(e.target.value)}
+                placeholder="Describe the service tag..."
+                maxLength={100}
+                className="w-full px-2.5 py-2 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-gray-400 bg-indigo-50/40"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Attendance Section - Compact Grid */}

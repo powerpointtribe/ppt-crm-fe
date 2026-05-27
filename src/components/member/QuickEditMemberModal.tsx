@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Loader2, AlertCircle, ChevronDown, ChevronUp, MapPin, Shield, Users2, Save } from 'lucide-react'
+import { X, Loader2, AlertCircle, ChevronDown, ChevronUp, MapPin, Shield, Users2, Save, UserCog } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { membersService } from '@/services/members-unified'
 import { groupsService, Group } from '@/services/groups'
@@ -37,12 +37,16 @@ export default function QuickEditMemberModal({
   const [loadingData, setLoadingData] = useState(false)
 
   // Section collapse state
-  const [openSection, setOpenSection] = useState<'assignment' | 'leadership' | 'role' | null>('assignment')
+  const [openSection, setOpenSection] = useState<'assignment' | 'status' | 'leadership' | 'role' | null>('assignment')
 
   // Assignment section state
   const [selectedDistrict, setSelectedDistrict] = useState('')
   const [selectedUnit, setSelectedUnit] = useState('')
   const [savingAssignment, setSavingAssignment] = useState(false)
+
+  // Membership status section state
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [savingStatus, setSavingStatus] = useState(false)
 
   // Leadership section state
   const [leadershipType, setLeadershipType] = useState<LeadershipRoleType>('unitHead')
@@ -65,6 +69,7 @@ export default function QuickEditMemberModal({
       setSelectedDistrict(districtId)
       setSelectedUnit(unitId)
       setSelectedRole(roleId)
+      setSelectedStatus(member.membershipStatus || 'MEMBER')
       setLeadershipType('unitHead')
       setSelectedGroup('')
       setError(null)
@@ -109,6 +114,24 @@ export default function QuickEditMemberModal({
       setError(err?.response?.data?.message || err.message || 'Failed to update assignment')
     } finally {
       setSavingAssignment(false)
+    }
+  }
+
+  const handleSaveStatus = async () => {
+    if (!selectedStatus) {
+      setError('Please select a status')
+      return
+    }
+    try {
+      setSavingStatus(true)
+      setError(null)
+      await membersService.updateMember(member._id, { membershipStatus: selectedStatus })
+      showToast.success('Membership status updated successfully')
+      onSuccess()
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Failed to update membership status')
+    } finally {
+      setSavingStatus(false)
     }
   }
 
@@ -277,7 +300,60 @@ export default function QuickEditMemberModal({
                   )}
                 </div>
 
-                {/* Section 2: Leadership Role */}
+                {/* Section 2: Membership Status */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setOpenSection(openSection === 'status' ? null : 'status')}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserCog className="h-4 w-4 text-orange-600" />
+                      <span className="text-sm font-medium text-gray-900">Membership Status</span>
+                      <span className="text-xs text-gray-400 ml-1">({member.membershipStatus || 'MEMBER'})</span>
+                    </div>
+                    {openSection === 'status' ? (
+                      <ChevronUp className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                  {openSection === 'status' && (
+                    <div className="p-4 space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <select
+                          value={selectedStatus}
+                          onChange={(e) => setSelectedStatus(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="MEMBER">Member</option>
+                          <option value="DC">David's Company</option>
+                          <option value="LXL">League of Xtraordinary Leaders</option>
+                          <option value="DIRECTOR">Director</option>
+                          <option value="PASTOR">Pastor</option>
+                          <option value="CAMPUS_PASTOR">Campus Pastor</option>
+                          <option value="SENIOR_PASTOR">Senior Pastor</option>
+                          <option value="LEFT">Left</option>
+                          <option value="RELOCATED">Relocated</option>
+                        </select>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveStatus}
+                        disabled={savingStatus || selectedStatus === member.membershipStatus}
+                        className="w-full"
+                      >
+                        {savingStatus ? (
+                          <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving...</>
+                        ) : (
+                          <><Save className="h-3.5 w-3.5 mr-1.5" /> Save Status</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 3: Leadership Role (Group Assignment) */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setOpenSection(openSection === 'leadership' ? null : 'leadership')}
@@ -341,7 +417,7 @@ export default function QuickEditMemberModal({
                   )}
                 </div>
 
-                {/* Section 3: Platform Role */}
+                {/* Section 4: Platform Role */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setOpenSection(openSection === 'role' ? null : 'role')}

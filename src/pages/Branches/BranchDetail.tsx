@@ -16,19 +16,15 @@ import {
   Copy,
   Check,
   QrCode,
-  Shield,
-  Search,
   FileText,
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
-import Modal from '@/components/ui/Modal';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { branchesService } from '@/services/branches';
 import { membersService } from '@/services/members-unified';
-import { rolesService, type Role } from '@/services/roles';
 import { useAuth } from '@/contexts/AuthContext-unified';
 import type { Branch } from '@/types/branch';
 import type { Member } from '@/types';
@@ -44,19 +40,38 @@ export default function BranchDetail() {
   // Branch team state
   const [branchMembers, setBranchMembers] = useState<Member[]>([]);
   const [loadingBranchMembers, setLoadingBranchMembers] = useState(false);
+  const [leadershipPage, setLeadershipPage] = useState(1);
+  const leadershipLimit = 10;
 
-  // Roles state (fetched on mount for display)
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [rolesMap, setRolesMap] = useState<Record<string, Role>>({});
+  // Leadership hierarchy: highest rank first
+  const leadershipHierarchy: Record<string, number> = {
+    SENIOR_PASTOR: 1,
+    CAMPUS_PASTOR: 2,
+    PASTOR: 3,
+    DIRECTOR: 4,
+    LXL: 5,
+  };
 
-  // Role assignment modal
-  const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
-  const [allMembers, setAllMembers] = useState<Member[]>([]);
-  const [loadingModalData, setLoadingModalData] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState('');
-  const [selectedRoleId, setSelectedRoleId] = useState('');
-  const [memberSearch, setMemberSearch] = useState('');
-  const [assigning, setAssigning] = useState(false);
+  const leadershipLabels: Record<string, string> = {
+    SENIOR_PASTOR: 'Senior Pastor',
+    CAMPUS_PASTOR: 'Campus Pastor',
+    PASTOR: 'Pastor',
+    DIRECTOR: 'Director',
+    LXL: 'LXL',
+  };
+
+  // Filter and sort leadership members by hierarchy
+  const leadershipMembers = branchMembers
+    .filter((m) => m.membershipStatus in leadershipHierarchy)
+    .sort((a, b) => (leadershipHierarchy[a.membershipStatus] || 99) - (leadershipHierarchy[b.membershipStatus] || 99));
+
+  const leadershipTotal = leadershipMembers.length;
+  const leadershipTotalPages = Math.ceil(leadershipTotal / leadershipLimit);
+  const paginatedLeadership = leadershipMembers.slice(
+    (leadershipPage - 1) * leadershipLimit,
+    leadershipPage * leadershipLimit
+  );
+
 
   // Copy link state
   const [copied, setCopied] = useState(false);
@@ -97,32 +112,13 @@ export default function BranchDetail() {
   };
 
   const canUpdateBranch = hasPermission('branches:update');
-  const canManageRoles = hasPermission('users:manage') || hasPermission('roles:assign-permissions');
 
   useEffect(() => {
     if (id) {
       fetchBranch(id);
       fetchBranchMembers(id);
     }
-    // Fetch roles for display
-    fetchRoles();
   }, [id]);
-
-  const fetchRoles = async () => {
-    try {
-      const rolesData = await rolesService.getRoles({ isActive: true });
-      const rolesArray = Array.isArray(rolesData) ? rolesData : [];
-      setRoles(rolesArray);
-      // Create lookup map by ID
-      const map: Record<string, Role> = {};
-      rolesArray.forEach((role) => {
-        map[role._id] = role;
-      });
-      setRolesMap(map);
-    } catch (err) {
-      console.error('Error fetching roles:', err);
-    }
-  };
 
   const fetchBranch = async (branchId: string) => {
     try {
@@ -141,72 +137,13 @@ export default function BranchDetail() {
   const fetchBranchMembers = async (branchId: string) => {
     try {
       setLoadingBranchMembers(true);
-      const response = await membersService.getMembers({ branchId, limit: 100 });
+      const response = await membersService.getMembers({ branchId, limit: 500 });
       setBranchMembers(response.items || []);
     } catch (err) {
       console.error('Error fetching branch members:', err);
     } finally {
       setLoadingBranchMembers(false);
     }
-  };
-
-  const openAssignRoleModal = async () => {
-    setSelectedMemberId('');
-    setSelectedRoleId('');
-    setMemberSearch('');
-    setShowAssignRoleModal(true);
-
-    try {
-      setLoadingModalData(true);
-      // Fetch members from this branch (roles already fetched on mount)
-      const membersResponse = await membersService.getMembers({ branchId: id, limit: 100 });
-      setAllMembers(membersResponse?.items || []);
-    } catch (err) {
-      console.error('Error fetching modal data:', err);
-    } finally {
-      setLoadingModalData(false);
-    }
-  };
-
-  const handleAssignRole = async () => {
-    if (!selectedMemberId || !selectedRoleId) return;
-
-    try {
-      setAssigning(true);
-      await membersService.assignRole(selectedMemberId, { roleId: selectedRoleId });
-      setShowAssignRoleModal(false);
-      // Refresh branch members to show updated roles
-      if (id) fetchBranchMembers(id);
-    } catch (err: any) {
-      console.error('Error assigning role:', err);
-    } finally {
-      setAssigning(false);
-    }
-  };
-
-  // Filter members based on search
-  const filteredMembers = allMembers.filter((member) => {
-    if (!memberSearch) return true;
-    const searchLower = memberSearch.toLowerCase();
-    return (
-      member.firstName.toLowerCase().includes(searchLower) ||
-      member.lastName.toLowerCase().includes(searchLower) ||
-      member.email.toLowerCase().includes(searchLower)
-    );
-  });
-
-  // Get members with roles assigned (for display in team section)
-  const membersWithRoles = branchMembers.filter((m) => m.role);
-
-  // Helper to get role display name
-  const getRoleName = (role: Member['role']): string => {
-    if (!role) return 'Member';
-    if (typeof role === 'object' && role !== null) {
-      return role.displayName || role.name || 'Member';
-    }
-    // Role is an ID string, look it up in the map
-    const roleData = rolesMap[role as string];
-    return roleData?.displayName || roleData?.name || 'Member';
   };
 
   if (loading) {
@@ -411,97 +348,96 @@ export default function BranchDetail() {
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <Users className="h-4 w-4 text-primary-600" />
               Campus Leadership Team
-              {membersWithRoles.length > 0 && (
+              {leadershipTotal > 0 && (
                 <Badge variant="secondary" className="text-xs ml-1">
-                  {membersWithRoles.length}
+                  {leadershipTotal}
                 </Badge>
               )}
             </h2>
-            {canManageRoles && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-7 px-2"
-                onClick={openAssignRoleModal}
-              >
-                <Shield className="h-3 w-3 mr-1" />
-                Assign Role
-              </Button>
-            )}
           </div>
 
           {loadingBranchMembers ? (
             <div className="flex justify-center py-4">
               <LoadingSpinner size="sm" />
             </div>
-          ) : membersWithRoles.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground">Name</th>
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground">Role</th>
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
-                    <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden md:table-cell">Phone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {membersWithRoles.map((member) => (
-                    <tr
-                      key={member._id}
-                      className="border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/members/${member._id}`)}
-                    >
-                      <td className="py-2 px-2">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
-                            <User className="h-3.5 w-3.5 text-primary-600" />
-                          </div>
-                          <span className="font-medium">
-                            {member.firstName} {member.lastName}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-2 px-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {getRoleName(member.role)}
-                        </Badge>
-                      </td>
-                      <td className="py-2 px-2 text-muted-foreground hidden sm:table-cell">
-                        {member.email}
-                      </td>
-                      <td className="py-2 px-2 text-muted-foreground hidden md:table-cell">
-                        {member.phone || '-'}
-                      </td>
+          ) : paginatedLeadership.length > 0 ? (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">Name</th>
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">Role</th>
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground hidden md:table-cell">Phone</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedLeadership.map((member) => (
+                      <tr
+                        key={member._id}
+                        className="border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => navigate(`/members/${member._id}`)}
+                      >
+                        <td className="py-2 px-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
+                              <User className="h-3.5 w-3.5 text-primary-600" />
+                            </div>
+                            <span className="font-medium">
+                              {member.firstName} {member.lastName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2 px-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {leadershipLabels[member.membershipStatus] || member.membershipStatus}
+                          </Badge>
+                        </td>
+                        <td className="py-2 px-2 text-muted-foreground hidden sm:table-cell">
+                          {member.email}
+                        </td>
+                        <td className="py-2 px-2 text-muted-foreground hidden md:table-cell">
+                          {member.phone || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {leadershipTotalPages > 1 && (
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
+                  <p className="text-xs text-muted-foreground">
+                    Page {leadershipPage} of {leadershipTotalPages}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setLeadershipPage(leadershipPage - 1)}
+                      disabled={leadershipPage <= 1}
+                      className="px-2 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setLeadershipPage(leadershipPage + 1)}
+                      disabled={leadershipPage >= leadershipTotalPages}
+                      className="px-2 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-4">
-              <p className="text-muted-foreground text-sm mb-2">
-                No leadership team members assigned yet
+              <p className="text-muted-foreground text-sm">
+                No leadership members in this campus yet
               </p>
-              {canManageRoles && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={openAssignRoleModal}
-                >
-                  <Shield className="h-3 w-3 mr-1" />
-                  Assign First Role
-                </Button>
-              )}
             </div>
           )}
 
-          {branchMembers.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-3 pt-2 border-t">
-              {branchMembers.length} total member{branchMembers.length !== 1 ? 's' : ''} in this campus
-            </p>
-          )}
         </Card>
 
         {/* Service Types & Metadata combined row */}
@@ -564,113 +500,6 @@ export default function BranchDetail() {
         </div>
       </div>
 
-      {/* Assign Role Modal */}
-      <Modal
-        isOpen={showAssignRoleModal}
-        onClose={() => setShowAssignRoleModal(false)}
-        title="Assign Role to Member"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Select a member from this campus and assign them a role.
-          </p>
-
-          {loadingModalData ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <>
-              {/* Member Search */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  Member {allMembers.length > 0 && <span className="text-muted-foreground font-normal">({filteredMembers.length} found)</span>}
-                </label>
-                <div className="relative mb-2">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search members..."
-                    value={memberSearch}
-                    onChange={(e) => setMemberSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-                <select
-                  value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">{allMembers.length === 0 ? 'No members found' : 'Select a member...'}</option>
-                  {filteredMembers.map((member) => (
-                    <option key={member._id} value={member._id}>
-                      {member.firstName} {member.lastName}
-                      {member.role && typeof member.role === 'object'
-                        ? ` (Current: ${member.role.displayName || member.role.name})`
-                        : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Role Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  Role {roles.length > 0 && <span className="text-muted-foreground font-normal">({roles.length} available)</span>}
-                </label>
-                <select
-                  value={selectedRoleId}
-                  onChange={(e) => setSelectedRoleId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">{roles.length === 0 ? 'No roles found' : 'Select a role...'}</option>
-                  {roles.map((role) => (
-                    <option key={role._id} value={role._id}>
-                      {role.displayName || role.name}
-                      {role.description ? ` - ${role.description}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  The selected role determines what permissions the member will have.
-                </p>
-              </div>
-
-              {/* Warning */}
-              {selectedMemberId && selectedRoleId && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-xs text-yellow-800">
-                    The member's permissions will change immediately. They may need to log out and back in to see the changes.
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" size="sm" onClick={() => setShowAssignRoleModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleAssignRole}
-              disabled={!selectedMemberId || !selectedRoleId || assigning}
-            >
-              {assigning ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Assigning...
-                </>
-              ) : (
-                <>
-                  <Shield className="h-4 w-4 mr-1.5" />
-                  Assign Role
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </Layout>
   );
 }

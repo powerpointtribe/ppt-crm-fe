@@ -38,6 +38,12 @@ import {
   Wallet,
   Upload,
   Calendar,
+  Mail,
+  Send,
+  BookOpen,
+  GraduationCap,
+  BookMarked,
+  Clock,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -88,12 +94,6 @@ const menuGroups: MenuGroup[] = [
         requiredPermission: 'members:view',
         hasDropdown: true,
         subItems: [
-          {
-            icon: BarChart3,
-            label: 'Analytics',
-            path: '/members/analytics',
-            requiredPermission: 'members:view-stats',
-          },
           {
             icon: FileText,
             label: 'Reports',
@@ -179,11 +179,53 @@ const menuGroups: MenuGroup[] = [
         path: '/events',
         requiredPermission: 'events:view',
       },
+      {
+        icon: GraduationCap,
+        label: 'Workers Training',
+        path: '/workers-training',
+        requiredPermission: 'workers-training:view-cohorts',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: Users,
+            label: 'Trainees',
+            path: '/workers-training/trainees',
+            requiredPermission: 'workers-training:view-trainees',
+          },
+        ],
+      },
     ],
   },
   {
     label: 'Resources',
     items: [
+      {
+        icon: BookOpen,
+        label: 'Library',
+        path: '/library',
+        requiredPermission: 'library:view-books',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: BookMarked,
+            label: 'Borrowings',
+            path: '/library/borrowings',
+            requiredPermission: 'library:view-borrowings',
+          },
+          {
+            icon: Clock,
+            label: 'Overdue',
+            path: '/library/overdue',
+            requiredPermission: 'library:view-overdue',
+          },
+          {
+            icon: Archive,
+            label: 'Categories',
+            path: '/library/categories',
+            requiredPermission: 'library:view-categories',
+          },
+        ],
+      },
       {
         icon: Boxes,
         label: 'Inventory',
@@ -240,6 +282,26 @@ const menuGroups: MenuGroup[] = [
             label: 'Disbursements',
             path: '/finance/disbursements',
             requiredPermission: 'finance:disburse',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Communication',
+    items: [
+      {
+        icon: Mail,
+        label: 'Messaging',
+        path: '/bulk-email',
+        requiredPermission: 'bulk-email:view-campaigns',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: Activity,
+            label: 'Send History',
+            path: '/bulk-email/history',
+            requiredPermission: 'bulk-email:view-campaigns',
           },
         ],
       },

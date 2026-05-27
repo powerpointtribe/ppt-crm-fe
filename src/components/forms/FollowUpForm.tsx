@@ -9,11 +9,12 @@ import { cn } from '@/utils/cn'
 
 const followUpSchema = z.object({
   date: z.string().min(1, 'Date is required'),
+  dateEntered: z.string().optional(),
   method: z.enum(['phone', 'email', 'sms', 'whatsapp', 'visit', 'in_visit'], {
     required_error: 'Select a contact method'
   }),
-  notes: z.string().min(1, 'Notes are required'),
-  outcome: z.enum(['successful', 'no_answer', 'busy', 'not_interested', 'interested', 'follow_up_needed'], {
+  notes: z.string().optional(),
+  outcome: z.enum(['no_answer', 'busy', 'not_interested', 'interested', 'follow_up_needed'], {
     required_error: 'Select an outcome'
   }),
   nextFollowUpDate: z.string().optional(),
@@ -48,12 +49,11 @@ const contactMethods = [
 ]
 
 const outcomes = [
-  { value: 'successful', label: 'Successful' },
   { value: 'interested', label: 'Interested' },
   { value: 'no_answer', label: 'No Answer' },
   { value: 'busy', label: 'Busy' },
   { value: 'not_interested', label: 'Not Interested' },
-  { value: 'follow_up_needed', label: 'Follow-up' }
+  { value: 'follow_up_needed', label: 'Churched' }
 ]
 
 const visitNumbers = [
@@ -139,7 +139,7 @@ export default function FollowUpForm({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Date
+                Date Reached Out
               </label>
               <input
                 type="date"
@@ -153,16 +153,29 @@ export default function FollowUpForm({
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Notify Me On <span className="text-gray-400">(optional)</span>
+                Date Entered
               </label>
               <input
-                type="datetime-local"
-                {...register('nextFollowUpDate')}
-                min={new Date().toISOString().slice(0, 16)}
-                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                title="You'll receive an email reminder at this date and time"
+                type="date"
+                value={new Date().toISOString().split('T')[0]}
+                readOnly
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
               />
             </div>
+          </div>
+
+          {/* Notify Me Row */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Notify Me On <span className="text-gray-400">(optional)</span>
+            </label>
+            <input
+              type="datetime-local"
+              {...register('nextFollowUpDate')}
+              min={new Date().toISOString().slice(0, 16)}
+              className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              title="You'll receive an email reminder at this date and time"
+            />
           </div>
 
           {/* Contact Method */}
@@ -258,22 +271,14 @@ export default function FollowUpForm({
           {/* Notes */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Notes
+              Notes <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <textarea
               {...register('notes')}
               rows={2}
               placeholder="Brief summary of the follow-up..."
-              className={cn(
-                "w-full px-2.5 py-1.5 text-xs border rounded-lg resize-none transition-colors",
-                "focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent",
-                "placeholder:text-gray-400",
-                errors.notes ? "border-red-300" : "border-gray-200"
-              )}
+              className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg resize-none transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder:text-gray-400"
             />
-            {errors.notes && (
-              <p className="text-xs text-red-600 mt-1">{errors.notes.message}</p>
-            )}
           </div>
 
           {/* Actions */}

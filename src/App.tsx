@@ -23,6 +23,7 @@ import PublicRequisitionForm from '@/pages/Finance/PublicRequisitionForm'
 import PublicRequisitionAction from '@/pages/Finance/PublicRequisitionAction'
 import PublicActionResult from '@/pages/Finance/PublicActionResult'
 import PublicEventRegistration from '@/pages/PublicEventRegistration'
+import DocsPage from '@/pages/DocsPage'
 
 // Dashboard - Load immediately (most visited)
 import Dashboard from '@/pages/Dashboard'
@@ -127,6 +128,9 @@ const EmailCampaignNew = lazy(() => import('@/pages/BulkEmail/CampaignNew'))
 const EmailCampaignDetail = lazy(() => import('@/pages/BulkEmail/CampaignDetail'))
 const EmailCampaignEdit = lazy(() => import('@/pages/BulkEmail/CampaignEdit'))
 const EmailSendHistory = lazy(() => import('@/pages/BulkEmail/SendHistory'))
+const MailingLists = lazy(() => import('@/pages/BulkEmail/MailingLists'))
+const MailingListNew = lazy(() => import('@/pages/BulkEmail/MailingListNew'))
+const MailingListDetail = lazy(() => import('@/pages/BulkEmail/MailingListDetail'))
 
 // Wrapper for lazy components with smooth loading
 function LazyPage({ children }: { children: React.ReactNode }) {
@@ -180,6 +184,7 @@ function App() {
           <Route path="/requisition-action" element={<PublicRequisitionAction />} />
           <Route path="/requisition-result" element={<PublicActionResult />} />
           <Route path="/event-registration/:slug" element={<PublicEventRegistration />} />
+          <Route path="/docs" element={<DocsPage />} />
 
           {/* Dashboard - Requires Login Only */}
           <Route path="/dashboard" element={
@@ -669,6 +674,21 @@ function App() {
           <Route path="/bulk-email/history" element={
             <ProtectedRoute>
               <LazyPage><EmailSendHistory /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/mailing-lists" element={
+            <ProtectedRoute>
+              <LazyPage><MailingLists /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/mailing-lists/new" element={
+            <ProtectedRoute>
+              <LazyPage><MailingListNew /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/mailing-lists/:id" element={
+            <ProtectedRoute>
+              <LazyPage><MailingListDetail /></LazyPage>
             </ProtectedRoute>
           } />
       </Routes>

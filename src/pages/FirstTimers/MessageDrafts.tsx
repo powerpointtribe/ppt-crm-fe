@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Search, Calendar, Clock, Send, Eye, Edit, Trash2,
-  MessageSquare, CheckCircle, AlertCircle, Loader, Mail
+  MessageSquare, CheckCircle, AlertCircle, Loader, Mail,
+  ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, Users
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -12,25 +13,25 @@ import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import Modal from '@/components/ui/Modal'
 import { MessageDraft, messageDraftsService } from '@/services/message-drafts'
 import { formatDate } from '@/utils/formatters'
+import { useToast } from '@/hooks/useToast'
 
-const statusColors = {
-  draft: 'bg-gray-100 text-gray-800',
-  scheduled: 'bg-blue-100 text-blue-800',
-  sending: 'bg-yellow-100 text-yellow-800',
-  sent: 'bg-green-100 text-green-800',
-  failed: 'bg-red-100 text-red-800',
+const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; icon: any; label: string }> = {
+  draft: { bg: 'bg-gray-50', text: 'text-gray-600', dot: 'bg-gray-400', icon: MessageSquare, label: 'Draft' },
+  scheduled: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500', icon: Clock, label: 'Scheduled' },
+  sending: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', icon: Loader, label: 'Sending' },
+  sent: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', icon: CheckCircle, label: 'Sent' },
+  failed: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', icon: AlertCircle, label: 'Failed' },
 }
 
-const statusIcons = {
-  draft: MessageSquare,
-  scheduled: Clock,
-  sending: Loader,
-  sent: CheckCircle,
-  failed: AlertCircle,
+const TEMPLATE_NAMES: Record<number, { label: string; color: string }> = {
+  1: { label: 'Warm', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+  2: { label: 'Professional', color: 'text-blue-700 bg-blue-50 border-blue-200' },
+  3: { label: 'Vibrant', color: 'text-purple-700 bg-purple-50 border-purple-200' },
 }
 
 export default function MessageDrafts() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [drafts, setDrafts] = useState<MessageDraft[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -44,55 +45,38 @@ export default function MessageDrafts() {
   const [sendNowModalOpen, setSendNowModalOpen] = useState(false)
   const [draftToSend, setDraftToSend] = useState<MessageDraft | null>(null)
   const [sendLoading, setSendLoading] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const loadDrafts = useCallback(async (page: number = currentPage) => {
     try {
       setLoading(true)
       setError(null)
-      const params: any = {
-        page,
-        limit: 10,
-      }
-      if (statusFilter) {
-        params.status = statusFilter
-      }
+      const params: any = { page, limit: 10 }
+      if (statusFilter) params.status = statusFilter
       const response = await messageDraftsService.getMessageDrafts(params)
       setDrafts(response.data || [])
-      setPagination({
-        total: response.total,
-        page: response.page,
-        totalPages: response.totalPages,
-      })
+      setPagination({ total: response.total, page: response.page, totalPages: response.totalPages })
       setCurrentPage(page)
-    } catch (error: any) {
-      console.error('Error loading message drafts:', error)
-      setError({
-        status: error?.code || error?.response?.status || 500,
-        message: 'Failed to load message drafts',
-        details: error?.message || error?.response?.data?.message || 'An unexpected error occurred'
-      })
+    } catch (err: any) {
+      setError({ message: 'Failed to load message drafts', details: err?.message })
     } finally {
       setLoading(false)
     }
   }, [currentPage, statusFilter])
 
-  useEffect(() => {
-    setCurrentPage(1)
-    loadDrafts(1)
-  }, [statusFilter])
+  useEffect(() => { setCurrentPage(1); loadDrafts(1) }, [statusFilter])
 
   const handleDelete = async () => {
     if (!draftToDelete) return
-
     try {
       setDeleteLoading(true)
       await messageDraftsService.deleteMessageDraft(draftToDelete._id)
       setDeleteModalOpen(false)
       setDraftToDelete(null)
+      toast.success('Draft deleted')
       loadDrafts(currentPage)
-    } catch (error: any) {
-      console.error('Error deleting draft:', error)
-      alert('Failed to delete draft: ' + (error?.message || 'An unexpected error occurred'))
+    } catch (err: any) {
+      toast.error('Failed to delete: ' + (err?.message || ''))
     } finally {
       setDeleteLoading(false)
     }
@@ -100,408 +84,293 @@ export default function MessageDrafts() {
 
   const handleSendNow = async () => {
     if (!draftToSend) return
-
     try {
       setSendLoading(true)
       await messageDraftsService.sendMessageNow(draftToSend._id)
       setSendNowModalOpen(false)
       setDraftToSend(null)
+      toast.success('Message sent successfully!')
       loadDrafts(currentPage)
-      alert('Message sent successfully!')
-    } catch (error: any) {
-      console.error('Error sending draft:', error)
-      alert('Failed to send draft: ' + (error?.message || 'An unexpected error occurred'))
+    } catch (err: any) {
+      toast.error('Failed to send: ' + (err?.message || ''))
     } finally {
       setSendLoading(false)
     }
   }
 
-  const confirmDelete = (draft: MessageDraft) => {
-    setDraftToDelete(draft)
-    setDeleteModalOpen(true)
-  }
-
-  const confirmSendNow = (draft: MessageDraft) => {
-    setDraftToSend(draft)
-    setSendNowModalOpen(true)
-  }
-
-  const filteredDrafts = drafts.filter(draft => {
-    if (searchTerm) {
-      return draft.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             draft.message.toLowerCase().includes(searchTerm.toLowerCase())
-    }
-    return true
-  })
-
-  // Search Section to be displayed in header
-  const searchSection = (
-    <div className="flex gap-3 flex-wrap items-center w-full">
-      <div className="flex-1 min-w-[200px]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search drafts by title or message..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
-          />
-        </div>
-      </div>
-
-      <select
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white"
-      >
-        <option value="">All Statuses</option>
-        <option value="draft">Draft</option>
-        <option value="scheduled">Scheduled</option>
-        <option value="sending">Sending</option>
-        <option value="sent">Sent</option>
-        <option value="failed">Failed</option>
-      </select>
-
-      <Button onClick={() => navigate('/first-timers/message-drafts/new')}>
-        <Plus className="h-4 w-4 mr-2" />
-        New Draft
-      </Button>
-    </div>
+  const filteredDrafts = drafts.filter(d =>
+    !searchTerm || d.title.toLowerCase().includes(searchTerm.toLowerCase()) || d.message?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const counts = {
+    total: pagination?.total || drafts.length,
+    scheduled: drafts.filter(d => d.status === 'scheduled').length,
+    sent: drafts.filter(d => d.status === 'sent').length,
+    failed: drafts.filter(d => d.status === 'failed').length,
+  }
 
   return (
     <ErrorBoundary error={error}>
-      <Layout
-        title="Message Drafts"
-        searchSection={searchSection}
-      >
-        <div className="space-y-6">
+      <Layout title="Message Drafts">
+        <div className="space-y-5">
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Drafts</p>
-                  <p className="text-2xl font-bold text-gray-900">{pagination?.total || drafts.length}</p>
-                </div>
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-blue-600" />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Scheduled</p>
-                  <p className="text-2xl font-bold text-blue-600">{drafts.filter(d => d.status === 'scheduled').length}</p>
-                </div>
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Sent</p>
-                  <p className="text-2xl font-bold text-green-600">{drafts.filter(d => d.status === 'sent').length}</p>
-                </div>
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Failed</p>
-                  <p className="text-2xl font-bold text-red-600">{drafts.filter(d => d.status === 'failed').length}</p>
-                </div>
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                </div>
-              </div>
-            </motion.div>
+          {/* Header bar */}
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Message Drafts</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Create and manage welcome emails for first-timers</p>
+            </div>
+            <Button onClick={() => navigate('/first-timers/message-drafts/new')} className="shrink-0">
+              <Plus className="h-4 w-4 mr-1.5" />
+              New Draft
+            </Button>
           </div>
 
-          {/* Drafts List */}
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <LoadingSpinner />
+          {/* Compact stat pills */}
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { label: 'Total', value: counts.total, icon: Mail, color: 'text-gray-700 bg-white border-gray-200' },
+              { label: 'Scheduled', value: counts.scheduled, icon: Clock, color: 'text-blue-700 bg-blue-50 border-blue-200' },
+              { label: 'Sent', value: counts.sent, icon: CheckCircle, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+              { label: 'Failed', value: counts.failed, icon: AlertCircle, color: 'text-red-700 bg-red-50 border-red-200' },
+            ].map(s => (
+              <div key={s.label} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${s.color}`}>
+                <s.icon className="w-3.5 h-3.5" />
+                {s.label}: {s.value}
+              </div>
+            ))}
+          </div>
+
+          {/* Search + Filter */}
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search drafts..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] outline-none bg-white"
+              />
             </div>
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] outline-none"
+            >
+              <option value="">All</option>
+              <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="sent">Sent</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+
+          {/* Content */}
+          {loading ? (
+            <div className="flex justify-center py-16"><LoadingSpinner /></div>
           ) : filteredDrafts.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <Mail className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No message drafts found</h3>
-              <p className="text-gray-500 mb-4">
-                {searchTerm || statusFilter
-                  ? 'Try adjusting your filters'
-                  : 'Get started by creating your first message draft'}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-gray-100 p-12 text-center">
+              <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-6 h-6 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No drafts yet</h3>
+              <p className="text-sm text-gray-500 mb-5 max-w-xs mx-auto">
+                {searchTerm || statusFilter ? 'Try adjusting your filters' : 'Create your first welcome email draft'}
               </p>
               {!searchTerm && !statusFilter && (
-                <Button
-                  onClick={() => navigate('/first-timers/message-drafts/new')}
-                  className="flex items-center gap-2 mx-auto"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create Draft
+                <Button size="sm" onClick={() => navigate('/first-timers/message-drafts/new')}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Create Draft
                 </Button>
               )}
-            </div>
+            </motion.div>
           ) : (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Title
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Scheduled Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Recipients
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredDrafts.map((draft) => {
-                    const StatusIcon = statusIcons[draft.status]
+            <div className="space-y-2">
+              {filteredDrafts.map((draft, index) => {
+                const status = STATUS_CONFIG[draft.status] || STATUS_CONFIG.draft
+                const tpl = TEMPLATE_NAMES[draft.templateId || 0]
 
-                    return (
-                      <motion.tr
-                        key={draft._id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{draft.title}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2 text-sm text-gray-900">
-                            <Calendar className="w-4 h-4 text-gray-400" />
+                return (
+                  <motion.div
+                    key={draft._id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all group"
+                  >
+                    <div className="flex items-center gap-4 px-4 py-3">
+                      {/* Status dot + icon */}
+                      <div className={`w-9 h-9 rounded-lg ${status.bg} flex items-center justify-center shrink-0`}>
+                        <status.icon className={`w-4 h-4 ${status.text}`} />
+                      </div>
+
+                      {/* Main content */}
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/first-timers/message-drafts/${draft._id}`)}>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-gray-900 truncate">{draft.title}</h3>
+                          {tpl && (
+                            <span className={`hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold border ${tpl.color}`}>
+                              {tpl.label}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          {draft.subject && (
+                            <span className="text-xs text-gray-500 truncate max-w-[200px]">{draft.subject}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Meta */}
+                      <div className="hidden md:flex items-center gap-4 shrink-0">
+                        {draft.scheduledDate && (
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Calendar className="w-3.5 h-3.5" />
                             {formatDate(draft.scheduledDate)}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2 text-sm text-gray-900">
-                            <Clock className="w-4 h-4 text-gray-400" />
-                            {new Date(draft.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[draft.status]}`}>
-                            <StatusIcon className="w-3 h-3" />
-                            {draft.status.charAt(0).toUpperCase() + draft.status.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {draft.status === 'sent' || draft.status === 'failed' ? (
-                            <div className="space-y-1">
-                              <div>{draft.recipientCount || 0} total</div>
-                              {draft.successCount !== undefined && (
-                                <div className="text-green-600">{draft.successCount} sent</div>
-                              )}
-                              {draft.failedCount !== undefined && draft.failedCount > 0 && (
-                                <div className="text-red-600">{draft.failedCount} failed</div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => navigate(`/first-timers/message-drafts/${draft._id}`)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="View"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            {(draft.status === 'draft' || draft.status === 'scheduled') && (
-                              <>
-                                <button
-                                  onClick={() => navigate(`/first-timers/message-drafts/${draft._id}/edit`)}
-                                  className="text-gray-600 hover:text-gray-900"
-                                  title="Edit"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => confirmSendNow(draft)}
-                                  className="text-green-600 hover:text-green-900"
-                                  title="Send Now"
-                                >
-                                  <Send className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => confirmDelete(draft)}
-                                  className="text-red-600 hover:text-red-900"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </>
+                        )}
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <Clock className="w-3.5 h-3.5" />
+                          {draft.scheduledTime ? new Date(draft.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </div>
+                        {(draft.status === 'sent' || draft.status === 'failed') && (
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Users className="w-3.5 h-3.5" />
+                            <span className="text-emerald-600 font-medium">{draft.successCount || 0}</span>
+                            {(draft.failedCount || 0) > 0 && (
+                              <span className="text-red-500">/ {draft.failedCount} failed</span>
                             )}
                           </div>
-                        </td>
-                      </motion.tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                        )}
+                      </div>
+
+                      {/* Status badge */}
+                      <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${status.bg} ${status.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`}></span>
+                        {status.label}
+                      </span>
+
+                      {/* Actions */}
+                      <div className="relative shrink-0">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === draft._id ? null : draft._id)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+
+                        <AnimatePresence>
+                          {openMenuId === draft._id && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              className="absolute right-0 top-full mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-20"
+                            >
+                              <button
+                                onClick={() => { navigate(`/first-timers/message-drafts/${draft._id}`); setOpenMenuId(null) }}
+                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                <Eye className="w-3.5 h-3.5" /> View
+                              </button>
+                              {(draft.status === 'draft' || draft.status === 'scheduled') && (
+                                <>
+                                  <button
+                                    onClick={() => { navigate(`/first-timers/message-drafts/${draft._id}/edit`); setOpenMenuId(null) }}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" /> Edit
+                                  </button>
+                                  <button
+                                    onClick={() => { setDraftToSend(draft); setSendNowModalOpen(true); setOpenMenuId(null) }}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50"
+                                  >
+                                    <Send className="w-3.5 h-3.5" /> Send Now
+                                  </button>
+                                  <div className="h-px bg-gray-100 my-1"></div>
+                                  <button
+                                    onClick={() => { setDraftToDelete(draft); setDeleteModalOpen(true); setOpenMenuId(null) }}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                  </button>
+                                </>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </motion.div>
+                )
+              })}
             </div>
           )}
 
           {/* Pagination */}
-          {pagination && pagination.total > 0 && (
-            <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200 sm:px-6 rounded-lg shadow">
-              <div className="flex-1 flex justify-between sm:hidden">
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs text-gray-500">
+                Page {currentPage} of {pagination.totalPages} &middot; {pagination.total} total
+              </p>
+              <div className="flex gap-1">
                 <button
                   onClick={() => loadDrafts(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Previous
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
+                {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => loadDrafts(page)}
+                    className={`w-8 h-8 rounded-lg text-xs font-medium ${
+                      page === currentPage
+                        ? 'bg-[#0D7770] text-white'
+                        : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
                 <button
                   onClick={() => loadDrafts(currentPage + 1)}
                   disabled={currentPage === pagination.totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Next
+                  <ChevronRight className="w-4 h-4" />
                 </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Showing page <span className="font-medium">{currentPage}</span> of{' '}
-                    <span className="font-medium">{pagination.totalPages}</span>
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                    <button
-                      onClick={() => loadDrafts(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
-                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => loadDrafts(page)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                          page === currentPage
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => loadDrafts(currentPage + 1)}
-                      disabled={currentPage === pagination.totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Next
-                    </button>
-                  </nav>
-                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Delete Confirmation Modal */}
-        <Modal
-          isOpen={deleteModalOpen}
-          onClose={() => setDeleteModalOpen(false)}
-          title="Delete Message Draft"
-        >
+        {/* Close menu on outside click */}
+        {openMenuId && (
+          <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+        )}
+
+        {/* Delete Modal */}
+        <Modal isOpen={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Delete Draft">
           <div className="space-y-4">
-            <p className="text-gray-600">
-              Are you sure you want to delete this message draft? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => setDeleteModalOpen(false)}
-                disabled={deleteLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handleDelete}
-                disabled={deleteLoading}
-              >
+            <p className="text-sm text-gray-600">Are you sure? This cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setDeleteModalOpen(false)} disabled={deleteLoading}>Cancel</Button>
+              <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleteLoading}>
                 {deleteLoading ? 'Deleting...' : 'Delete'}
               </Button>
             </div>
           </div>
         </Modal>
 
-        {/* Send Now Confirmation Modal */}
-        <Modal
-          isOpen={sendNowModalOpen}
-          onClose={() => setSendNowModalOpen(false)}
-          title="Send Message Now"
-        >
+        {/* Send Now Modal */}
+        <Modal isOpen={sendNowModalOpen} onClose={() => setSendNowModalOpen(false)} title="Send Now">
           <div className="space-y-4">
-            <p className="text-gray-600">
-              Are you sure you want to send this message now? It will be sent to all first timers from the scheduled date.
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => setSendNowModalOpen(false)}
-                disabled={sendLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSendNow}
-                disabled={sendLoading}
-              >
+            <p className="text-sm text-gray-600">This will send the email to all matching recipients immediately.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setSendNowModalOpen(false)} disabled={sendLoading}>Cancel</Button>
+              <Button size="sm" onClick={handleSendNow} disabled={sendLoading}>
                 {sendLoading ? 'Sending...' : 'Send Now'}
               </Button>
             </div>

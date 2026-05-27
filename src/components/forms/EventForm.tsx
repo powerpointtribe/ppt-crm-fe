@@ -381,7 +381,7 @@ export default function EventForm({
   const loadMembers = async () => {
     try {
       setLoadingMembers(true)
-      const response = await membersService.getMembers({ limit: 100 })
+      const response = await membersService.getMembers({ limit: 500 })
       setMembers(response.items || [])
     } catch (error) {
       console.error('Error loading members:', error)

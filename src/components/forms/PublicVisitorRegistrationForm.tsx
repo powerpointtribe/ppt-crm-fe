@@ -56,6 +56,8 @@ export default function PublicVisitorRegistrationForm({
       dateOfVisit: new Date().toISOString().split('T')[0],
       serviceType: '',
       howDidYouHear: undefined,
+      invitedBy: '',
+      schoolName: '',
       familyMembers: [],
       interests: [],
       servingInterests: [],
@@ -349,6 +351,44 @@ export default function PublicVisitorRegistrationForm({
         </motion.div>
 
         <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.36 }}
+          className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-4 border border-pink-200"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-2xl">👤</div>
+            <h4 className="font-semibold text-gray-800">Gender <span className="text-red-500">*</span></h4>
+          </div>
+          <div className="flex gap-3">
+            {[
+              { value: 'male', label: '👨 Male' },
+              { value: 'female', label: '👩 Female' },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                  watch('gender') === option.value
+                    ? 'border-purple-500 bg-purple-50 text-purple-700 font-medium'
+                    : 'border-gray-200 hover:border-purple-300 text-gray-600'
+                }`}
+              >
+                <input
+                  type="radio"
+                  value={option.value}
+                  {...register('gender')}
+                  className="sr-only"
+                />
+                <span className="text-sm">{option.label}</span>
+              </label>
+            ))}
+          </div>
+          {errors.gender && (
+            <p className="text-red-500 text-sm mt-1">{errors.gender.message}</p>
+          )}
+        </motion.div>
+
+        <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.37 }}
@@ -356,14 +396,41 @@ export default function PublicVisitorRegistrationForm({
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">💼</div>
-            <h4 className="font-semibold text-gray-800">Occupation?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+            <h4 className="font-semibold text-gray-800">Occupation? <span className="text-red-500">*</span></h4>
           </div>
-          <Input
+          <select
             {...register('occupation')}
-            placeholder="What do you do for work?"
-            className="transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 bg-white"
+          >
+            <option value="">Select your occupation</option>
+            <option value="Student">Student</option>
+            <option value="Employed">Employed</option>
+            <option value="Self-Employed">Self-Employed</option>
+            <option value="Business Owner">Business Owner</option>
+            <option value="Civil Servant">Civil Servant</option>
+            <option value="Artisan">Artisan</option>
+            <option value="Unemployed">Unemployed</option>
+            <option value="Retired">Retired</option>
+            <option value="Other">Other</option>
+          </select>
+          {errors.occupation && (
+            <p className="text-red-500 text-sm mt-1">{errors.occupation.message}</p>
+          )}
+
+          {/* Show school field when Student is selected */}
+          {watch('occupation') === 'Student' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="mt-3"
+            >
+              <Input
+                {...register('schoolName')}
+                placeholder="Name of school/university"
+                className="transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </motion.div>
+          )}
         </motion.div>
 
 
@@ -406,6 +473,22 @@ export default function PublicVisitorRegistrationForm({
               </motion.label>
             ))}
           </div>
+
+          {/* Show "Who invited you?" when Friend or Family is selected */}
+          {(watch('howDidYouHear') === 'friend' || watch('howDidYouHear') === 'family') && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-3"
+            >
+              <Input
+                {...register('invitedBy')}
+                placeholder="Who invited you? (Name of friend/family member)"
+                className="transition-all duration-300 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </motion.div>
+          )}
         </motion.div>
 
         <motion.div

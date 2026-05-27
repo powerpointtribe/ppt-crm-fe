@@ -589,14 +589,14 @@ export const eventsService = {
     format: 'csv' | 'xlsx' | 'pdf' = 'xlsx',
     params?: RegistrationSearchParams
   ): Promise<Blob> => {
-    const response = await apiService.get(
+    const data = await apiService.get<Blob>(
       `/events/${eventId}/admin/registrations/export`,
       {
         params: { format, ...params },
         responseType: 'blob',
       }
     )
-    return response.data
+    return data
   },
 
   updateRegistrationStatusAdmin: async (
@@ -631,6 +631,53 @@ export const eventsService = {
   getEventOverviewAdmin: async (eventId: string): Promise<any> => {
     const response = await apiService.get<ApiResponse<any>>(
       `/events/${eventId}/admin/analytics/overview`
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  // ========== SOCIAL MEDIA ACCOUNTABILITY (ADMIN) ==========
+
+  recordSocialAccountability: async (
+    eventId: string,
+    data: {
+      registrationId: string
+      week: number
+      platform?: string
+      postCount: number
+      postLinks?: string[]
+      engagementRate: number
+      followerGrowth: number
+      consistencyScore: number
+      peerReviewScore?: number
+      notes?: string
+    }
+  ): Promise<any> => {
+    const response = await apiService.post<ApiResponse<any>>(
+      `/events/${eventId}/admin/accountability`,
+      data
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  getSocialAccountabilityOverview: async (
+    eventId: string,
+    week?: number
+  ): Promise<any> => {
+    const params: any = {}
+    if (week) params.week = week
+    const response = await apiService.get<ApiResponse<any>>(
+      `/events/${eventId}/admin/accountability`,
+      { params }
+    )
+    return transformSingleResponse<any>(response)
+  },
+
+  getSocialAccountabilityForRegistration: async (
+    eventId: string,
+    registrationId: string
+  ): Promise<any> => {
+    const response = await apiService.get<ApiResponse<any>>(
+      `/events/${eventId}/admin/accountability/${registrationId}`
     )
     return transformSingleResponse<any>(response)
   },

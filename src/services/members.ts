@@ -44,6 +44,7 @@ export interface MemberSearchParams {
   page?: number
   limit?: number
   search?: string
+  branchId?: string
   membershipStatus?: Member['membershipStatus']
   gender?: 'male' | 'female'
   maritalStatus?: Member['maritalStatus']
@@ -51,8 +52,10 @@ export interface MemberSearchParams {
   unitId?: string
   ministry?: string
   leadershipRole?: 'unit_head' | 'district_pastor' | 'ministry_director'
+  hasDistrict?: boolean
   dateJoinedFrom?: string
   dateJoinedTo?: string
+  birthdayMonth?: number
   minAge?: number
   maxAge?: number
   sortBy?: string

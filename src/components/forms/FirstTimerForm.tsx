@@ -92,7 +92,9 @@ export default function FirstTimerForm({
       followUps: firstTimer.followUps || [],
       status: firstTimer.status || 'not_contacted',
       converted: firstTimer.converted || false,
-      assignedTo: firstTimer.assignedTo || '',
+      assignedTo: (typeof firstTimer.assignedTo === 'object' && firstTimer.assignedTo !== null
+        ? (firstTimer.assignedTo as any)?._id?.toString()
+        : firstTimer.assignedTo) || '',
       notes: firstTimer.notes || '',
       tags: firstTimer.tags || []
     } : {

@@ -35,7 +35,7 @@ export const publicRequisitionSchema = z.object({
     .max(500, 'Description must be less than 500 characters')
     .optional(),
   dateNeeded: z.string().min(1, 'Date needed is required'),
-  lastRequest: z.string().max(200, 'Must be less than 200 characters').optional(),
+  lastRequest: z.string().min(1, 'Date of last request is required').max(200, 'Must be less than 200 characters'),
   costBreakdown: z
     .array(costBreakdownItemSchema)
     .min(1, 'At least one cost item is required'),

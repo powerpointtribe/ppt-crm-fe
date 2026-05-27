@@ -5,6 +5,59 @@ import Button from './Button'
 import { cn } from '@/utils/cn'
 import { uploadService } from '@/services/upload'
 
+/**
+ * Compress an image file client-side before upload.
+ * Resizes to maxDimension and compresses to targetSizeKB.
+ */
+async function compressImage(
+  file: File,
+  maxDimension: number = 800,
+  quality: number = 0.7
+): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+
+      // Only resize if larger than maxDimension
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width)
+          width = maxDimension
+        } else {
+          width = Math.round((width * maxDimension) / height)
+          height = maxDimension
+        }
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, width, height)
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }))
+          } else {
+            resolve(file) // fallback to original
+          }
+        },
+        'image/jpeg',
+        quality
+      )
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(file) // fallback to original
+    }
+    img.src = url
+  })
+}
+
 interface ImageUploadProps {
   value?: string
   onChange: (url: string) => void
@@ -44,11 +97,8 @@ export default function ImageUpload({
   }
 
   const handleFileSelect = async (file: File) => {
-    console.log('File selected for upload:', { name: file.name, size: file.size, type: file.type })
-
     const validationError = validateFile(file)
     if (validationError) {
-      console.error('File validation error:', validationError)
       setError(validationError)
       onError?.(validationError)
       return
@@ -58,20 +108,20 @@ export default function ImageUpload({
     setUploading(true)
 
     try {
-      // Create preview
+      // Compress image client-side before upload (reduces 3-10MB photos to ~50-150KB)
+      const compressed = await compressImage(file, 800, 0.7)
+
+      // Create preview from compressed image
       const reader = new FileReader()
       reader.onload = (e) => {
         setPreview(e.target?.result as string)
       }
-      reader.readAsDataURL(file)
+      reader.readAsDataURL(compressed)
 
-      console.log('Starting image upload...')
-      // Upload to backend using the upload service
-      const result = await uploadService.uploadImage(file)
-      console.log('Image upload successful:', result)
+      // Upload compressed file to backend
+      const result = await uploadService.uploadImage(compressed)
       onChange(result.url)
     } catch (error) {
-      console.error('Image upload error:', error)
       const errorMsg = 'Failed to upload image. Please try again.'
       setError(errorMsg)
       onError?.(errorMsg)

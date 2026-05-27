@@ -1,13 +1,14 @@
 import { z } from 'zod'
-import { EmailTemplateCategory, RecipientFilterType } from '@/types/bulk-email'
+import { EmailTemplateCategory, TemplateModule, RecipientFilterType } from '@/types/bulk-email'
 
 export const emailTemplateSchema = z.object({
-  branch: z.string().min(1, 'Branch is required'),
+  branch: z.string().optional(),
   name: z.string().min(1, 'Template name is required').max(100, 'Name is too long'),
   subject: z.string().min(1, 'Subject is required').max(200, 'Subject is too long'),
   htmlContent: z.string().min(1, 'Email content is required'),
   plainTextContent: z.string().optional(),
   category: z.nativeEnum(EmailTemplateCategory),
+  module: z.nativeEnum(TemplateModule).optional(),
   isActive: z.boolean().optional().default(true),
 })
 
@@ -21,6 +22,7 @@ export const recipientFilterSchema = z.object({
   districtIds: z.array(z.string()).optional(),
   membershipStatuses: z.array(z.string()).optional(),
   customMemberIds: z.array(z.string()).optional(),
+  mailingListIds: z.array(z.string()).optional(),
 })
 
 export const emailCampaignSchema = z.object({

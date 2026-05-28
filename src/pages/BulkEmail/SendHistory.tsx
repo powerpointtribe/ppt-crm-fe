@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Send, Search, Eye, Users, CheckCircle, XCircle, Clock, TrendingUp,
-  Mail, ChevronLeft, ChevronRight, Sparkles, Plus, BarChart3,
+  Mail, ChevronLeft, ChevronRight, Sparkles, Plus, BarChart3, ArrowLeft,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -73,18 +73,16 @@ export default function SendHistory() {
   }
 
   return (
-    <Layout title="Send History">
+    <Layout title="Send History" subtitle="View past email campaigns and their performance" actions={
+      <Button onClick={() => navigate('/bulk-email/campaigns/new')} className="shrink-0">
+        <Plus className="h-4 w-4 mr-1.5" /> New Campaign
+      </Button>
+    }>
       <div className="space-y-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Send History</h1>
-            <p className="text-sm text-gray-500 mt-0.5">View past email campaigns and their performance</p>
-          </div>
-          <Button onClick={() => navigate('/bulk-email/campaigns/new')} className="shrink-0">
-            <Plus className="h-4 w-4 mr-1.5" /> New Campaign
-          </Button>
-        </div>
+        <button onClick={() => navigate('/bulk-email')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors -mt-1">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Messaging
+        </button>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

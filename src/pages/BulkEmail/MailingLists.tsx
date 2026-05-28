@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Search, Users, Upload, Calendar, Eye, Trash2,
-  MoreHorizontal, Sparkles, ChevronLeft, ChevronRight
+  MoreHorizontal, Sparkles, ChevronLeft, ChevronRight, ArrowLeft
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -87,20 +87,17 @@ export default function MailingLists() {
   }
 
   return (
-    <Layout title="Mailing Lists">
+    <Layout title="Mailing Lists" subtitle="Manage your email contact lists for bulk campaigns" actions={
+      <Button onClick={() => navigate('/bulk-email/mailing-lists/new')} className="shrink-0">
+        <Plus className="h-4 w-4 mr-1.5" />
+        New List
+      </Button>
+    }>
       <div className="space-y-5">
-
-        {/* Header bar */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Mailing Lists</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage your email contact lists for bulk campaigns</p>
-          </div>
-          <Button onClick={() => navigate('/bulk-email/mailing-lists/new')} className="shrink-0">
-            <Plus className="h-4 w-4 mr-1.5" />
-            New List
-          </Button>
-        </div>
+        <button onClick={() => navigate('/bulk-email')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors -mt-1">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Messaging
+        </button>
 
         {/* Search */}
         <div className="flex gap-2">

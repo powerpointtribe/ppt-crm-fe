@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, Plus, Search, Eye, Edit, Trash2, CheckCircle, XCircle,
-  Lock, LayoutGrid, MoreHorizontal, ChevronLeft, ChevronRight, Sparkles,
+  Lock, LayoutGrid, MoreHorizontal, ChevronLeft, ChevronRight, Sparkles, ArrowLeft,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -130,18 +130,17 @@ export default function Templates() {
   const totalTemplates = moduleCounts.reduce((sum, m) => sum + m.count, 0)
 
   return (
-    <Layout title="Email Templates">
+    <Layout title="Email Templates" subtitle="Manage reusable email templates across all modules" actions={
+      <Button onClick={() => navigate('/bulk-email/templates/new')} className="shrink-0">
+        <Plus className="h-4 w-4 mr-1.5" /> New Template
+      </Button>
+    }>
       <div className="space-y-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Email Templates</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage reusable email templates across all modules</p>
-          </div>
-          <Button onClick={() => navigate('/bulk-email/templates/new')} className="shrink-0">
-            <Plus className="h-4 w-4 mr-1.5" /> New Template
-          </Button>
-        </div>
+        {/* Back to Messaging */}
+        <button onClick={() => navigate('/bulk-email')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors -mt-1">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Messaging
+        </button>
 
         {/* Module Tabs */}
         {moduleCounts.length > 0 && (

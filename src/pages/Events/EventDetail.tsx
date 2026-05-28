@@ -35,7 +35,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
-import SocialAccountabilitySection from '@/components/events/SocialAccountabilitySection'
+import SocialAccountabilitySection from '@/components/Events/SocialAccountabilitySection'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'

@@ -117,7 +117,6 @@ export default function MessageDrafts() {
           {/* Header bar */}
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Message Drafts</h1>
               <p className="text-sm text-gray-500 mt-0.5">Create and manage welcome emails for first-timers</p>
             </div>
             <Button onClick={() => navigate('/first-timers/message-drafts/new')} className="shrink-0">

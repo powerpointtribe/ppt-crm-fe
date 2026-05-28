@@ -104,7 +104,6 @@ export default function BulkUpload() {
             </Button>
           </div>
           <div className="text-right">
-            <h1 className="text-2xl font-bold text-foreground">Bulk Upload</h1>
             <p className="text-muted-foreground">Import data from CSV or Excel files</p>
           </div>
         </motion.div>

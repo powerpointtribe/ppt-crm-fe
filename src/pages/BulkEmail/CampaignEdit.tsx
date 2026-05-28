@@ -137,7 +137,6 @@ export default function CampaignEdit() {
           </button>
           <div>
             <p className="text-sm text-gray-500 flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Back to Campaign</p>
-            <h1 className="text-xl font-bold text-gray-900">Edit Campaign</h1>
           </div>
         </div>
 

@@ -145,7 +145,6 @@ export default function AuditDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Audit Dashboard</h1>
             <p className="text-gray-600">Monitor system activity and security events</p>
           </div>
           <div className="flex items-center gap-3">

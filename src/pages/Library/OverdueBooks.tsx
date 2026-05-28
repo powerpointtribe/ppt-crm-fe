@@ -85,7 +85,6 @@ export default function OverdueBooks() {
               Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Overdue Books</h1>
               <p className="text-gray-600">Books that need immediate attention</p>
             </div>
           </div>

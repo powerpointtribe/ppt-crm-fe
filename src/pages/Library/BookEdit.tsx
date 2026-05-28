@@ -121,8 +121,6 @@ export default function BookEdit() {
         </div>
 
         <Card className="p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Book</h1>
-
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">

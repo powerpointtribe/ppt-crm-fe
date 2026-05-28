@@ -41,7 +41,6 @@ export default function GroupNew() {
             transition={{ duration: 0.5 }}
             className="text-center mb-8"
           >
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Group</h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Set up a new group for your church community. Follow the steps to configure all the necessary details.
             </p>

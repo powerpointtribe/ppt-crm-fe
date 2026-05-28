@@ -73,16 +73,17 @@ export default function Campaigns() {
   }
 
   return (
-    <Layout title="Email Campaigns" subtitle="Create and manage email campaigns" actions={
-      <Button onClick={() => navigate('/bulk-email/campaigns/new')} className="shrink-0">
-        <Plus className="h-4 w-4 mr-1.5" /> New Campaign
-      </Button>
-    }>
+    <Layout title="Email Campaigns">
       <div className="space-y-5">
-        <button onClick={() => navigate('/bulk-email')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors -mt-1">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Messaging
-        </button>
+        <div className="flex items-center justify-between">
+          <button onClick={() => navigate('/bulk-email')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Messaging
+          </button>
+          <Button onClick={() => navigate('/bulk-email/campaigns/new')} className="shrink-0">
+            <Plus className="h-4 w-4 mr-1.5" /> New Campaign
+          </Button>
+        </div>
 
         {/* Search + Filter */}
         <div className="flex gap-2">

@@ -126,7 +126,6 @@ export default function BulkUpdate() {
             </Button>
           </div>
           <div className="text-right">
-            <h1 className="text-2xl font-bold text-foreground">Bulk Update</h1>
             <p className="text-muted-foreground">Update multiple records at once</p>
           </div>
         </motion.div>

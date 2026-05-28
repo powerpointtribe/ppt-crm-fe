@@ -131,7 +131,6 @@ export default function Categories() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Book Categories</h1>
             <p className="text-gray-600">Organize your library collection</p>
           </div>
           <Button onClick={openCreateModal}>

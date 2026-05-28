@@ -136,8 +136,6 @@ export default function BorrowingNew() {
         </div>
 
         <Card className="p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Issue Book to Member</h1>
-
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Book Selection */}
             <div>

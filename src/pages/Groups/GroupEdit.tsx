@@ -122,7 +122,6 @@ export default function GroupEdit() {
             transition={{ duration: 0.5 }}
             className="text-center mb-8"
           >
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Group</h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Update the details for <span className="font-semibold text-gray-900">{group.name}</span>
             </p>

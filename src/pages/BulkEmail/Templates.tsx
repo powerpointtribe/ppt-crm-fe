@@ -130,17 +130,17 @@ export default function Templates() {
   const totalTemplates = moduleCounts.reduce((sum, m) => sum + m.count, 0)
 
   return (
-    <Layout title="Email Templates" subtitle="Manage reusable email templates across all modules" actions={
-      <Button onClick={() => navigate('/bulk-email/templates/new')} className="shrink-0">
-        <Plus className="h-4 w-4 mr-1.5" /> New Template
-      </Button>
-    }>
+    <Layout title="Email Templates">
       <div className="space-y-5">
-        {/* Back to Messaging */}
-        <button onClick={() => navigate('/bulk-email')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors -mt-1">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Messaging
-        </button>
+        <div className="flex items-center justify-between">
+          <button onClick={() => navigate('/bulk-email')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Messaging
+          </button>
+          <Button onClick={() => navigate('/bulk-email/templates/new')} className="shrink-0">
+            <Plus className="h-4 w-4 mr-1.5" /> New Template
+          </Button>
+        </div>
 
         {/* Module Tabs */}
         {moduleCounts.length > 0 && (

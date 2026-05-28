@@ -103,7 +103,6 @@ export default function TemplateEdit() {
           </button>
           <div>
             <p className="text-sm text-gray-500 flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> Back to Template</p>
-            <h1 className="text-xl font-bold text-gray-900">Edit Template</h1>
           </div>
         </div>
 

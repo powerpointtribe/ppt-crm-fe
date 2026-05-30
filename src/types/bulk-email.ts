@@ -1,10 +1,10 @@
 export enum EmailTemplateCategory {
-  GENERAL = 'GENERAL',
-  WELCOME = 'WELCOME',
-  ANNOUNCEMENT = 'ANNOUNCEMENT',
-  EVENT = 'EVENT',
-  REMINDER = 'REMINDER',
-  NEWSLETTER = 'NEWSLETTER',
+  GENERAL = 'general',
+  WELCOME = 'welcome',
+  ANNOUNCEMENT = 'announcement',
+  EVENT = 'event',
+  REMINDER = 'reminder',
+  NEWSLETTER = 'newsletter',
 }
 
 export enum TemplateModule {

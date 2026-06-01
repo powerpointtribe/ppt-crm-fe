@@ -187,7 +187,6 @@ export const serviceReportsService = {
       const { default: jsPDF } = await import('jspdf')
       const { default: html2canvas } = await import('html2canvas')
 
-      // Create a hidden container to render the HTML
       const container = document.createElement('div')
       container.style.position = 'fixed'
       container.style.left = '-9999px'
@@ -196,40 +195,72 @@ export const serviceReportsService = {
       container.innerHTML = htmlContent
       document.body.appendChild(container)
 
-      // Wait for images/fonts to load
       await new Promise((resolve) => setTimeout(resolve, 500))
 
-      // Render to canvas
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        width: 800,
-      })
+      // Identify logical sections to keep together
+      const sectionSelectors = [
+        '.header',
+        '.executive-summary',
+        '.insights-section',
+        '.section',
+        '.notes-section',
+        '.footer',
+      ]
 
-      document.body.removeChild(container)
-
-      // Convert canvas to PDF
-      const imgData = canvas.toDataURL('image/png')
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 297 // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      let heightLeft = imgHeight
-      let position = 0
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-
-      // Add extra pages if content overflows
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+      const sections: HTMLElement[] = []
+      for (const sel of sectionSelectors) {
+        const els = container.querySelectorAll(sel)
+        els.forEach((el) => sections.push(el as HTMLElement))
       }
 
+      // If we can't find sections, fall back to single-canvas approach
+      if (sections.length === 0) {
+        sections.push(container.querySelector('.container') as HTMLElement || container)
+      }
+
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = 210
+      const pageHeight = 297
+      const margin = 5
+      const usableHeight = pageHeight - margin * 2
+      let cursorY = margin
+      let isFirstPage = true
+
+      for (const section of sections) {
+        const canvas = await html2canvas(section, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          width: 800,
+          backgroundColor: null,
+        })
+
+        const imgData = canvas.toDataURL('image/png')
+        const imgWidth = pageWidth - margin * 2
+        const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+        // If section doesn't fit on current page, start a new page
+        if (cursorY + imgHeight > pageHeight - margin && cursorY > margin + 1) {
+          pdf.addPage()
+          cursorY = margin
+          isFirstPage = false
+        }
+
+        // If a single section is taller than a full page, scale it to fit
+        if (imgHeight > usableHeight) {
+          const scale = usableHeight / imgHeight
+          const scaledWidth = imgWidth * scale
+          const scaledHeight = imgHeight * scale
+          const xOffset = margin + (imgWidth - scaledWidth) / 2
+          pdf.addImage(imgData, 'PNG', xOffset, cursorY, scaledWidth, scaledHeight)
+          cursorY += scaledHeight + 2
+        } else {
+          pdf.addImage(imgData, 'PNG', margin, cursorY, imgWidth, imgHeight)
+          cursorY += imgHeight + 1
+        }
+      }
+
+      document.body.removeChild(container)
       pdf.save(`service-report-${id}.pdf`)
     } catch (error) {
       console.error('Error generating PDF:', error)

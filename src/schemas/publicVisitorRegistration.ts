@@ -5,7 +5,9 @@ export const publicVisitorRegistrationSchema = z.object({
   // Basic Information (Required)
   firstName: z.string().min(1, 'First name is required').max(50, 'First name too long'),
   lastName: z.string().min(1, 'Last name is required').max(50, 'Last name too long'),
-  phone: z.string().min(10, 'Valid phone number is required'),
+  phone: z.string()
+    .min(11, 'Phone number must be at least 11 digits')
+    .regex(/^(\+?234|0)\d{10}$/, 'Please enter a valid Nigerian phone number (e.g. 08012345678 or +2348012345678)'),
   email: z.string().email('Valid email is required').optional().or(z.literal('')),
 
   // Visit Information (Required)

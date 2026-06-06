@@ -64,7 +64,7 @@ export default function PublicVisitorRegistration() {
       // Validate branch selection
       const finalBranchSlug = branch?.slug || selectedBranchSlug
       if (!finalBranchSlug && branches.length > 0) {
-        setError('Please select a branch')
+        setError('Please select a campus')
         return
       }
 
@@ -238,7 +238,7 @@ export default function PublicVisitorRegistration() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <div className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-blue-600" />
-                  Select Your Branch <span className="text-red-500">*</span>
+                  Select Your Campus <span className="text-red-500">*</span>
                 </div>
               </label>
               <select
@@ -247,7 +247,7 @@ export default function PublicVisitorRegistration() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
-                <option value="">Choose the branch you visited...</option>
+                <option value="">Choose the campus you visited...</option>
                 {branches.map((b) => (
                   <option key={b.slug} value={b.slug}>
                     {b.name}
@@ -256,7 +256,7 @@ export default function PublicVisitorRegistration() {
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                Please select the church branch you visited today
+                Please select the church campus you visited today
               </p>
             </Card>
           </motion.div>

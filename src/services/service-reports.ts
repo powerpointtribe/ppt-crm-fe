@@ -176,6 +176,7 @@ export const serviceReportsService = {
   },
 
   generatePdfReport: async (id: string): Promise<void> => {
+    let container: HTMLDivElement | null = null
     try {
       const response = await apiService.get(`/service-reports/${id}/pdf`)
       const htmlContent = response.data?.data?.html || response.data?.html
@@ -187,84 +188,111 @@ export const serviceReportsService = {
       const { default: jsPDF } = await import('jspdf')
       const { default: html2canvas } = await import('html2canvas')
 
-      const container = document.createElement('div')
+      container = document.createElement('div')
       container.style.position = 'fixed'
       container.style.left = '-9999px'
       container.style.top = '0'
-      container.style.width = '800px'
+      container.style.width = '760px'
+      container.style.background = '#ffffff'
       container.innerHTML = htmlContent
       document.body.appendChild(container)
 
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 300))
 
-      // Identify logical sections to keep together
-      const sectionSelectors = [
-        '.header',
-        '.executive-summary',
-        '.insights-section',
-        '.section',
-        '.notes-section',
-        '.footer',
-      ]
+      const pageEl = (container.querySelector('.page') as HTMLElement) || container
+      const pageRect = pageEl.getBoundingClientRect()
 
-      const sections: HTMLElement[] = []
-      for (const sel of sectionSelectors) {
-        const els = container.querySelectorAll(sel)
-        els.forEach((el) => sections.push(el as HTMLElement))
-      }
-
-      // If we can't find sections, fall back to single-canvas approach
-      if (sections.length === 0) {
-        sections.push(container.querySelector('.container') as HTMLElement || container)
-      }
+      const canvas = await html2canvas(pageEl, {
+        scale: 2.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      })
 
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pageWidth = 210
       const pageHeight = 297
-      const margin = 5
-      const usableHeight = pageHeight - margin * 2
-      let cursorY = margin
-      let isFirstPage = true
+      const margin = 4
+      const imgWidth = pageWidth - margin * 2
+      const usableHeightMm = pageHeight - margin * 2
+      // Canvas px per CSS px, and the page's usable height expressed in canvas px.
+      const ratio = canvas.width / pageRect.width
+      const usableHeightPx = (usableHeightMm / imgWidth) * canvas.width
 
-      for (const section of sections) {
-        const canvas = await html2canvas(section, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          width: 800,
-          backgroundColor: null,
-        })
+      const addSlice = (start: number, end: number, isFirst: boolean) => {
+        const h = Math.max(1, Math.round(end - start))
+        if (!isFirst) pdf.addPage()
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvas.width
+        sliceCanvas.height = h
+        const ctx = sliceCanvas.getContext('2d')!
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height)
+        ctx.drawImage(canvas, 0, -start)
+        const sliceHeightMm = (sliceCanvas.height / canvas.width) * imgWidth
+        pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, sliceHeightMm)
+      }
 
-        const imgData = canvas.toDataURL('image/png')
-        const imgWidth = pageWidth - margin * 2
-        const imgHeight = (canvas.height * imgWidth) / canvas.width
+      const slices: Array<{ start: number; end: number }> = []
 
-        // If section doesn't fit on current page, start a new page
-        if (cursorY + imgHeight > pageHeight - margin && cursorY > margin + 1) {
-          pdf.addPage()
-          cursorY = margin
-          isFirstPage = false
+      if (canvas.height <= usableHeightPx) {
+        // Fits on a single page.
+        slices.push({ start: 0, end: canvas.height })
+      } else {
+        // Multi-page: only cut between "blocks" so no element is split across a page.
+        // Candidate cut points = the top edge (in canvas px) of each keep-together
+        // block, plus the very bottom of the document.
+        const blocks = Array.from(
+          pageEl.querySelectorAll<HTMLElement>('[data-pdf-block]'),
+        )
+        const cuts = blocks
+          .map((b) => Math.round((b.getBoundingClientRect().top - pageRect.top) * ratio))
+          .filter((y) => y > 0)
+        cuts.push(canvas.height)
+        // Ensure ascending & unique.
+        const candidates = Array.from(new Set(cuts)).sort((a, b) => a - b)
+
+        let pageStart = 0
+        let prevCut = 0
+        for (const c of candidates) {
+          if (c - pageStart <= usableHeightPx) {
+            prevCut = c
+            continue
+          }
+          // `c` would overflow the current page.
+          if (prevCut > pageStart) {
+            slices.push({ start: pageStart, end: prevCut })
+            pageStart = prevCut
+            if (c - pageStart <= usableHeightPx) {
+              prevCut = c
+              continue
+            }
+          }
+          // A single block is taller than a page — unavoidable hard split.
+          let s = pageStart
+          while (c - s > usableHeightPx) {
+            slices.push({ start: s, end: s + usableHeightPx })
+            s += usableHeightPx
+          }
+          slices.push({ start: s, end: c })
+          pageStart = c
+          prevCut = c
         }
-
-        // If a single section is taller than a full page, scale it to fit
-        if (imgHeight > usableHeight) {
-          const scale = usableHeight / imgHeight
-          const scaledWidth = imgWidth * scale
-          const scaledHeight = imgHeight * scale
-          const xOffset = margin + (imgWidth - scaledWidth) / 2
-          pdf.addImage(imgData, 'PNG', xOffset, cursorY, scaledWidth, scaledHeight)
-          cursorY += scaledHeight + 2
-        } else {
-          pdf.addImage(imgData, 'PNG', margin, cursorY, imgWidth, imgHeight)
-          cursorY += imgHeight + 1
+        if (pageStart < canvas.height) {
+          slices.push({ start: pageStart, end: canvas.height })
         }
       }
 
-      document.body.removeChild(container)
+      slices.forEach((sl, idx) => addSlice(sl.start, sl.end, idx === 0))
+
       pdf.save(`service-report-${id}.pdf`)
     } catch (error) {
       console.error('Error generating PDF:', error)
       throw error
+    } finally {
+      if (container && container.parentNode) {
+        container.parentNode.removeChild(container)
+      }
     }
   },
 

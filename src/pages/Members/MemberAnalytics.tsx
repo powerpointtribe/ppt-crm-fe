@@ -146,7 +146,7 @@ export default function MemberAnalytics() {
     if (selectedBranch) return selectedBranch.name
     if (selectedBranchFilter) {
       const branch = branches.find(b => b._id === selectedBranchFilter)
-      return branch?.name || 'Selected Branch'
+      return branch?.name || 'Selected Campus'
     }
     return null
   }

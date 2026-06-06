@@ -185,14 +185,14 @@ export default function ServiceReportForm({
       {canSelectBranch && branches.length > 0 && (
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
-            Branch
+            Campus
           </label>
           <select
             value={formData.branchId || ''}
             onChange={(e) => handleInputChange('branchId', e.target.value)}
             className="w-full px-2.5 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white"
           >
-            <option value="">Select branch</option>
+            <option value="">Select campus</option>
             {branches.map((branch) => (
               <option key={branch._id} value={branch._id}>
                 {branch.name}

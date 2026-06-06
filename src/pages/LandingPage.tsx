@@ -38,8 +38,8 @@ const features = [
   },
   {
     icon: Building2,
-    title: "Multi-Branch Support",
-    description: "Manage multiple campuses with branch-specific data and cross-campus reporting.",
+    title: "Multi-Campus Support",
+    description: "Manage multiple campuses with campus-specific data and cross-campus reporting.",
     color: "from-purple-500 to-purple-600"
   },
   {
@@ -249,7 +249,7 @@ export default function LandingPage() {
                     <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-100 flex items-center justify-center">
                       <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-600" />
                     </div>
-                    <span>Multi-Branch</span>
+                    <span>Multi-Campus</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500">
                     <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-purple-100 flex items-center justify-center">

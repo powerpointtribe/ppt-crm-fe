@@ -77,10 +77,14 @@ export default function ServiceReports() {
   const [includeInactive, setIncludeInactive] = useState(false)
   const [showChart, setShowChart] = useState(false)
 
-  // Filter states
+  // Filter states — default the overview to the present year (Jan 1 → today).
   const [serviceTagFilter, setServiceTagFilter] = useState('')
-  const [dateFromFilter, setDateFromFilter] = useState('')
-  const [dateToFilter, setDateToFilter] = useState('')
+  const [dateFromFilter, setDateFromFilter] = useState(
+    () => new Date(new Date().getFullYear(), 0, 1).toLocaleDateString('en-CA'),
+  )
+  const [dateToFilter, setDateToFilter] = useState(
+    () => new Date().toLocaleDateString('en-CA'),
+  )
   const [branchFilter, setBranchFilter] = useState('')
 
   // Temp filter states for modal
@@ -637,7 +641,7 @@ export default function ServiceReports() {
                         </th>
                         {canViewAllBranches && (
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                            Branch
+                            Campus
                           </th>
                         )}
                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">

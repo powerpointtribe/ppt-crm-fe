@@ -280,7 +280,7 @@ export default function PublicRequisitionForm() {
   const handleEligibilityCheck = async () => {
     const branchSlugToCheck = branch?.slug || eligibilityBranchSlug
     if (!eligibilityEmail || !branchSlugToCheck) {
-      setError('Please enter your email and select a branch.')
+      setError('Please enter your email and select a campus.')
       return
     }
 
@@ -329,10 +329,10 @@ export default function PublicRequisitionForm() {
             setBranch(branchData)
             setValue('branchSlug', branchData.slug)
           } else {
-            setError('Branch not found.')
+            setError('Campus not found.')
           }
         } catch {
-          setError('Branch not found.')
+          setError('Campus not found.')
         } finally {
           setLoadingBranch(false)
         }
@@ -615,12 +615,12 @@ export default function PublicRequisitionForm() {
             {!branch && branches.length > 0 && (
               <div className="mb-4">
                 <Select
-                  label="Branch"
+                  label="Campus"
                   required
                   value={eligibilityBranchSlug}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEligibilityBranchSlug(e.target.value)}
                 >
-                  <option value="">Select branch</option>
+                  <option value="">Select campus</option>
                   {branches.map((b) => (
                     <option key={b.slug} value={b.slug}>
                       {b.name}

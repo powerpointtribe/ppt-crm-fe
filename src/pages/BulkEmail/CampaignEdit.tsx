@@ -181,7 +181,7 @@ export default function CampaignEdit() {
                 <label className={labelCls}>Filter Type</label>
                 <select {...register('recipientFilter.filterType')} className={selectCls}>
                   <option value={RecipientFilterType.ALL_MEMBERS}>All Members</option>
-                  <option value={RecipientFilterType.BY_BRANCH}>By Branch</option>
+                  <option value={RecipientFilterType.BY_BRANCH}>By Campus</option>
                   <option value={RecipientFilterType.BY_GROUP}>By Group</option>
                   <option value={RecipientFilterType.BY_UNIT}>By Unit</option>
                   <option value={RecipientFilterType.BY_DISTRICT}>By District</option>

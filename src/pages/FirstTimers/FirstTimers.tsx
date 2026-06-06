@@ -5,7 +5,7 @@ import {
   Plus, Phone, Mail, Calendar, User,
   MoreHorizontal, Trash2, UserPlus, Edit, Eye,
   Users, Clock, CheckCircle, TrendingUp, UserCheck,
-  X, Filter, RefreshCw, UserCog, Archive, ArchiveRestore, Upload
+  X, Filter, RefreshCw, UserCog, Archive, ArchiveRestore, Upload, Cake
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -1059,6 +1059,14 @@ export default function FirstTimers() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => navigate('/first-timers/birthdays')}
+                >
+                  <Cake className="h-4 w-4 mr-2" />
+                  Birthdays
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => navigate('/my-assigned-first-timers')}
                 >
                   <UserCheck className="h-4 w-4 mr-2" />
@@ -1674,7 +1682,17 @@ export default function FirstTimers() {
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-gray-400">—</span>
+                            /* Closed accounts: no edit/status actions, but keep a
+                               direct View affordance so they remain inspectable. */
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/first-timers/${visitor._id}`)}
+                              className="p-1"
+                              title="View"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </td>

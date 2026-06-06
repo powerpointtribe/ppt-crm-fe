@@ -66,7 +66,7 @@ const reportCategories: ReportCategory[] = [
     gradient: 'from-emerald-500 to-emerald-600',
     reports: [
       { id: 'by-district', name: 'By District', description: 'Members grouped by district', formats: ['pdf', 'excel'], filters: ['branch', 'district'] },
-      { id: 'by-branch', name: 'By Branch', description: 'Members grouped by branch', formats: ['pdf', 'excel'], filters: ['branch'] },
+      { id: 'by-branch', name: 'By Campus', description: 'Members grouped by campus', formats: ['pdf', 'excel'], filters: ['branch'] },
       { id: 'unassigned', name: 'Unassigned', description: 'Members without location', formats: ['pdf', 'excel', 'csv'], filters: ['branch'] },
     ]
   },
@@ -303,7 +303,7 @@ export default function MemberReports() {
     if (categoryId === 'location') {
       return members.map(member => ({
         ...base(member),
-        'Branch': getBranchName(member.branch),
+        'Campus': getBranchName(member.branch),
         'District': getGroupName(member.district),
         'Membership Status': member.membershipStatus || '',
       }))
@@ -314,7 +314,7 @@ export default function MemberReports() {
       return members.map(member => ({
         ...base(member),
         'Unit': getGroupName(member.unit),
-        'Branch': getBranchName(member.branch),
+        'Campus': getBranchName(member.branch),
         'Membership Status': member.membershipStatus || '',
       }))
     }
@@ -325,7 +325,7 @@ export default function MemberReports() {
         ...base(member),
         'Date of Birth': member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString() : '',
         'Birth Month': member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString('en-US', { month: 'long' }) : '',
-        'Branch': getBranchName(member.branch),
+        'Campus': getBranchName(member.branch),
       }))
     }
 
@@ -339,7 +339,7 @@ export default function MemberReports() {
           ...base(member),
           'Date of Birth': member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString() : '',
           'Age': age !== null ? age.toString() : '',
-          'Branch': getBranchName(member.branch),
+          'Campus': getBranchName(member.branch),
         }
       })
     }
@@ -349,7 +349,7 @@ export default function MemberReports() {
       ...base(member),
       'Date of Birth': member.dateOfBirth ? new Date(member.dateOfBirth).toLocaleDateString() : '',
       'Membership Status': member.membershipStatus || '',
-      'Branch': getBranchName(member.branch),
+      'Campus': getBranchName(member.branch),
       'Address': member.address ? `${member.address.street || ''}, ${member.address.city || ''}, ${member.address.state || ''}`.replace(/^, |, $/g, '') : '',
       'Joined Date': member.dateJoined ? new Date(member.dateJoined).toLocaleDateString() : '',
     }))
@@ -703,7 +703,7 @@ export default function MemberReports() {
                             value={selectedBranch}
                             onChange={(e) => setSelectedBranch(e.target.value)}
                           >
-                            <option value="">All Branches</option>
+                            <option value="">All Campuses</option>
                             {branches.map((branch) => (
                               <option key={branch._id} value={branch._id}>{branch.name}</option>
                             ))}

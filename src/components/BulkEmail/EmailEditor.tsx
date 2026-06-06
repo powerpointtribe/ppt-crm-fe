@@ -17,7 +17,7 @@ const DEFAULT_VARIABLES: Variable[] = [
   { name: 'lastName', label: 'Last Name', sampleValue: 'Doe' },
   { name: 'email', label: 'Email', sampleValue: 'john.doe@example.com' },
   { name: 'phone', label: 'Phone', sampleValue: '+1234567890' },
-  { name: 'branchName', label: 'Branch Name', sampleValue: 'Main Branch' },
+  { name: 'branchName', label: 'Campus Name', sampleValue: 'Main Campus' },
   { name: 'groupName', label: 'Group Name', sampleValue: 'Youth Group' },
   { name: 'unitName', label: 'Unit Name', sampleValue: 'Media Unit' },
   { name: 'districtName', label: 'District Name', sampleValue: 'Central District' },

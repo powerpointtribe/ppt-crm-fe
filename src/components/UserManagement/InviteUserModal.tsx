@@ -188,7 +188,7 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
     }
 
     if (!selectedBranchId) {
-      toast.error('Please select a branch');
+      toast.error('Please select a campus');
       return;
     }
 
@@ -439,7 +439,7 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 <div className="flex items-center gap-1">
                   <Building2 className="w-3 h-3 text-teal-600" />
-                  Branch <span className="text-red-500">*</span>
+                  Campus <span className="text-red-500">*</span>
                 </div>
               </label>
               <select
@@ -448,7 +448,7 @@ export default function InviteUserModal({ onClose, onSuccess }: InviteUserModalP
                 className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
-                <option value="">Select a branch...</option>
+                <option value="">Select a campus...</option>
                 {branches.map((branch) => (
                   <option key={branch._id} value={branch._id}>
                     {branch.name}{branch.isMainBranch && ' (Main)'}

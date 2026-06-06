@@ -636,8 +636,8 @@ export default function Members() {
 
       // Create CSV content
       const headers = activeTab === 'birthdays'
-        ? ['First Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 'Gender', 'Status', 'Branch', 'District', 'Unit']
-        : ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Status', 'Branch', 'District', 'Unit', 'Date Joined']
+        ? ['First Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 'Gender', 'Status', 'Campus', 'District', 'Unit']
+        : ['First Name', 'Last Name', 'Email', 'Phone', 'Gender', 'Status', 'Campus', 'District', 'Unit', 'Date Joined']
       const rows = allMembers.map(member => activeTab === 'birthdays'
         ? [
             member.firstName,
@@ -1709,7 +1709,7 @@ export default function Members() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
                       disabled={savingLocation}
                     >
-                      <option value="">Select a branch...</option>
+                      <option value="">Select a campus...</option>
                       {allBranches.map((branch) => (
                         <option key={branch._id} value={branch._id}>
                           {branch.name}
@@ -1836,7 +1836,7 @@ export default function Members() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-sm"
                       disabled={savingBulkLocation}
                     >
-                      <option value="">Select a branch...</option>
+                      <option value="">Select a campus...</option>
                       {allBranches.map((branch) => (
                         <option key={branch._id} value={branch._id}>
                           {branch.name}

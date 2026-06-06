@@ -49,6 +49,7 @@ const FirstTimerEntryImport = lazy(() => import('@/pages/FirstTimers/FirstTimerE
 const AssignedFirstTimers = lazy(() => import('@/pages/FirstTimers/AssignedFirstTimers'))
 const CallReports = lazy(() => import('@/pages/FirstTimers/CallReports'))
 const FirstTimerReports = lazy(() => import('@/pages/FirstTimers/FirstTimerReports'))
+const FirstTimerBirthdays = lazy(() => import('@/pages/FirstTimers/FirstTimerBirthdays'))
 const MessageDrafts = lazy(() => import('@/pages/FirstTimers/MessageDrafts'))
 const MessageDraftForm = lazy(() => import('@/pages/FirstTimers/MessageDraftForm'))
 const MessageDraftDetail = lazy(() => import('@/pages/FirstTimers/MessageDraftDetail'))
@@ -286,6 +287,11 @@ function App() {
           <Route path="/first-timers/reports" element={
             <ProtectedRoute>
               <LazyPage><FirstTimerReports /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/first-timers/birthdays" element={
+            <ProtectedRoute>
+              <LazyPage><FirstTimerBirthdays /></LazyPage>
             </ProtectedRoute>
           } />
           <Route path="/first-timers/message-drafts" element={

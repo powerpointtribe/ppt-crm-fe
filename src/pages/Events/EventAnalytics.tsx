@@ -38,9 +38,13 @@ export default function EventAnalytics() {
   const [branches, setBranches] = useState<Branch[]>([])
   const [showFilterModal, setShowFilterModal] = useState(false)
 
-  // Filters
-  const [dateFromFilter, setDateFromFilter] = useState('')
-  const [dateToFilter, setDateToFilter] = useState('')
+  // Filters — default the overview to the present year (Jan 1 → today).
+  const [dateFromFilter, setDateFromFilter] = useState(
+    () => new Date(new Date().getFullYear(), 0, 1).toLocaleDateString('en-CA'),
+  )
+  const [dateToFilter, setDateToFilter] = useState(
+    () => new Date().toLocaleDateString('en-CA'),
+  )
   const [eventTypeFilter, setEventTypeFilter] = useState<EventType | ''>('')
 
   // Temp filters for modal

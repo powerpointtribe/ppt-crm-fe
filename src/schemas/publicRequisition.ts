@@ -18,7 +18,7 @@ export const publicRequisitionSchema = z.object({
     .optional(),
 
   // Branch selection
-  branchSlug: z.string().min(1, 'Please select a branch'),
+  branchSlug: z.string().min(1, 'Please select a campus'),
 
   // Unit selection - required: either pick a unit or type a custom one
   unit: z.string().min(1, 'Please select a unit'),

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart,
@@ -20,6 +20,7 @@ import {
 import {
   ArrowLeft,
   Calendar,
+  Download,
   TrendingUp,
   TrendingDown,
   Users,
@@ -38,6 +39,8 @@ import { firstTimersService } from '@/services/first-timers'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import { showToast } from '@/utils/toast'
 import { cn } from '@/utils/cn'
+// Persist the analytics date range across navigation / remounts.
+const DATE_RANGE_STORAGE_KEY = 'ft-analytics-date-range'
 
 // Modern color palette
 const COLORS = {
@@ -208,16 +211,36 @@ export default function FirstTimerReports() {
   const { member } = useAuth()
 
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState<ReportFilters>(() => {
+  const getInitialRange = (): ReportFilters => {
+    try {
+      const saved = localStorage.getItem(DATE_RANGE_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed?.startDate && parsed?.endDate) {
+          return { startDate: parsed.startDate, endDate: parsed.endDate }
+        }
+      }
+    } catch {
+      /* ignore malformed storage */
+    }
+    // Default to the present year (Jan 1 → today) unless a saved range exists.
     const end = new Date()
-    const start = new Date()
-    start.setMonth(start.getMonth() - 1)
+    const start = new Date(end.getFullYear(), 0, 1)
     return {
       startDate: start.toISOString().split('T')[0],
       endDate: end.toISOString().split('T')[0],
     }
-  })
+  }
+
+  // `filters` is the APPLIED range that drives data fetching; `draft` is what the
+  // date inputs edit. We only fetch when the range is applied, so clicking
+  // through dates no longer refetches or flickers on every change.
+  const [filters, setFilters] = useState<ReportFilters>(getInitialRange)
+  const [draft, setDraft] = useState<ReportFilters>(filters)
   const [reportData, setReportData] = useState<ReportStats | null>(null)
+  const [exporting, setExporting] = useState(false)
+  // The element captured for the PDF — a visual replica of the analytics page.
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -228,7 +251,23 @@ export default function FirstTimerReports() {
 
   useEffect(() => {
     loadReportData()
+    try {
+      localStorage.setItem(DATE_RANGE_STORAGE_KEY, JSON.stringify(filters))
+    } catch {
+      /* ignore storage write errors */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters])
+
+  // Apply the draft range. A fresh object reference guarantees the effect runs,
+  // so this doubles as a manual refresh.
+  const applyRange = () => {
+    if (draft.startDate && draft.endDate && draft.startDate > draft.endDate) {
+      showToast.warning('Start date cannot be after end date')
+      return
+    }
+    setFilters({ ...draft })
+  }
 
   const loadReportData = async () => {
     try {
@@ -249,6 +288,67 @@ export default function FirstTimerReports() {
       showToast.warning('Could not load data. Showing sample data.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Export the analytics page as a PDF that visually replicates what's on screen
+  // (a screenshot-to-PDF of the rendered page), rather than a rebuilt data table.
+  const handleExportPDF = async () => {
+    const target = contentRef.current
+    if (!reportData || !target) {
+      showToast.error('No data to export')
+      return
+    }
+
+    try {
+      setExporting(true)
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas'),
+      ])
+
+      const canvas = await html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        // Skip elements explicitly marked (e.g. the toolbar buttons).
+        ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore'),
+      })
+
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = 210
+      const pageHeight = 297
+      const margin = 6
+      const imgWidth = pageWidth - margin * 2
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      if (imgHeight <= pageHeight - margin * 2) {
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, imgHeight)
+      } else {
+        // Slice the tall capture across multiple A4 pages.
+        const totalPages = Math.ceil(imgHeight / (pageHeight - margin * 2))
+        const sliceHeightPx = canvas.height / totalPages
+
+        for (let i = 0; i < totalPages; i++) {
+          if (i > 0) pdf.addPage()
+          const sliceCanvas = document.createElement('canvas')
+          sliceCanvas.width = canvas.width
+          sliceCanvas.height = Math.min(sliceHeightPx, canvas.height - i * sliceHeightPx)
+          const ctx = sliceCanvas.getContext('2d')!
+          ctx.drawImage(canvas, 0, -i * sliceHeightPx)
+          const sliceHeight = (sliceCanvas.height * imgWidth) / sliceCanvas.width
+          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, sliceHeight)
+        }
+      }
+
+      pdf.save(`first-timer-analytics-${filters.startDate}-to-${filters.endDate}.pdf`)
+      showToast.success('Report exported')
+    } catch (err) {
+      console.error('Failed to export analytics PDF:', err)
+      showToast.error('Could not export the report. Please try again.')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -316,7 +416,10 @@ export default function FirstTimerReports() {
     trend: index > 0 ? Math.floor(Math.random() * 20) - 10 : 0,
   })) || []
 
-  if (loading) {
+  // Only show the full-page skeleton on the very first load. On subsequent range
+  // changes we keep the page (and date controls) mounted so it doesn't flicker
+  // or reset — the refresh icon spins to indicate the background fetch.
+  if (loading && !reportData) {
     return (
       <Layout>
         <div className="p-6">
@@ -340,15 +443,17 @@ export default function FirstTimerReports() {
   return (
     <Layout>
       <motion.div
+        ref={contentRef}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-4 sm:p-6 space-y-5 max-w-[1600px] mx-auto"
+        className="p-4 sm:p-6 space-y-5 max-w-[1600px] mx-auto bg-white dark:bg-gray-900"
       >
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <button
               onClick={() => navigate('/first-timers')}
+              data-html2canvas-ignore
               className="flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 mb-1 transition-colors"
             >
               <ArrowLeft className="w-3 h-3" />
@@ -366,23 +471,36 @@ export default function FirstTimerReports() {
               <Calendar className="w-3.5 h-3.5 text-gray-400" />
               <input
                 type="date"
-                value={filters.startDate}
-                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                value={draft.startDate}
+                onChange={(e) => setDraft({ ...draft, startDate: e.target.value })}
                 className="bg-transparent text-xs border-none focus:outline-none text-gray-700 dark:text-gray-300"
               />
               <span className="text-gray-300">-</span>
               <input
                 type="date"
-                value={filters.endDate}
-                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                value={draft.endDate}
+                onChange={(e) => setDraft({ ...draft, endDate: e.target.value })}
                 className="bg-transparent text-xs border-none focus:outline-none text-gray-700 dark:text-gray-300"
               />
             </div>
             <button
-              onClick={loadReportData}
-              className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 transition-colors"
+              onClick={applyRange}
+              disabled={loading}
+              data-html2canvas-ignore
+              title="Apply date range / refresh"
+              className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-900/30 dark:text-indigo-400 transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+            </button>
+            <button
+              onClick={handleExportPDF}
+              disabled={!reportData || exporting}
+              data-html2canvas-ignore
+              title="Export report as PDF"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{exporting ? 'Exporting…' : 'Export PDF'}</span>
             </button>
           </div>
         </div>

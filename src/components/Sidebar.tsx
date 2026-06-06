@@ -755,7 +755,7 @@ export default function Sidebar() {
                           setMobileMenuOpen(false)
                         }}
                         className="p-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 transition-colors"
-                        title="Add Branch"
+                        title="Add Campus"
                       >
                         <Plus className="w-3.5 h-3.5 text-white" />
                       </button>
@@ -822,7 +822,7 @@ export default function Sidebar() {
             <button
               onClick={() => navigate('/branches/new')}
               className="p-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 transition-colors"
-              title="Add Branch"
+              title="Add Campus"
             >
               <Plus className="w-3.5 h-3.5 text-white" />
             </button>

@@ -82,7 +82,7 @@ export default function EventNew() {
     return (
       <Layout title="New Event">
         <div className="text-center py-12">
-          <p className="text-gray-500">Please select a branch to create an event.</p>
+          <p className="text-gray-500">Please select a campus to create an event.</p>
         </div>
       </Layout>
     )
@@ -110,7 +110,7 @@ export default function EventNew() {
             <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                 <Building2 className="h-4 w-4" />
-                Create Event For Branch
+                Create Event For Campus
               </label>
               <select
                 value={targetBranchId}
@@ -119,10 +119,10 @@ export default function EventNew() {
                 className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 {loadingBranches ? (
-                  <option value="">Loading branches...</option>
+                  <option value="">Loading campuses...</option>
                 ) : (
                   <>
-                    <option value="">Select a branch</option>
+                    <option value="">Select a campus</option>
                     {availableBranches.map((branch) => (
                       <option key={branch._id} value={branch._id}>
                         {branch.name}
@@ -151,7 +151,7 @@ export default function EventNew() {
         ) : (
           <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
             <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">Please select a branch above to create an event.</p>
+            <p className="text-gray-500">Please select a campus above to create an event.</p>
           </div>
         )}
       </div>

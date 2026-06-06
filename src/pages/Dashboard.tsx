@@ -15,7 +15,7 @@ import { useAppStore } from '@/store'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import { useForceLightMode } from '@/hooks/useForceLightMode'
 
-type DateRangePreset = '1m' | '3m' | '6m' | '1y' | 'custom'
+type DateRangePreset = 'ytd' | '1m' | '3m' | '6m' | '1y' | 'custom'
 
 interface DateRangeOption {
   label: string
@@ -23,6 +23,7 @@ interface DateRangeOption {
 }
 
 const dateRangePresets: DateRangeOption[] = [
+  { label: 'This Year', value: 'ytd' },
   { label: 'Last Month', value: '1m' },
   { label: 'Last 3 Months', value: '3m' },
   { label: 'Last 6 Months', value: '6m' },
@@ -32,9 +33,13 @@ const dateRangePresets: DateRangeOption[] = [
 
 const getPresetDateRange = (preset: DateRangePreset): { startDate: string; endDate: string } => {
   const end = new Date()
-  const start = new Date()
+  let start = new Date()
 
   switch (preset) {
+    case 'ytd':
+      // Present year: Jan 1 of the current year through today.
+      start = new Date(end.getFullYear(), 0, 1)
+      break
     case '1m':
       start.setMonth(start.getMonth() - 1)
       break
@@ -48,7 +53,7 @@ const getPresetDateRange = (preset: DateRangePreset): { startDate: string; endDa
       start.setFullYear(start.getFullYear() - 1)
       break
     default:
-      start.setMonth(start.getMonth() - 3) // Default to 3 months
+      start = new Date(end.getFullYear(), 0, 1) // Default to present year
   }
 
   return { startDate: start.toISOString(), endDate: end.toISOString() }
@@ -87,14 +92,13 @@ export default function Dashboard() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
-  const [selectedDateRange, setSelectedDateRange] = useState<DateRangePreset>('3m')
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRangePreset>('ytd')
   const [showDateRangeDropdown, setShowDateRangeDropdown] = useState(false)
   const [branchFilter, setBranchFilter] = useState('')
   const [dashboardScope, setDashboardScope] = useState<DashboardScope | null>(null)
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
-    const date = new Date()
-    date.setMonth(date.getMonth() - 3)
-    return formatDateForInput(date)
+    // Default custom start to Jan 1 of the present year.
+    return formatDateForInput(new Date(new Date().getFullYear(), 0, 1))
   })
   const [customEndDate, setCustomEndDate] = useState<string>(() => formatDateForInput(new Date()))
   const [appliedCustomDates, setAppliedCustomDates] = useState<{ start: string; end: string } | null>(null)

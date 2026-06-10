@@ -60,7 +60,8 @@ interface EventFormProps {
   onCancel: () => void
   loading?: boolean
   mode: 'create' | 'edit'
-  branchId: string
+  // Undefined for global events (isGlobal), which are not scoped to a branch.
+  branchId?: string
 }
 
 const eventTypes: { value: EventType; label: string; icon: string }[] = [

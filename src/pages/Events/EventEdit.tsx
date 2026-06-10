@@ -93,7 +93,9 @@ export default function EventEdit() {
     )
   }
 
-  const branchId = typeof event.branch === 'string' ? event.branch : event.branch._id
+  // Global events (isGlobal) have no branch, so guard against undefined.
+  const branchId =
+    typeof event.branch === 'string' ? event.branch : event.branch?._id
 
   return (
     <Layout

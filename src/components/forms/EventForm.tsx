@@ -371,6 +371,9 @@ export default function EventForm({
   const watchedMaxAttendees = watch('registrationSettings.maxAttendees')
   const watchedDeadline = watch('registrationSettings.deadline')
   const watchedRequireApproval = watch('registrationSettings.requireApproval')
+  const watchedSenderEmail = watch('registrationSettings.senderEmail')
+  const watchedSenderName = watch('registrationSettings.senderName')
+  const watchedApplicationBaseUrl = watch('registrationSettings.applicationBaseUrl')
   const watchedAllowWaitlist = watch('registrationSettings.allowWaitlist')
   const watchedSlug = watch('registrationSlug')
 
@@ -984,6 +987,63 @@ export default function EventForm({
                 className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
               />
             </div>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Email sender & application form configuration */}
+      <CollapsibleSection title="Email & Application Form" icon={Mail} defaultOpen={false}>
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            Confirmation/welcome emails for this event are sent from the address
+            below instead of the platform default. The sender domain must be a
+            verified sender on the email provider, otherwise sends are rejected.
+            Leave blank to use the platform default.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <Mail className="inline h-3.5 w-3.5 mr-1" />
+                Sender Email
+              </label>
+              <input
+                type="email"
+                value={watchedSenderEmail || ''}
+                onChange={(e) => setValue('registrationSettings.senderEmail', e.target.value)}
+                placeholder="e.g. info@cmithub.com"
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Sender Name
+              </label>
+              <input
+                type="text"
+                value={watchedSenderName || ''}
+                onChange={(e) => setValue('registrationSettings.senderName', e.target.value)}
+                placeholder="e.g. CMIT — Campus Ministers in Training"
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <Link2 className="inline h-3.5 w-3.5 mr-1" />
+              Application Form Base URL
+            </label>
+            <input
+              type="url"
+              value={watchedApplicationBaseUrl || ''}
+              onChange={(e) => setValue('registrationSettings.applicationBaseUrl', e.target.value)}
+              placeholder="e.g. https://cmithub.com"
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Each registrant's welcome email links to{' '}
+              <code className="text-gray-700">{'{this URL}/apply/{unique-token}'}</code>{' '}
+              to complete their application. Leave blank to use the platform default URL.
+            </p>
           </div>
         </div>
       </CollapsibleSection>

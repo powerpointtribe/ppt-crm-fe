@@ -101,6 +101,13 @@ export interface RegistrationSettings {
   formStatus?: FormStatus
   integrationMode?: 'embedded' | 'api'
   apiKey?: string
+  // Per-event email sender (overrides the platform default). The domain must
+  // be a verified sender on the email provider.
+  senderEmail?: string
+  senderName?: string
+  // Base URL where the per-registrant application form is hosted. The welcome
+  // email links to `{applicationBaseUrl}/apply/{token}`.
+  applicationBaseUrl?: string
 }
 
 // Committee member
@@ -162,6 +169,9 @@ export interface EventRegistration {
   status: RegistrationStatus
   customFieldResponses: Record<string, string>
   checkInCode?: string
+  // Per-registrant application form token + submission timestamp.
+  applicationToken?: string
+  applicationSubmittedAt?: string
   registeredAt: string
   confirmedAt?: string
   checkedInAt?: string

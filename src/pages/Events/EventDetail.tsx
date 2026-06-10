@@ -1074,6 +1074,19 @@ export default function EventDetail() {
                           <Badge variant={statusColors[reg.status]} className="font-medium">
                             {reg.status.charAt(0).toUpperCase() + reg.status.slice(1).replace('-', ' ')}
                           </Badge>
+                          {reg.applicationToken && (
+                            <div className="mt-1 text-xs flex items-center gap-1">
+                              {reg.applicationSubmittedAt ? (
+                                <span className="text-green-600 flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" /> Applied
+                                </span>
+                              ) : (
+                                <span className="text-amber-600 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" /> Application pending
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(reg.registeredAt)}
@@ -2644,6 +2657,58 @@ export default function EventDetail() {
                   </div>
                 )}
               </div>
+
+              {/* Application Form */}
+              {viewingRegistration.applicationToken && (
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2.5">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Application</h4>
+                  <div className="flex items-center gap-2.5 text-sm">
+                    {viewingRegistration.applicationSubmittedAt ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                        <span className="text-gray-500 w-24 shrink-0">Submitted</span>
+                        <span className="text-gray-700">{formatDate(viewingRegistration.applicationSubmittedAt)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                        <span className="text-gray-500 w-24 shrink-0">Status</span>
+                        <span className="text-amber-600 font-medium">Not yet submitted</span>
+                      </>
+                    )}
+                  </div>
+                  {(() => {
+                    const base =
+                      (typeof event?.registrationSettings === 'object' &&
+                        event?.registrationSettings?.applicationBaseUrl) ||
+                      ''
+                    if (!base) return null
+                    const link = `${base.replace(/\/+$/, '')}/apply/${viewingRegistration.applicationToken}`
+                    return (
+                      <div className="flex items-center gap-2">
+                        <input
+                          readOnly
+                          value={link}
+                          className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 font-mono"
+                          onFocus={(e) => e.currentTarget.select()}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(link)
+                              .then(() => showToast('success', 'Application link copied'))
+                              .catch(() => showToast('error', 'Could not copy link'))
+                          }}
+                        >
+                          Copy link
+                        </Button>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
 
               {/* Custom Field Responses */}
               {viewingRegistration.customFieldResponses && Object.keys(viewingRegistration.customFieldResponses).length > 0 && (

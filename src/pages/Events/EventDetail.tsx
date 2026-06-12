@@ -618,7 +618,7 @@ export default function EventDetail() {
     <Layout
       title={event.title}
       actions={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => navigate('/events')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -707,7 +707,7 @@ export default function EventDetail() {
 
             {/* Inline Stats */}
             {stats && (
-              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 pt-3 border-t border-gray-100">
                 {[
                   { value: stats.totalRegistrations, label: 'Total', color: 'text-gray-900' },
                   { value: stats.byStatus.confirmed, label: 'Confirmed', color: 'text-green-600' },
@@ -1083,7 +1083,117 @@ export default function EventDetail() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* Mobile: card list */}
+              <ul className="md:hidden divide-y divide-gray-100">
+                {registrations.map((reg) => (
+                  <li key={reg._id} className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-semibold text-sm">
+                          {reg.attendeeInfo.firstName[0]}{reg.attendeeInfo.lastName[0]}
+                        </span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {reg.attendeeInfo.firstName} {reg.attendeeInfo.lastName}
+                        </p>
+                        {reg.attendeeInfo.email && (
+                          <p className="text-xs text-gray-500 truncate">{reg.attendeeInfo.email}</p>
+                        )}
+                        {reg.attendeeInfo.phone && (
+                          <p className="text-xs text-gray-500">{reg.attendeeInfo.phone}</p>
+                        )}
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <Badge variant={reg.attendeeType === 'member' ? 'success' : 'default'} className="font-medium">
+                            {reg.attendeeType === 'member' ? 'Member' : 'Visitor'}
+                          </Badge>
+                          <Badge variant={statusColors[reg.status]} className="font-medium">
+                            {reg.status.charAt(0).toUpperCase() + reg.status.slice(1).replace('-', ' ')}
+                          </Badge>
+                          {event?.registrationSettings?.applicationBaseUrl &&
+                            reg.applicationToken &&
+                            (reg.applicationSubmittedAt ? (
+                              <span className="text-xs text-green-600 flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" /> Applied
+                              </span>
+                            ) : (
+                              <span className="text-xs text-amber-600 flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> Pending
+                              </span>
+                            ))}
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-gray-400">
+                          Registered {formatDate(reg.registeredAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/events/${id}/registrations/${reg._id}`)}
+                        className="flex-1 min-w-[110px]"
+                      >
+                        <Eye className="h-4 w-4 mr-1.5" /> View
+                      </Button>
+                      {canCheckIn && reg.status !== 'attended' && reg.status !== 'cancelled' && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleCheckIn(reg._id)}
+                          className="font-medium flex-1 min-w-[110px]"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1.5" /> Check In
+                        </Button>
+                      )}
+                      {reg.status === 'pending' && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleUpdateStatus(reg._id, 'confirmed')}
+                            className="font-medium"
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleUpdateStatus(reg._id, 'cancelled')}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                      {canUpdate && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditRegistration(reg)}
+                            title="Edit registration"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteRegistration(reg._id)}
+                            title="Delete registration"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {/* Desktop: table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50/80">
                     <tr>
@@ -1224,6 +1334,7 @@ export default function EventDetail() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </Card>
         )}
@@ -1624,7 +1735,7 @@ export default function EventDetail() {
             ) : analytics ? (
               <>
                 {/* Registration Analytics */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                     <Card className="p-4">
                       <div className="flex items-center justify-between">

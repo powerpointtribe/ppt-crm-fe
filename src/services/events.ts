@@ -131,6 +131,18 @@ export const eventsService = {
     return transformPaginatedResponse<EventRegistration>(response)
   },
 
+  getRegistration: async (
+    eventId: string,
+    registrationId: string
+  ): Promise<EventRegistration> => {
+    const response = await apiService.get<ApiResponse<EventRegistration>>(
+      `/events/${eventId}/registrations/${registrationId}`
+    )
+    return transformSingleResponse<EventRegistration>(
+      response
+    ) as EventRegistration
+  },
+
   createRegistration: async (
     eventId: string,
     data: CreateRegistrationData

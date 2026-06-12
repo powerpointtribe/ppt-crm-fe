@@ -34,6 +34,15 @@ import {
   FileSpreadsheet,
   ChevronDown,
 } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts'
 import Layout from '@/components/Layout'
 import SocialAccountabilitySection from '@/components/Events/SocialAccountabilitySection'
 import Card from '@/components/ui/Card'
@@ -66,6 +75,18 @@ const statusColors: Record<RegistrationStatus, 'default' | 'success' | 'warning'
   attended: 'success',
   'no-show': 'destructive',
 }
+
+// Palette for custom-field response bar charts.
+const BAR_COLORS = [
+  '#6366f1',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#3b82f6',
+  '#8b5cf6',
+  '#ec4899',
+  '#14b8a6',
+]
 
 const attendanceStatusColors: Record<string, string> = {
   excellent: 'bg-green-100 text-green-800',
@@ -104,6 +125,10 @@ export default function EventDetail() {
   // Analytics state
   const [analytics, setAnalytics] = useState<FullEventAnalytics | null>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+  // Response distribution for choice-type custom fields (e.g. "How did you hear?").
+  const [responseBreakdown, setResponseBreakdown] = useState<
+    Array<{ id: string; label: string; data: Array<{ name: string; value: number }> }>
+  >([])
 
   // Accountability state
   const [accountability, setAccountability] = useState<ParticipantAccountabilitySummary | null>(null)
@@ -382,6 +407,46 @@ export default function EventDetail() {
       setLoadingAnalytics(true)
       const data = await eventsService.getEventAnalytics(id)
       setAnalytics(data)
+
+      // Build response distributions for choice-type custom fields so we can
+      // chart things like "How did you hear about JÚBÀ?".
+      try {
+        const settings =
+          event?.registrationSettings && typeof event.registrationSettings === 'object'
+            ? event.registrationSettings
+            : undefined
+        const fields = ((settings?.customFields as any[]) || []).filter((f) =>
+          ['select', 'radio', 'multi-checkbox'].includes(f?.type)
+        )
+        if (fields.length) {
+          const res = await eventsService.getRegistrations(id, { page: 1, limit: 2000 })
+          const regs = res.items || []
+          const breakdown = fields
+            .map((f) => {
+              const counts: Record<string, number> = {}
+              regs.forEach((r: any) => {
+                const raw = r.customFieldResponses?.[f.id]
+                if (raw == null || raw === '') return
+                String(raw)
+                  .split(/\s*,\s*/)
+                  .forEach((opt) => {
+                    const key = opt.trim()
+                    if (key) counts[key] = (counts[key] || 0) + 1
+                  })
+              })
+              const data = Object.entries(counts)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value)
+              return { id: f.id, label: f.label || f.id, data }
+            })
+            .filter((b) => b.data.length > 0)
+          setResponseBreakdown(breakdown)
+        } else {
+          setResponseBreakdown([])
+        }
+      } catch {
+        setResponseBreakdown([])
+      }
     } catch (error: any) {
       console.error('Error loading analytics:', error)
       showToast('error', 'Failed to load analytics')
@@ -1046,7 +1111,7 @@ export default function EventDetail() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
                     {registrations.map((reg) => (
-                      <tr key={reg._id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setViewingRegistration(reg)}>
+                      <tr key={reg._id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
@@ -1074,25 +1139,34 @@ export default function EventDetail() {
                           <Badge variant={statusColors[reg.status]} className="font-medium">
                             {reg.status.charAt(0).toUpperCase() + reg.status.slice(1).replace('-', ' ')}
                           </Badge>
-                          {reg.applicationToken && (
-                            <div className="mt-1 text-xs flex items-center gap-1">
-                              {reg.applicationSubmittedAt ? (
-                                <span className="text-green-600 flex items-center gap-1">
-                                  <CheckCircle className="h-3 w-3" /> Applied
-                                </span>
-                              ) : (
-                                <span className="text-amber-600 flex items-center gap-1">
-                                  <Clock className="h-3 w-3" /> Application pending
-                                </span>
-                              )}
-                            </div>
-                          )}
+                          {event?.registrationSettings?.applicationBaseUrl &&
+                            reg.applicationToken && (
+                              <div className="mt-1 text-xs flex items-center gap-1">
+                                {reg.applicationSubmittedAt ? (
+                                  <span className="text-green-600 flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3" /> Applied
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 flex items-center gap-1">
+                                    <Clock className="h-3 w-3" /> Application pending
+                                  </span>
+                                )}
+                              </div>
+                            )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(reg.registeredAt)}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/events/${id}/registrations/${reg._id}`)}
+                              title="View registration"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             {canCheckIn && reg.status !== 'attended' && reg.status !== 'cancelled' && (
                               <Button
                                 variant="secondary"
@@ -1666,6 +1740,54 @@ export default function EventDetail() {
                     </div>
                   </Card>
                 </div>
+
+                {/* Custom-field response breakdowns (e.g. "How did you hear?") */}
+                {responseBreakdown.map((field) => {
+                  const total = field.data.reduce((s, d) => s + d.value, 0)
+                  return (
+                    <Card key={field.id} className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-semibold text-gray-900">
+                          {field.label}
+                        </h4>
+                        <span className="text-xs text-gray-500">
+                          {total} response{total === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                      <ResponsiveContainer
+                        width="100%"
+                        height={Math.max(200, field.data.length * 40)}
+                      >
+                        <BarChart
+                          data={field.data}
+                          layout="vertical"
+                          margin={{ left: 8, right: 28, top: 4, bottom: 4 }}
+                        >
+                          <XAxis
+                            type="number"
+                            allowDecimals={false}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            width={170}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <RechartsTooltip
+                            formatter={(v: any) => [`${v} response${v === 1 ? '' : 's'}`, '']}
+                            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                          />
+                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={22}>
+                            {field.data.map((_, i) => (
+                              <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Card>
+                  )
+                })}
 
                 {/* Session Analytics (if available) */}
                 {analytics.sessions && (
@@ -2659,7 +2781,8 @@ export default function EventDetail() {
               </div>
 
               {/* Application Form */}
-              {viewingRegistration.applicationToken && (
+              {event?.registrationSettings?.applicationBaseUrl &&
+                viewingRegistration.applicationToken && (
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2.5">
                   <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Application</h4>
                   <div className="flex items-center gap-2.5 text-sm">

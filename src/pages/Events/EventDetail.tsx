@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft,
@@ -111,7 +111,12 @@ export default function EventDetail() {
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'info' | 'registrations' | 'sessions' | 'analytics' | 'accountability' | 'committee' | 'partners'>('info')
+  const [searchParams] = useSearchParams()
+  const validTabs = ['info', 'registrations', 'sessions', 'analytics', 'accountability', 'committee', 'partners']
+  const initialTab = validTabs.includes(searchParams.get('tab') || '')
+    ? (searchParams.get('tab') as any)
+    : 'info'
+  const [activeTab, setActiveTab] = useState<'info' | 'registrations' | 'sessions' | 'analytics' | 'accountability' | 'committee' | 'partners'>(initialTab)
   const [registrationSearch, setRegistrationSearch] = useState('')
   const [registrationFilter, setRegistrationFilter] = useState<RegistrationStatus | ''>('')
   const [loadingRegistrations, setLoadingRegistrations] = useState(false)

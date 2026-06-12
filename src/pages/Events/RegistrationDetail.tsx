@@ -123,7 +123,7 @@ export default function RegistrationDetail() {
     try {
       await eventsService.deleteRegistration(id, regId)
       showToast('success', 'Registration deleted')
-      navigate(`/events/${id}`)
+      navigate(`/events/${id}?tab=registrations`)
     } catch (e: any) {
       showToast('error', e?.message || 'Failed to delete registration')
       setBusy(false)
@@ -147,7 +147,7 @@ export default function RegistrationDetail() {
           <p className="text-red-600 text-lg font-medium">
             {error || 'Registration not found'}
           </p>
-          <Button className="mt-4" onClick={() => navigate(`/events/${id}`)}>
+          <Button className="mt-4" onClick={() => navigate(`/events/${id}?tab=registrations`)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to event
           </Button>
@@ -175,14 +175,24 @@ export default function RegistrationDetail() {
   return (
     <Layout
       title="Registration"
-      headerActions={
-        <Button variant="secondary" onClick={() => navigate(`/events/${id}`)}>
+      actions={
+        <Button variant="secondary" onClick={() => navigate(`/events/${id}?tab=registrations`)}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to event
         </Button>
       }
     >
       <div className="max-w-4xl mx-auto space-y-5">
+        {/* In-content back link (always visible, incl. mobile) */}
+        <button
+          type="button"
+          onClick={() => navigate(`/events/${id}?tab=registrations`)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-primary-600 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to registrations
+        </button>
+
         {/* Header card */}
         <Card className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">

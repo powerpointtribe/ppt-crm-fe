@@ -35,10 +35,8 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
+  PieChart,
+  Pie,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Cell,
@@ -76,7 +74,7 @@ const statusColors: Record<RegistrationStatus, 'default' | 'success' | 'warning'
   'no-show': 'destructive',
 }
 
-// Palette for custom-field response bar charts.
+// Palette for custom-field response charts (donut slices + legend swatches).
 const BAR_COLORS = [
   '#6366f1',
   '#10b981',
@@ -1742,52 +1740,96 @@ export default function EventDetail() {
                 </div>
 
                 {/* Custom-field response breakdowns (e.g. "How did you hear?") */}
-                {responseBreakdown.map((field) => {
-                  const total = field.data.reduce((s, d) => s + d.value, 0)
-                  return (
-                    <Card key={field.id} className="p-5">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-sm font-semibold text-gray-900">
-                          {field.label}
-                        </h4>
-                        <span className="text-xs text-gray-500">
-                          {total} response{total === 1 ? '' : 's'}
-                        </span>
-                      </div>
-                      <ResponsiveContainer
-                        width="100%"
-                        height={Math.max(200, field.data.length * 40)}
-                      >
-                        <BarChart
-                          data={field.data}
-                          layout="vertical"
-                          margin={{ left: 8, right: 28, top: 4, bottom: 4 }}
-                        >
-                          <XAxis
-                            type="number"
-                            allowDecimals={false}
-                            tick={{ fontSize: 12 }}
-                          />
-                          <YAxis
-                            type="category"
-                            dataKey="name"
-                            width={170}
-                            tick={{ fontSize: 12 }}
-                          />
-                          <RechartsTooltip
-                            formatter={(v: any) => [`${v} response${v === 1 ? '' : 's'}`, '']}
-                            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                          />
-                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={22}>
-                            {field.data.map((_, i) => (
-                              <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </Card>
-                  )
-                })}
+                {responseBreakdown.length > 0 && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {responseBreakdown.map((field) => {
+                      const total = field.data.reduce((s, d) => s + d.value, 0) || 1
+                      return (
+                        <Card key={field.id} className="p-5">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold text-gray-900">
+                              {field.label}
+                            </h4>
+                            <span className="text-xs text-gray-500">
+                              {total} response{total === 1 ? '' : 's'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col sm:flex-row items-center gap-5">
+                            <div className="relative w-44 h-44 shrink-0">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={field.data}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={52}
+                                    outerRadius={82}
+                                    paddingAngle={field.data.length > 1 ? 2 : 0}
+                                    stroke="none"
+                                  >
+                                    {field.data.map((_, i) => (
+                                      <Cell
+                                        key={i}
+                                        fill={BAR_COLORS[i % BAR_COLORS.length]}
+                                      />
+                                    ))}
+                                  </Pie>
+                                  <RechartsTooltip
+                                    formatter={(v: any, n: any) => [
+                                      `${v} (${Math.round((Number(v) / total) * 100)}%)`,
+                                      n,
+                                    ]}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-2xl font-bold text-gray-900">
+                                  {total}
+                                </span>
+                                <span className="text-[11px] text-gray-400">
+                                  total
+                                </span>
+                              </div>
+                            </div>
+                            <ul className="flex-1 w-full space-y-2">
+                              {field.data.map((d, i) => {
+                                const pct = Math.round((d.value / total) * 100)
+                                return (
+                                  <li
+                                    key={d.name}
+                                    className="flex items-center gap-2.5 text-sm"
+                                  >
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-sm shrink-0"
+                                      style={{
+                                        background:
+                                          BAR_COLORS[i % BAR_COLORS.length],
+                                      }}
+                                    />
+                                    <span
+                                      className="text-gray-700 flex-1 truncate"
+                                      title={d.name}
+                                    >
+                                      {d.name}
+                                    </span>
+                                    <span className="font-semibold text-gray-900 tabular-nums">
+                                      {d.value}
+                                    </span>
+                                    <span className="text-gray-400 w-9 text-right tabular-nums">
+                                      {pct}%
+                                    </span>
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          </div>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
 
                 {/* Session Analytics (if available) */}
                 {analytics.sessions && (

@@ -59,6 +59,8 @@ export default function RegistrationDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [regenEmail, setRegenEmail] = useState('')
+  const [regenBusy, setRegenBusy] = useState(false)
 
   const load = async () => {
     if (!id || !regId) return
@@ -69,6 +71,7 @@ export default function RegistrationDetail() {
       ])
       setEvent(ev)
       setReg(r)
+      setRegenEmail(r.attendeeInfo?.email || '')
     } catch (e: any) {
       setError(e?.message || 'Failed to load registration')
     } finally {
@@ -127,6 +130,30 @@ export default function RegistrationDetail() {
     } catch (e: any) {
       showToast('error', e?.message || 'Failed to delete registration')
       setBusy(false)
+    }
+  }
+
+  const handleRegenerate = async () => {
+    if (!id || !regId) return
+    setRegenBusy(true)
+    try {
+      const res = await eventsService.regenerateApplicationLink(
+        id,
+        regId,
+        regenEmail.trim() || undefined
+      )
+      showToast(
+        'success',
+        res.message ||
+          (res.sentTo
+            ? `New link sent to ${res.sentTo}`
+            : 'New application link generated')
+      )
+      await refresh()
+    } catch (e: any) {
+      showToast('error', e?.message || 'Failed to regenerate link')
+    } finally {
+      setRegenBusy(false)
     }
   }
 
@@ -299,14 +326,20 @@ export default function RegistrationDetail() {
           </Card>
         </div>
 
-        {/* Application status + link — only for events with an application flow (CMIT). */}
-        {applicationBaseUrl && reg.applicationToken && (
+        {/* Application — only for events with an application flow (CMIT). */}
+        {applicationBaseUrl && (
           <Card className="p-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
               Application
             </h3>
             <div className="flex items-center gap-2.5 text-sm">
-              {reg.applicationSubmittedAt ? (
+              {!reg.applicationToken ? (
+                <>
+                  <Clock className="h-4 w-4 text-gray-400 shrink-0" />
+                  <span className="text-gray-500 w-24 shrink-0">Status</span>
+                  <span className="text-gray-500">No link generated yet</span>
+                </>
+              ) : reg.applicationSubmittedAt ? (
                 <>
                   <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
                   <span className="text-gray-500 w-24 shrink-0">Submitted</span>
@@ -324,6 +357,7 @@ export default function RegistrationDetail() {
                 </>
               )}
             </div>
+
             {applicationLink && (
               <div className="mt-3 flex items-center gap-2">
                 <input
@@ -344,6 +378,36 @@ export default function RegistrationDetail() {
                 >
                   Copy link
                 </Button>
+              </div>
+            )}
+
+            {/* Regenerate & send */}
+            {canUpdate && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-xs font-medium text-gray-700">
+                  Regenerate &amp; send application link
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-400 leading-relaxed">
+                  Creates a fresh link (the old one stops working), unlocks the
+                  form for editing, and emails it to the address below — their
+                  registered email or a different one.
+                </p>
+                <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="email"
+                    value={regenEmail}
+                    onChange={(e) => setRegenEmail(e.target.value)}
+                    placeholder="email to send the link to"
+                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                  />
+                  <Button
+                    onClick={handleRegenerate}
+                    disabled={regenBusy || !regenEmail.trim()}
+                    className="shrink-0"
+                  >
+                    {regenBusy ? 'Sending…' : 'Regenerate & send'}
+                  </Button>
+                </div>
               </div>
             )}
           </Card>

@@ -143,6 +143,22 @@ export const eventsService = {
     ) as EventRegistration
   },
 
+  regenerateApplicationLink: async (
+    eventId: string,
+    registrationId: string,
+    email?: string
+  ): Promise<{ applicationUrl?: string; sentTo: string | null; message?: string }> => {
+    const response = await apiService.post<ApiResponse<any>>(
+      `/events/${eventId}/registrations/${registrationId}/regenerate-application-link`,
+      { email }
+    )
+    return (transformSingleResponse<any>(response) || {}) as {
+      applicationUrl?: string
+      sentTo: string | null
+      message?: string
+    }
+  },
+
   createRegistration: async (
     eventId: string,
     data: CreateRegistrationData

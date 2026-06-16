@@ -716,6 +716,23 @@ export default function EventDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
+          {(canUpdate || canManageCommittee) && (
+            <Button
+              variant="outline"
+              onClick={() =>
+                window.open(
+                  import.meta.env.VITE_FACILITATOR_DASHBOARD_URL ||
+                    'https://cmithub.org/facilitator',
+                  '_blank',
+                  'noopener',
+                )
+              }
+              title="Open the event facilitator dashboard"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Facilitator Dashboard
+            </Button>
+          )}
           {canUpdate && (
             <Button onClick={() => navigate(`/events/${id}/edit`)}>
               <Edit className="h-4 w-4 mr-2" />

@@ -63,6 +63,7 @@ import {
 import { formatDate } from '@/utils/formatters'
 import { showToast } from '@/utils/toast'
 import { useAuth } from '@/contexts/AuthContext-unified'
+import { membersService, Member } from '@/services/members-unified'
 import { cn } from '@/utils/cn'
 
 const statusColors: Record<RegistrationStatus, 'default' | 'success' | 'warning' | 'destructive'> = {
@@ -109,6 +110,13 @@ export default function EventDetail() {
   const [event, setEvent] = useState<Event | null>(null)
   const [stats, setStats] = useState<EventStats | null>(null)
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
+  const [registrationPage, setRegistrationPage] = useState(1)
+  const [registrationPagination, setRegistrationPagination] = useState<{
+    total: number
+    totalPages: number
+    hasNext: boolean
+    hasPrev: boolean
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
@@ -146,6 +154,16 @@ export default function EventDetail() {
   const [partnerSearch, setPartnerSearch] = useState('')
   const [selectedPartner, setSelectedPartner] = useState<EventPartner | null>(null)
   const [showPartnerModal, setShowPartnerModal] = useState(false)
+
+  // Committee management (inline modal on the Committee tab)
+  const [showCommitteeModal, setShowCommitteeModal] = useState(false)
+  const [committeeSearch, setCommitteeSearch] = useState('')
+  const [committeeMembers, setCommitteeMembers] = useState<Member[]>([])
+  const [loadingCommitteeMembers, setLoadingCommitteeMembers] = useState(false)
+  const [selectedCommitteeMemberId, setSelectedCommitteeMemberId] = useState('')
+  const [committeeRole, setCommitteeRole] = useState('Facilitator')
+  const [savingCommittee, setSavingCommittee] = useState(false)
+  const [removingCommitteeId, setRemovingCommitteeId] = useState<string | null>(null)
 
   // View registration detail
   const [viewingRegistration, setViewingRegistration] = useState<EventRegistration | null>(null)
@@ -275,7 +293,8 @@ export default function EventDetail() {
     if (id && activeTab === 'registrations' && canViewRegistrations) {
       loadRegistrations()
     }
-  }, [id, activeTab, registrationFilter])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, activeTab, registrationFilter, registrationPage])
 
   useEffect(() => {
     if (id && activeTab === 'sessions') {
@@ -334,19 +353,88 @@ export default function EventDetail() {
     }
   }
 
-  const loadRegistrations = async () => {
+  // Load members for the committee picker (debounced search) while the modal is open.
+  useEffect(() => {
+    if (!showCommitteeModal) return
+    let cancelled = false
+    const t = setTimeout(async () => {
+      try {
+        setLoadingCommitteeMembers(true)
+        const res = await membersService.getMembers({
+          search: committeeSearch || undefined,
+          limit: 20,
+        })
+        if (!cancelled) setCommitteeMembers(res.items || [])
+      } catch (err: any) {
+        if (!cancelled) showToast.error(err.message || 'Failed to load members')
+      } finally {
+        if (!cancelled) setLoadingCommitteeMembers(false)
+      }
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [showCommitteeModal, committeeSearch])
+
+  const openCommitteeModal = () => {
+    setSelectedCommitteeMemberId('')
+    setCommitteeRole('Facilitator')
+    setCommitteeSearch('')
+    setShowCommitteeModal(true)
+  }
+
+  const handleAddCommittee = async () => {
+    if (!id || !selectedCommitteeMemberId) {
+      showToast.error('Please select a member.')
+      return
+    }
+    try {
+      setSavingCommittee(true)
+      await eventsService.addCommitteeMember(id, {
+        memberId: selectedCommitteeMemberId,
+        role: committeeRole.trim() || 'Facilitator',
+      })
+      showToast.success('Committee member added.')
+      setShowCommitteeModal(false)
+      await loadEvent(id)
+    } catch (err: any) {
+      showToast.error(err.message || 'Failed to add committee member')
+    } finally {
+      setSavingCommittee(false)
+    }
+  }
+
+  const handleRemoveCommittee = async (memberId: string) => {
+    if (!id || !memberId) return
+    if (!window.confirm('Remove this committee member?')) return
+    try {
+      setRemovingCommitteeId(memberId)
+      await eventsService.removeCommitteeMember(id, memberId)
+      showToast.success('Committee member removed.')
+      await loadEvent(id)
+    } catch (err: any) {
+      showToast.error(err.message || 'Failed to remove committee member')
+    } finally {
+      setRemovingCommitteeId(null)
+    }
+  }
+
+  const loadRegistrations = async (pageArg?: number) => {
     if (!id) return
 
+    const page = pageArg ?? registrationPage
     try {
       setLoadingRegistrations(true)
       const params: RegistrationSearchParams = {
-        page: 1,
-        limit: 50,
+        page,
+        limit: 20,
         search: registrationSearch || undefined,
         status: registrationFilter || undefined,
       }
       const response = await eventsService.getRegistrations(id, params)
       setRegistrations(response.items)
+      setRegistrationPagination(response.pagination)
     } catch (error: any) {
       console.error('Error loading registrations:', error)
       showToast('error', 'Failed to load registrations')
@@ -992,12 +1080,12 @@ export default function EventDetail() {
                         placeholder="Search by name, email, or phone..."
                         value={registrationSearch}
                         onChange={(e) => setRegistrationSearch(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && loadRegistrations()}
+                        onKeyPress={(e) => { if (e.key === 'Enter') { setRegistrationPage(1); loadRegistrations(1) } }}
                         className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow"
                       />
                     </div>
                     <Button
-                      onClick={() => loadRegistrations()}
+                      onClick={() => { setRegistrationPage(1); loadRegistrations(1) }}
                       size="sm"
                       variant="primary"
                       className="px-3 shrink-0"
@@ -1009,7 +1097,7 @@ export default function EventDetail() {
                 <div className="flex gap-1.5 flex-wrap">
                   <select
                     value={registrationFilter}
-                    onChange={(e) => setRegistrationFilter(e.target.value as RegistrationStatus | '')}
+                    onChange={(e) => { setRegistrationPage(1); setRegistrationFilter(e.target.value as RegistrationStatus | '') }}
                     className="flex-1 sm:flex-none min-w-[120px] px-3 py-2 border border-gray-200 rounded-lg bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="">All Statuses</option>
@@ -1340,6 +1428,39 @@ export default function EventDetail() {
                 </table>
               </div>
               </>
+            )}
+
+            {/* Pagination */}
+            {registrationPagination && registrationPagination.totalPages > 1 && (
+              <div className="flex items-center justify-between gap-3 p-3 border-t border-gray-100">
+                <p className="text-xs text-gray-500">
+                  Page {registrationPage} of {registrationPagination.totalPages}
+                  <span className="hidden sm:inline">
+                    {' '}· {registrationPagination.total} total
+                  </span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={registrationPage <= 1 || loadingRegistrations}
+                    onClick={() => setRegistrationPage((p) => Math.max(1, p - 1))}
+                  >
+                    ← Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      registrationPage >= registrationPagination.totalPages ||
+                      loadingRegistrations
+                    }
+                    onClick={() => setRegistrationPage((p) => p + 1)}
+                  >
+                    Next →
+                  </Button>
+                </div>
+              </div>
             )}
           </Card>
         )}
@@ -2334,10 +2455,10 @@ export default function EventDetail() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => navigate(`/events/${id}/edit`)}
+                      onClick={openCommitteeModal}
                     >
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Manage Committee
+                      Add Member
                     </Button>
                   )}
                 </div>
@@ -2367,18 +2488,31 @@ export default function EventDetail() {
                       transition={{ delay: index * 0.05 }}
                     >
                       <Card className="p-3 hover:shadow-md transition-shadow">
-                        <div className="flex items-center">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mr-2.5">
-                            <span className="text-xs font-medium text-white">{initials}</span>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900 text-sm">
-                              {memberData
-                                ? `${memberData.firstName} ${memberData.lastName}`
-                                : 'Unknown Member'}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center min-w-0">
+                            <div className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mr-2.5">
+                              <span className="text-xs font-medium text-white">{initials}</span>
                             </div>
-                            <div className="text-xs text-gray-500">{member.role}</div>
+                            <div className="min-w-0">
+                              <div className="font-medium text-gray-900 text-sm truncate">
+                                {memberData
+                                  ? `${memberData.firstName} ${memberData.lastName}`
+                                  : 'Unknown Member'}
+                              </div>
+                              <div className="text-xs text-gray-500">{member.role}</div>
+                            </div>
                           </div>
+                          {canManageCommittee && memberData?._id && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCommittee(memberData._id)}
+                              disabled={removingCommitteeId === memberData._id}
+                              className="p-1.5 shrink-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Remove committee member"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </Card>
                     </motion.div>
@@ -2389,6 +2523,135 @@ export default function EventDetail() {
           </div>
         )}
       </div>
+
+      {/* Add Committee Member Modal */}
+      {showCommitteeModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowCommitteeModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Add committee member
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Committee members can manage this event in the facilitator
+                  dashboard.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCommitteeModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"
+              >
+                <UserX className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  Search members
+                </label>
+                <input
+                  value={committeeSearch}
+                  onChange={(e) => setCommitteeSearch(e.target.value)}
+                  placeholder="Type a name or email…"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-100 divide-y divide-gray-50">
+                {loadingCommitteeMembers ? (
+                  <p className="p-3 text-sm text-gray-500">Loading members…</p>
+                ) : committeeMembers.length === 0 ? (
+                  <p className="p-3 text-sm text-gray-500">No members found.</p>
+                ) : (
+                  committeeMembers
+                    .filter(
+                      (m) =>
+                        !(event?.committee || []).some((c) => {
+                          const cid =
+                            typeof c.member === 'string'
+                              ? c.member
+                              : c.member?._id
+                          return cid === m._id
+                        }),
+                    )
+                    .map((m) => (
+                      <button
+                        key={m._id}
+                        type="button"
+                        onClick={() => setSelectedCommitteeMemberId(m._id)}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${
+                          selectedCommitteeMemberId === m._id
+                            ? 'bg-primary-50 text-primary-700'
+                            : 'hover:bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-medium truncate">
+                            {m.firstName} {m.lastName}
+                          </span>
+                          {m.email && (
+                            <span className="block text-xs text-gray-500 truncate">
+                              {m.email}
+                            </span>
+                          )}
+                        </span>
+                        {selectedCommitteeMemberId === m._id && (
+                          <span className="text-primary-600 text-xs font-semibold">
+                            Selected
+                          </span>
+                        )}
+                      </button>
+                    ))
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  Role
+                </label>
+                <input
+                  value={committeeRole}
+                  onChange={(e) => setCommitteeRole(e.target.value)}
+                  placeholder="e.g. Facilitator, Coordinator"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowCommitteeModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAddCommittee}
+                disabled={savingCommittee || !selectedCommitteeMemberId}
+              >
+                {savingCommittee ? 'Adding…' : 'Add to committee'}
+              </Button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Partner Detail Modal */}
       {showPartnerModal && selectedPartner && (

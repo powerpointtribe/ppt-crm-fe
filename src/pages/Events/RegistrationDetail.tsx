@@ -133,6 +133,25 @@ export default function RegistrationDetail() {
     }
   }
 
+  const handleAdmission = async (decision: 'accept' | 'reject') => {
+    if (!id || !regId) return
+    setBusy(true)
+    try {
+      if (decision === 'accept') {
+        const res = await eventsService.acceptRegistration(id, regId)
+        showToast('success', res.message || 'Accepted into the program')
+      } else {
+        await eventsService.rejectRegistration(id, regId)
+        showToast('success', 'Marked as rejected')
+      }
+      await refresh()
+    } catch (e: any) {
+      showToast('error', e?.message || 'Failed to update admission')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleRegenerate = async () => {
     if (!id || !regId) return
     setRegenBusy(true)
@@ -325,6 +344,59 @@ export default function RegistrationDetail() {
             </div>
           </Card>
         </div>
+
+        {/* Admission — accept/reject into the program (gates LMS portal access). */}
+        <Card className="p-5">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            Admission
+          </h3>
+          <div className="flex items-center gap-2.5 text-sm">
+            <span className="text-gray-500 w-24 shrink-0">Status</span>
+            {reg.admissionStatus === 'accepted' ? (
+              <span className="text-green-600 font-medium">
+                Accepted{reg.acceptedAt ? ` · ${formatDate(reg.acceptedAt)}` : ''}
+              </span>
+            ) : reg.admissionStatus === 'rejected' ? (
+              <span className="text-red-600 font-medium">Rejected</span>
+            ) : reg.admissionStatus === 'waitlisted' ? (
+              <span className="text-amber-600 font-medium">Waitlisted</span>
+            ) : (
+              <span className="text-gray-500">Applied (no decision yet)</span>
+            )}
+          </div>
+          {reg.admissionStatus === 'accepted' && (
+            <p className="mt-2 text-xs text-gray-500">
+              A set-password invite to the learning portal was emailed to{' '}
+              {reg.attendeeInfo.email}. Use "Resend application link" below or
+              re-accept to send it again.
+            </p>
+          )}
+          {canUpdate && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                variant={reg.admissionStatus === 'accepted' ? 'outline' : 'primary'}
+                size="sm"
+                onClick={() => handleAdmission('accept')}
+                disabled={busy}
+              >
+                {reg.admissionStatus === 'accepted'
+                  ? 'Re-send portal invite'
+                  : 'Accept into program'}
+              </Button>
+              {reg.admissionStatus !== 'rejected' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleAdmission('reject')}
+                  disabled={busy}
+                >
+                  Reject
+                </Button>
+              )}
+            </div>
+          )}
+        </Card>
 
         {/* Application — only for events with an application flow (CMIT). */}
         {applicationBaseUrl && (

@@ -172,6 +172,9 @@ export interface EventRegistration {
   // Per-registrant application form token + submission timestamp.
   applicationToken?: string
   applicationSubmittedAt?: string
+  // Admission decision (gates LMS portal access).
+  admissionStatus?: 'applied' | 'accepted' | 'rejected' | 'waitlisted'
+  acceptedAt?: string
   registeredAt: string
   confirmedAt?: string
   checkedInAt?: string

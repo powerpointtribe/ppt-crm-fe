@@ -159,6 +159,28 @@ export const eventsService = {
     }
   },
 
+  acceptRegistration: async (
+    eventId: string,
+    registrationId: string
+  ): Promise<{ admissionStatus: string; invitedEmail: string | null; message?: string }> => {
+    const response = await apiService.patch<ApiResponse<any>>(
+      `/events/${eventId}/registrations/${registrationId}/accept`,
+      {}
+    )
+    return (transformSingleResponse<any>(response) || {}) as any
+  },
+
+  rejectRegistration: async (
+    eventId: string,
+    registrationId: string
+  ): Promise<{ admissionStatus: string }> => {
+    const response = await apiService.patch<ApiResponse<any>>(
+      `/events/${eventId}/registrations/${registrationId}/reject`,
+      {}
+    )
+    return (transformSingleResponse<any>(response) || {}) as any
+  },
+
   createRegistration: async (
     eventId: string,
     data: CreateRegistrationData

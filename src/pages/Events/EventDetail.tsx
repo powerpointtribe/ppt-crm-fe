@@ -719,14 +719,18 @@ export default function EventDetail() {
           {(canUpdate || canManageCommittee) && (
             <Button
               variant="outline"
-              onClick={() =>
-                window.open(
+              onClick={() => {
+                const base =
                   import.meta.env.VITE_FACILITATOR_DASHBOARD_URL ||
-                    'https://cmithub.org/facilitator',
-                  '_blank',
-                  'noopener',
-                )
-              }
+                  'https://cmithub.org/facilitator'
+                // Hand the current Member token to the dashboard so the
+                // facilitator isn't asked to sign in again.
+                const token = localStorage.getItem('auth_token')
+                const url = token
+                  ? `${base}?token=${encodeURIComponent(token)}`
+                  : base
+                window.open(url, '_blank', 'noopener')
+              }}
               title="Open the event facilitator dashboard"
             >
               <ExternalLink className="h-4 w-4 mr-2" />

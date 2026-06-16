@@ -40,9 +40,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // A new deployment's service worker takes control immediately and
+        // purges old precaches, so users get fresh code without manual clearing.
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/ppt-crm-be\.onrender\.com\/api\/.*/i,
+            urlPattern: /^https:\/\/becrm\.powerpointtribe\.org\/api\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
@@ -86,7 +91,9 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true,
+        // Do NOT run the service worker in dev — it precaches and serves stale
+        // bundles on localhost. The SW is only for production builds.
+        enabled: false,
       },
     }),
   ],
@@ -100,7 +107,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'https://ppt-crm-be.onrender.com',
+        target: 'https://becrm.powerpointtribe.org',
         changeOrigin: true,
         secure: true,
         configure: (proxy, options) => {

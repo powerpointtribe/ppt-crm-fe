@@ -159,6 +159,20 @@ export const eventsService = {
     }
   },
 
+  // Next registrant after the given one. applied: 'no' (default) = next who
+  // hasn't submitted their application, 'yes' = next who has, 'any' = next.
+  getNextRegistration: async (
+    eventId: string,
+    registrationId: string,
+    applied: 'yes' | 'no' | 'any' = 'no'
+  ): Promise<{ nextId: string | null }> => {
+    const response = await apiService.get<ApiResponse<any>>(
+      `/events/${eventId}/registrations/${registrationId}/next`,
+      { params: { applied } }
+    )
+    return (transformSingleResponse<any>(response) || { nextId: null }) as any
+  },
+
   acceptRegistration: async (
     eventId: string,
     registrationId: string

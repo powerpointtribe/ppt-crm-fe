@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  ArrowRight,
   Mail,
   Phone,
   Users,
@@ -152,6 +153,30 @@ export default function RegistrationDetail() {
     }
   }
 
+  const goNext = async (applied: 'yes' | 'no' | 'any') => {
+    if (!id || !regId) return
+    setBusy(true)
+    try {
+      const { nextId } = await eventsService.getNextRegistration(id, regId, applied)
+      if (nextId) {
+        navigate(`/events/${id}/registrations/${nextId}`)
+      } else {
+        showToast(
+          'info',
+          applied === 'yes'
+            ? 'No more applicants who have applied.'
+            : applied === 'any'
+            ? 'This is the last registrant.'
+            : 'No more registrants who haven’t applied yet.'
+        )
+      }
+    } catch (e: any) {
+      showToast('error', e?.message || 'Could not load the next registrant')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleRegenerate = async () => {
     if (!id || !regId) return
     setRegenBusy(true)
@@ -222,10 +247,24 @@ export default function RegistrationDetail() {
     <Layout
       title="Registration"
       actions={
-        <Button variant="secondary" onClick={() => navigate(`/events/${id}?tab=registrations`)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to event
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/events/${id}?tab=registrations`)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to event
+          </Button>
+          {applicationBaseUrl && (
+            <>
+              <Button onClick={() => goNext('no')} disabled={busy} title="Next registrant who hasn't applied">
+                Next (not applied)
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+              <Button variant="outline" onClick={() => goNext('yes')} disabled={busy} title="Next registrant who has applied">
+                Next applied
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </>
+          )}
+        </div>
       }
     >
       <div className="max-w-4xl mx-auto space-y-5">
@@ -345,7 +384,9 @@ export default function RegistrationDetail() {
           </Card>
         </div>
 
-        {/* Admission — accept/reject into the program (gates LMS portal access). */}
+        {/* Admission — accept/reject into the program (gates LMS portal access).
+            Only for events with the application/LMS flow. */}
+        {applicationBaseUrl && (
         <Card className="p-5">
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
             Admission
@@ -397,6 +438,7 @@ export default function RegistrationDetail() {
             </div>
           )}
         </Card>
+        )}
 
         {/* Application — only for events with an application flow (CMIT). */}
         {applicationBaseUrl && (

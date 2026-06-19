@@ -716,7 +716,8 @@ export default function EventDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          {(canUpdate || canManageCommittee) && (
+          {(canUpdate || canManageCommittee) &&
+            !!event.registrationSettings?.applicationBaseUrl && (
             <Button
               variant="outline"
               onClick={() => {
@@ -1233,7 +1234,8 @@ export default function EventDetail() {
                           <Badge variant={statusColors[reg.status]} className="font-medium">
                             {reg.status.charAt(0).toUpperCase() + reg.status.slice(1).replace('-', ' ')}
                           </Badge>
-                          {reg.applicationToken &&
+                          {!!event?.registrationSettings?.applicationBaseUrl &&
+                            reg.applicationToken &&
                             (reg.applicationSubmittedAt ? (
                               <span className="text-xs text-green-600 flex items-center gap-1">
                                 <CheckCircle className="h-3 w-3" /> Applied
@@ -1368,19 +1370,20 @@ export default function EventDetail() {
                           <Badge variant={statusColors[reg.status]} className="font-medium">
                             {reg.status.charAt(0).toUpperCase() + reg.status.slice(1).replace('-', ' ')}
                           </Badge>
-                          {reg.applicationToken && (
-                            <div className="mt-1 text-xs flex items-center gap-1">
-                              {reg.applicationSubmittedAt ? (
-                                <span className="text-green-600 flex items-center gap-1">
-                                  <CheckCircle className="h-3 w-3" /> Applied
-                                </span>
-                              ) : (
-                                <span className="text-amber-600 flex items-center gap-1">
-                                  <Clock className="h-3 w-3" /> Application pending
-                                </span>
-                              )}
-                            </div>
-                          )}
+                          {!!event?.registrationSettings?.applicationBaseUrl &&
+                            reg.applicationToken && (
+                              <div className="mt-1 text-xs flex items-center gap-1">
+                                {reg.applicationSubmittedAt ? (
+                                  <span className="text-green-600 flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3" /> Applied
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 flex items-center gap-1">
+                                    <Clock className="h-3 w-3" /> Application pending
+                                  </span>
+                                )}
+                              </div>
+                            )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(reg.registeredAt)}

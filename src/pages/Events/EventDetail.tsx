@@ -723,13 +723,21 @@ export default function EventDetail() {
                 const base =
                   import.meta.env.VITE_FACILITATOR_DASHBOARD_URL ||
                   'https://cmithub.org/facilitator'
-                // Hand the current Member token to the dashboard so the
-                // facilitator isn't asked to sign in again.
+                // Hand the current Member token + this event to the dashboard so
+                // the facilitator is auto-logged-in and lands straight on the
+                // event's management page (no sign-in, no event picker).
                 const token = localStorage.getItem('auth_token')
-                const url = token
-                  ? `${base}?token=${encodeURIComponent(token)}`
-                  : base
-                window.open(url, '_blank', 'noopener')
+                if (token && id) {
+                  const qs = new URLSearchParams({
+                    token,
+                    eventId: id,
+                    eventTitle: event.title,
+                    slug: event.registrationSlug || '',
+                  })
+                  window.open(`${base}/manage?${qs.toString()}`, '_blank', 'noopener')
+                } else {
+                  window.open(base, '_blank', 'noopener')
+                }
               }}
               title="Open the event facilitator dashboard"
             >

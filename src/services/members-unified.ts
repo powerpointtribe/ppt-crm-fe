@@ -129,6 +129,11 @@ export const membersService = {
     await apiService.delete<ApiResponse<void>>(`/members/${id}`)
   },
 
+  bulkDeleteMembers: async (ids: string[]): Promise<{ requested: number; deleted: number }> => {
+    const response = await apiService.post<ApiResponse<{ requested: number; deleted: number }>>('/members/bulk-delete', { ids })
+    return transformSingleResponse<{ requested: number; deleted: number }>(response) as { requested: number; deleted: number }
+  },
+
   // Access control methods
   assignRole: async (id: string, roleData: { roleId: string }): Promise<Member> => {
     const response = await apiService.patch<ApiResponse<Member>>(`/members/${id}/assign-role`, roleData)

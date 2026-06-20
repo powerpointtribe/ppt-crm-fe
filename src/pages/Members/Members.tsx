@@ -22,7 +22,8 @@ import {
   TrendingUp,
   UserCheck,
   UserX,
-  Heart
+  Heart,
+  Trash2
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
@@ -32,6 +33,8 @@ import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import { SkeletonTable } from '@/components/ui/Skeleton'
 import PageToolbar, { SearchResult } from '@/components/ui/PageToolbar'
 import FilterModal from '@/components/ui/FilterModal'
+import BulkConfirmationModal from '@/components/ui/BulkConfirmationModal'
+import { showToast } from '@/utils/toast'
 import { Member, MemberSearchParams, membersService } from '@/services/members-unified'
 import { groupsService, Group } from '@/services/groups'
 import { branchesService } from '@/services/branches'
@@ -122,11 +125,20 @@ export default function Members() {
   const [bulkUnitId, setBulkUnitId] = useState('')
   const [savingBulkLocation, setSavingBulkLocation] = useState(false)
 
+  // Delete state (single + bulk)
+  const [deleteTarget, setDeleteTarget] = useState<Member | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
   // Permission checks
   const canAssignDistrict = hasPermission('members:assign-district')
   const canAssignUnit = hasPermission('members:assign-unit')
   const canUpdateMember = hasPermission('members:update')
   const canAssignLocation = canAssignDistrict || canAssignUnit || canUpdateMember
+  const canDeleteMember = hasPermission('members:delete')
+  // Whether to show selection checkboxes — any bulk-capable action enables them
+  const canSelect = canAssignLocation || canDeleteMember
 
   // Bulk selection helpers
   const allSelected = members.length > 0 && selectedMembers.size === members.length
@@ -596,6 +608,54 @@ export default function Members() {
     }
   }
 
+  // Single member delete
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      setDeleting(true)
+      await membersService.deleteMember(deleteTarget._id)
+      // Drop from selection if it was selected
+      setSelectedMembers(prev => {
+        const next = new Set(prev)
+        next.delete(deleteTarget._id)
+        return next
+      })
+      setDeleteTarget(null)
+      await Promise.all([loadMembers(), loadCounts()])
+      showToast.success(`${deleteTarget.firstName} ${deleteTarget.lastName} deleted`)
+    } catch (error: any) {
+      showToast.error('Failed to delete member: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  // Bulk delete — excludes the current user's own record for safety
+  const bulkDeleteIds = Array.from(selectedMembers).filter(id => id !== currentUser?._id)
+
+  const handleConfirmBulkDelete = async () => {
+    if (bulkDeleteIds.length === 0) return
+    try {
+      setBulkDeleting(true)
+      const { deleted } = await membersService.bulkDeleteMembers(bulkDeleteIds)
+
+      setShowBulkDeleteModal(false)
+      clearSelection()
+      await Promise.all([loadMembers(), loadCounts()])
+
+      const skipped = bulkDeleteIds.length - deleted
+      if (skipped > 0) {
+        showToast.warning(`Deleted ${deleted} member${deleted !== 1 ? 's' : ''}, ${skipped} could not be removed`)
+      } else {
+        showToast.success(`Deleted ${deleted} member${deleted !== 1 ? 's' : ''}`)
+      }
+    } catch (error: any) {
+      showToast.error('Failed to delete members: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   // Export members to CSV
   const handleExport = async () => {
     try {
@@ -871,14 +931,27 @@ export default function Members() {
                 </button>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button
-                  size="sm"
-                  onClick={handleOpenBulkLocationModal}
-                  className="flex items-center gap-1.5 w-full sm:w-auto justify-center"
-                >
-                  <MapPin className="h-4 w-4" />
-                  Assign Location
-                </Button>
+                {canAssignLocation && (
+                  <Button
+                    size="sm"
+                    onClick={handleOpenBulkLocationModal}
+                    className="flex items-center gap-1.5 w-full sm:w-auto justify-center"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Assign Location
+                  </Button>
+                )}
+                {canDeleteMember && bulkDeleteIds.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => setShowBulkDeleteModal(true)}
+                    className="flex items-center gap-1.5 w-full sm:w-auto justify-center"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete{bulkDeleteIds.length !== selectedMembers.size ? ` (${bulkDeleteIds.length})` : ''}
+                  </Button>
+                )}
               </div>
             </motion.div>
           )}
@@ -1235,7 +1308,7 @@ export default function Members() {
                     {/* Header: Name and Checkbox */}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        {canAssignLocation && (
+                        {canSelect && (
                           <input
                             type="checkbox"
                             checked={selectedMembers.has(member._id)}
@@ -1309,6 +1382,17 @@ export default function Members() {
                         <Edit className="h-3 w-3 mr-1" />
                         Edit
                       </Button>
+                      {canDeleteMember && member._id !== currentUser?._id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteTarget(member)}
+                          className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -1319,7 +1403,7 @@ export default function Members() {
                 <table className="w-full">
                   <thead className="bg-muted/50">
                     <tr>
-                      {canAssignLocation && (
+                      {canSelect && (
                         <th className="px-3 sm:px-4 py-3 w-10">
                           <input
                             type="checkbox"
@@ -1359,7 +1443,7 @@ export default function Members() {
                       className={`hover:bg-muted/50 transition-colors cursor-pointer ${selectedMembers.has(member._id) ? 'bg-primary-50' : ''}`}
                       onClick={() => navigate(`/members/${member._id}`)}
                     >
-                      {canAssignLocation && (
+                      {canSelect && (
                         <td className="px-3 sm:px-4 py-4 w-10" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
@@ -1443,6 +1527,17 @@ export default function Members() {
                           >
                             <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
+                          {canDeleteMember && member._id !== currentUser?._id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteTarget(member)}
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>
@@ -1905,6 +2000,34 @@ export default function Members() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Single member delete confirmation */}
+      <BulkConfirmationModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        action="delete"
+        selectedCount={1}
+        entityName="member"
+        loading={deleting}
+        customTitle="Delete Member"
+        customMessage={
+          deleteTarget
+            ? `Are you sure you want to delete ${deleteTarget.firstName} ${deleteTarget.lastName}? This action cannot be undone.`
+            : ''
+        }
+      />
+
+      {/* Bulk delete confirmation */}
+      <BulkConfirmationModal
+        isOpen={showBulkDeleteModal}
+        onClose={() => setShowBulkDeleteModal(false)}
+        onConfirm={handleConfirmBulkDelete}
+        action="delete"
+        selectedCount={bulkDeleteIds.length}
+        entityName="member"
+        loading={bulkDeleting}
+      />
     </Layout>
   )
 }

@@ -108,6 +108,32 @@ export interface GroupSearchParams {
   branchId?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+  /** Merge same-named groups across campuses into one row */
+  groupByName?: boolean
+}
+
+/** One campus instance inside a merged group row */
+export interface GroupCampus {
+  groupId: string
+  branchId?: string | null
+  branchName?: string | null
+  leaderName?: string | null
+  leaderTitle?: string | null
+  memberCount: number
+  maxCapacity?: number
+  isActive: boolean
+}
+
+/** A group merged by name across campuses (shape returned when groupByName=true) */
+export interface MergedGroup {
+  _id: string
+  name: string
+  type: Group['type']
+  description?: string
+  totalMembers: number
+  isActive: boolean
+  campusCount: number
+  campuses: GroupCampus[]
 }
 
 export interface PaginatedResponse<T> {

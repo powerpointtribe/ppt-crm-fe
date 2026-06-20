@@ -154,7 +154,10 @@ export default function FirstTimers() {
   const loadStats = useCallback(async () => {
     try {
       setStatsLoading(true)
-      const statsData = await firstTimersService.getFirstTimerStats({ dateRange })
+      // Scope stats to the selected campus (the backend ignores this for users
+      // without "view all branches" and always uses their own branch).
+      const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
+      const statsData = await firstTimersService.getFirstTimerStats({ dateRange, branchId: effectiveBranchId })
       setStats(statsData)
     } catch (error) {
       console.error('Error loading first timer stats:', error)
@@ -163,7 +166,7 @@ export default function FirstTimers() {
     } finally {
       setStatsLoading(false)
     }
-  }, [dateRange])
+  }, [dateRange, selectedBranch, branchFilter])
 
   const loadArchiveStats = useCallback(async () => {
     try {

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, Filter, Download, Users, MapPin, Calendar, Crown, Shield, Star, Settings as SettingsIcon, Eye, Edit, Trash2, Archive, Upload, Search, X } from 'lucide-react'
+import { Plus, Filter, Download, Users, MapPin, Calendar, Crown, Shield, Star, Settings as SettingsIcon, Eye, Edit, Trash2, Archive, Upload, Search, X, ChevronDown, ChevronRight, Building2 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -15,7 +15,7 @@ import BulkProgressModal from '@/components/ui/BulkProgressModal'
 import BulkEditModal from '@/components/ui/BulkEditModal'
 import BulkUploadModal from '@/components/ui/BulkUploadModal'
 import { useBulkSelection } from '@/hooks/useBulkSelection'
-import { Group, GroupSearchParams, groupsService } from '@/services/groups'
+import { Group, MergedGroup, GroupSearchParams, groupsService } from '@/services/groups'
 import { bulkOperationsService } from '@/services/bulkOperations'
 import { downloadCSV, BulkOperationProgress } from '@/utils/bulkOperations'
 import { useAppStore } from '@/store'
@@ -33,7 +33,15 @@ export default function Groups() {
     if (hour < 17) return 'Good afternoon'
     return 'Good evening'
   }
-  const [groups, setGroups] = useState<Group[]>([])
+  const [groups, setGroups] = useState<MergedGroup[]>([])
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const toggleExpanded = (id: string) =>
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState(urlSearchParams.get('search') || '')
@@ -73,7 +81,7 @@ export default function Groups() {
   const showBranchFilter = canViewAllBranches && branches.length > 0
 
   // Bulk operations state
-  const bulkSelection = useBulkSelection<Group>()
+  const bulkSelection = useBulkSelection<MergedGroup>()
   const [bulkConfirmation, setBulkConfirmation] = useState<{
     isOpen: boolean
     action: 'delete' | 'export' | 'archive'
@@ -168,9 +176,10 @@ export default function Groups() {
       const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
       const response = await groupsService.getGroups({
         ...searchParams,
-        branchId: effectiveBranchId
+        branchId: effectiveBranchId,
+        groupByName: true,
       })
-      setGroups(response.items || [])
+      setGroups((response.items as unknown as MergedGroup[]) || [])
       setPagination(response.pagination)
     } catch (error: any) {
       console.error('Error loading groups:', error)
@@ -311,6 +320,13 @@ export default function Groups() {
   const hasActiveFilters = !!(typeFilter || statusFilter || dateFromFilter || dateToFilter || branchFilter)
   const activeFilterCount = [typeFilter, statusFilter, dateFromFilter, dateToFilter, branchFilter].filter(Boolean).length
 
+  // A merged row stands for one or more real group documents (one per campus).
+  // Backend bulk operations need the real per-campus group ids.
+  const selectedRealGroupIds = () =>
+    bulkSelection
+      .getSelectedItems(groups)
+      .flatMap((g) => (g.campuses || []).map((c) => c.groupId))
+
   // Bulk operations handlers
   const handleBulkDelete = () => {
     setBulkConfirmation({
@@ -320,10 +336,19 @@ export default function Groups() {
   }
 
   const handleBulkExport = () => {
-    const selectedGroups = bulkSelection.getSelectedItems(groups)
-    downloadCSV(selectedGroups, 'groups_export', [
-      '_id', 'name', 'type', 'description', 'isActive', 'members', 'capacity',
-      'meetingSchedule', 'location', 'districtPastor', 'unitHead', 'createdAt'
+    const rows = bulkSelection.getSelectedItems(groups).map((g) => ({
+      name: g.name,
+      type: g.type,
+      description: g.description || '',
+      campuses: g.campusCount,
+      totalMembers: g.totalMembers,
+      leaders: (g.campuses || [])
+        .map((c) => `${c.leaderName || '—'} (${c.branchName || 'Unknown'})`)
+        .join('; '),
+      status: g.isActive ? 'Active' : 'Inactive',
+    }))
+    downloadCSV(rows, 'groups_export', [
+      'name', 'type', 'description', 'campuses', 'totalMembers', 'leaders', 'status',
     ])
     bulkSelection.clearSelection()
   }
@@ -351,7 +376,7 @@ export default function Groups() {
   }
 
   const confirmBulkOperation = async () => {
-    const selectedIds = Array.from(bulkSelection.selectedItems)
+    const selectedIds = selectedRealGroupIds()
     const action = bulkConfirmation.action
 
     setBulkConfirmation({ isOpen: false, action: 'delete' })
@@ -397,7 +422,7 @@ export default function Groups() {
   }
 
   const handleBulkEditSubmit = async (data: any) => {
-    const selectedIds = Array.from(bulkSelection.selectedItems)
+    const selectedIds = selectedRealGroupIds()
     setBulkEdit(prev => ({ ...prev, loading: true }))
 
     setBulkProgress({
@@ -852,7 +877,9 @@ export default function Groups() {
           ) : (
             groups.map((group, index) => {
               const GroupIcon = getGroupTypeIcon(group.type)
-              const leaderInfo = getLeaderInfo(group)
+              const multiCampus = group.campusCount > 1
+              const primaryGroupId = group.campuses?.[0]?.groupId
+              const isExpanded = expandedGroups.has(group._id)
 
               return (
                 <motion.div
@@ -861,7 +888,6 @@ export default function Groups() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.015 }}
                   className={`bg-white border border-gray-100 rounded-xl p-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1),0_1px_3px_-1px_rgba(0,0,0,0.06)] ${bulkSelection.selectedItems.has(group._id) ? 'ring-2 ring-primary-500 bg-primary-50' : ''}`}
-                  onClick={() => navigate(`/groups/${group._id}`)}
                 >
                   {/* Header Row */}
                   <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -878,6 +904,11 @@ export default function Groups() {
                       />
                       <GroupIcon className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                       <h3 className="font-medium text-gray-900 text-sm truncate">{group.name}</h3>
+                      {multiCampus && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary-50 text-primary-700 flex-shrink-0">
+                          {group.campusCount} campuses
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${getGroupTypeBadge(group.type)}`}>
@@ -894,57 +925,79 @@ export default function Groups() {
                     </div>
                   </div>
 
-                  {/* Info Row */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500 pl-6">
-                    {/* Leader */}
-                    <div className="flex items-center gap-1">
-                      {leaderInfo ? (
-                        <>
-                          <leaderInfo.icon className="h-3 w-3 text-gray-400" />
-                          <span className="truncate max-w-[100px]">
-                            {typeof leaderInfo.id === 'object'
-                              ? `${leaderInfo.id?.firstName} ${leaderInfo.id?.lastName}`
-                              : leaderInfo.title}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-gray-400">No leader</span>
-                      )}
-                    </div>
-                    <span className="text-gray-300">|</span>
-                    {/* Members */}
-                    <div className="flex items-center gap-1">
+                  {/* Leaders by campus */}
+                  <div className="pl-6 space-y-0.5">
+                    {(group.campuses || []).map((c) => (
+                      <div key={c.groupId} className="flex items-center gap-1 text-xs text-gray-600">
+                        <Shield className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                        <span className="truncate">
+                          {c.leaderName || '—'}
+                          {c.branchName && <span className="text-gray-400"> ({c.branchName})</span>}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-1 text-xs text-gray-500 pt-0.5">
                       <Users className="h-3 w-3 text-gray-400" />
-                      <span>{group.currentMemberCount || group.members?.length || 0}{group.maxCapacity > 0 ? `/${group.maxCapacity}` : ''}</span>
+                      <span>{group.totalMembers} member{group.totalMembers === 1 ? '' : 's'}</span>
                     </div>
-                    {group.meetingSchedule && (
-                      <>
-                        <span className="text-gray-300">|</span>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-gray-400" />
-                          <span>{group.meetingSchedule.day}s</span>
-                        </div>
-                      </>
-                    )}
                   </div>
 
                   {/* Actions Row */}
                   <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-gray-100 pl-6" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => navigate(`/groups/${group._id}`)}
-                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded transition-colors"
-                    >
-                      <Eye className="h-3 w-3" />
-                      View
-                    </button>
-                    <button
-                      onClick={() => navigate(`/groups/${group._id}/edit`)}
-                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded transition-colors"
-                    >
-                      <Edit className="h-3 w-3" />
-                      Edit
-                    </button>
+                    {multiCampus ? (
+                      <button
+                        onClick={() => toggleExpanded(group._id)}
+                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded transition-colors"
+                      >
+                        {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        {isExpanded ? 'Hide campuses' : 'Manage campuses'}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => primaryGroupId && navigate(`/groups/${primaryGroupId}`)}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          <Eye className="h-3 w-3" />
+                          View
+                        </button>
+                        <button
+                          onClick={() => primaryGroupId && navigate(`/groups/${primaryGroupId}/edit`)}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          <Edit className="h-3 w-3" />
+                          Edit
+                        </button>
+                      </>
+                    )}
                   </div>
+
+                  {/* Expanded per-campus list */}
+                  {multiCampus && isExpanded && (
+                    <div className="mt-2 pl-6 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                      {(group.campuses || []).map((c) => (
+                        <div key={c.groupId} className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2 py-1.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1 text-xs font-medium text-gray-800">
+                              <Building2 className="h-3 w-3 text-gray-400" />
+                              <span className="truncate">{c.branchName || 'Unknown campus'}</span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 truncate pl-4">
+                              {c.leaderName || 'No leader'} · {c.memberCount} member{c.memberCount === 1 ? '' : 's'}
+                            </p>
+                          </div>
+                          <div className="flex gap-0.5 flex-shrink-0">
+                            <button onClick={() => navigate(`/groups/${c.groupId}`)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="View">
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => navigate(`/groups/${c.groupId}/edit`)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="Edit">
+                              <Edit className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               )
             })
@@ -979,13 +1032,17 @@ export default function Groups() {
               <tbody className="divide-y divide-gray-100">
                 {groups.map((group) => {
                   const GroupIcon = getGroupTypeIcon(group.type)
-                  const leaderInfo = getLeaderInfo(group)
-                  const LeaderIcon = leaderInfo?.icon
+                  const multiCampus = group.campusCount > 1
+                  const primaryGroupId = group.campuses?.[0]?.groupId
+                  const isExpanded = expandedGroups.has(group._id)
+                  const rowClickTarget = multiCampus
+                    ? () => toggleExpanded(group._id)
+                    : () => primaryGroupId && navigate(`/groups/${primaryGroupId}`)
 
                   return (
+                    <Fragment key={group._id}>
                     <tr
-                      key={group._id}
-                      onClick={() => navigate(`/groups/${group._id}`)}
+                      onClick={rowClickTarget}
                       className={`hover:bg-gray-50 cursor-pointer transition-colors ${
                         bulkSelection.selectedItems.has(group._id) ? 'bg-primary-50' : ''
                       }`}
@@ -1001,9 +1058,26 @@ export default function Groups() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <GroupIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          {multiCampus ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleExpanded(group._id) }}
+                              className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                              title={isExpanded ? 'Collapse' : 'Expand campuses'}
+                            >
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </button>
+                          ) : (
+                            <GroupIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          )}
                           <div className="min-w-0">
-                            <p className="font-medium text-gray-900 truncate text-sm">{group.name}</p>
+                            <p className="font-medium text-gray-900 truncate text-sm flex items-center gap-1.5">
+                              {group.name}
+                              {multiCampus && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary-50 text-primary-700">
+                                  {group.campusCount}
+                                </span>
+                              )}
+                            </p>
                             {group.description && (
                               <p className="text-xs text-gray-500 truncate max-w-[180px]">{group.description}</p>
                             )}
@@ -1016,16 +1090,14 @@ export default function Groups() {
                         </span>
                       </td>
                       <td className="px-3 py-2">
-                        {leaderInfo && LeaderIcon ? (
-                          <div className="flex items-center gap-1.5">
-                            <LeaderIcon className="h-3.5 w-3.5 text-gray-400" />
-                            <div className="min-w-0">
-                              <p className="text-xs text-gray-900 truncate">
-                                {typeof leaderInfo.id === 'object'
-                                  ? `${leaderInfo.id?.firstName} ${leaderInfo.id?.lastName}`
-                                  : leaderInfo.title}
+                        {group.campuses && group.campuses.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {group.campuses.map((c) => (
+                              <p key={c.groupId} className="text-xs text-gray-900 truncate max-w-[260px]">
+                                {c.leaderName || <span className="text-gray-400">—</span>}
+                                {c.branchName && <span className="text-gray-400"> ({c.branchName})</span>}
                               </p>
-                            </div>
+                            ))}
                           </div>
                         ) : (
                           <span className="text-gray-400 text-xs">—</span>
@@ -1033,10 +1105,7 @@ export default function Groups() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1 text-xs">
-                          <span className="text-gray-900 font-medium">{group.currentMemberCount || group.members?.length || 0}</span>
-                          {group.maxCapacity > 0 && (
-                            <span className="text-gray-400">/{group.maxCapacity}</span>
-                          )}
+                          <span className="text-gray-900 font-medium">{group.totalMembers || 0}</span>
                         </div>
                       </td>
                       <td className="px-3 py-2">
@@ -1050,30 +1119,62 @@ export default function Groups() {
                         </span>
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex gap-0.5">
+                        {multiCampus ? (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate(`/groups/${group._id}`)
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                            title="View"
+                            onClick={(e) => { e.stopPropagation(); toggleExpanded(group._id) }}
+                            className="px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded transition-colors"
                           >
-                            <Eye className="h-3.5 w-3.5" />
+                            {isExpanded ? 'Hide' : 'Manage'}
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate(`/groups/${group._id}/edit`)
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+                        ) : (
+                          <div className="flex gap-0.5">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); primaryGroupId && navigate(`/groups/${primaryGroupId}`) }}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                              title="View"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); primaryGroupId && navigate(`/groups/${primaryGroupId}/edit`) }}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                              title="Edit"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
+                    {multiCampus && isExpanded && group.campuses.map((c) => (
+                      <tr key={c.groupId} className="bg-gray-50/60">
+                        <td></td>
+                        <td className="px-3 py-1.5" colSpan={2}>
+                          <div className="flex items-center gap-1.5 pl-5 text-xs text-gray-700">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                            <span className="font-medium">{c.branchName || 'Unknown campus'}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5 text-xs text-gray-700">{c.leaderName || <span className="text-gray-400">No leader</span>}</td>
+                        <td className="px-3 py-1.5 text-xs text-gray-700">{c.memberCount}</td>
+                        <td className="px-3 py-1.5">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${c.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {c.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <div className="flex gap-0.5">
+                            <button onClick={(e) => { e.stopPropagation(); navigate(`/groups/${c.groupId}`) }} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="View">
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); navigate(`/groups/${c.groupId}/edit`) }} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded" title="Edit">
+                              <Edit className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    </Fragment>
                   )
                 })}
               </tbody>

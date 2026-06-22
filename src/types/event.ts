@@ -480,6 +480,8 @@ export interface RegistrationAnalytics {
   conversionRate: number
   registrationsByDay: { date: string; count: number }[]
   registrationsBySource: { source: string; count: number }[]
+  schoolDistribution?: { value: string; count: number }[]
+  heardAboutDistribution?: { value: string; count: number }[]
 }
 
 // Session analytics

@@ -87,6 +87,71 @@ const BAR_COLORS = [
   '#14b8a6',
 ]
 
+// Ranked horizontal-bar list for a registration distribution (e.g. school /
+// university, "how did you hear about us"). Handles both small category sets
+// and long free-text tails — folds everything past `cap` into "Other".
+function DistributionCard({
+  title,
+  items,
+  cap = 12,
+}: {
+  title: string
+  items?: { value: string; count: number }[]
+  cap?: number
+}) {
+  const list = items || []
+  if (list.length === 0) {
+    return (
+      <Card className="p-5">
+        <h4 className="text-sm font-semibold text-gray-900 mb-2">{title}</h4>
+        <p className="text-sm text-gray-400">No responses yet.</p>
+      </Card>
+    )
+  }
+  const total = list.reduce((s, d) => s + d.count, 0) || 1
+  const top = list.slice(0, cap)
+  const restCount = list.slice(cap).reduce((s, d) => s + d.count, 0)
+  const rows = restCount > 0 ? [...top, { value: 'Other', count: restCount }] : top
+  const max = Math.max(...rows.map((r) => r.count)) || 1
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
+        <span className="text-xs text-gray-500">
+          {total} response{total === 1 ? '' : 's'}
+        </span>
+      </div>
+      <ul className="space-y-2.5">
+        {rows.map((d, i) => {
+          const pct = Math.round((d.count / total) * 100)
+          const width = Math.max((d.count / max) * 100, 4)
+          return (
+            <li key={`${d.value}-${i}`} className="text-sm">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-gray-700 truncate pr-2" title={d.value}>
+                  {d.value}
+                </span>
+                <span className="text-gray-500 tabular-nums shrink-0">
+                  {d.count} · {pct}%
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${width}%`,
+                    background: BAR_COLORS[i % BAR_COLORS.length],
+                  }}
+                />
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
+  )
+}
+
 const attendanceStatusColors: Record<string, string> = {
   excellent: 'bg-green-100 text-green-800',
   good: 'bg-blue-100 text-blue-800',
@@ -2095,6 +2160,21 @@ export default function EventDetail() {
                         </Card>
                       )
                     })}
+                  </div>
+                )}
+
+                {/* Registrant demographics — school distribution & referral source */}
+                {((analytics.registrations.schoolDistribution?.length ?? 0) > 0 ||
+                  (analytics.registrations.heardAboutDistribution?.length ?? 0) > 0) && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <DistributionCard
+                      title="School / University distribution"
+                      items={analytics.registrations.schoolDistribution}
+                    />
+                    <DistributionCard
+                      title="How did you hear about us?"
+                      items={analytics.registrations.heardAboutDistribution}
+                    />
                   </div>
                 )}
 

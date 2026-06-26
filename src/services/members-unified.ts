@@ -150,6 +150,16 @@ export const membersService = {
     return transformSingleResponse<Member>(response) as Member
   },
 
+  getScopedEvents: async (id: string): Promise<string[]> => {
+    const response = await apiService.get<string[]>(`/members/${id}/scoped-events`)
+    return (response as any) || []
+  },
+
+  setScopedEvents: async (id: string, eventIds: string[]): Promise<Member> => {
+    const response = await apiService.put<ApiResponse<Member>>(`/members/${id}/scoped-events`, { eventIds })
+    return transformSingleResponse<Member>(response) as Member
+  },
+
   assignUnit: async (id: string, unitData: { unit: string; unitType: string; district?: string }): Promise<Member> => {
     const response = await apiService.patch<ApiResponse<Member>>(`/members/${id}/assign-unit`, unitData)
     return transformSingleResponse<Member>(response) as Member

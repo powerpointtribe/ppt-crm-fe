@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Edit, Plus, Trash2 } from 'lucide-react';
+import { X, Edit, Plus, Trash2, Calendar, Check } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
@@ -9,6 +9,7 @@ import userInvitationsService from '../../services/user-invitations';
 import type { ActiveUser } from '../../services/user-invitations';
 import { rolesService } from '../../services/roles';
 import { membersService } from '../../services/members-unified';
+import { eventsService } from '../../services/events';
 
 interface Role {
   _id: string;
@@ -18,11 +19,26 @@ interface Role {
   isActive: boolean;
 }
 
+interface EventItem {
+  _id: string;
+  title: string;
+  startDate: string;
+  status?: string;
+}
+
 interface EditUserRoleModalProps {
   user: ActiveUser;
   onClose: () => void;
   onSuccess: () => void;
   onRefresh?: () => void;
+}
+
+const EVENT_VIEWER_NAMES = ['event viewer', 'event-viewer', 'eventviewer'];
+
+function isEventViewerRole(role: { name: string; displayName?: string }) {
+  const n = (role.name || '').toLowerCase();
+  const d = (role.displayName || '').toLowerCase();
+  return EVENT_VIEWER_NAMES.some((ev) => n.includes(ev) || d.includes(ev));
 }
 
 export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh }: EditUserRoleModalProps) {
@@ -36,9 +52,17 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
   const [submitting, setSubmitting] = useState(false);
   const [removingRoleId, setRemovingRoleId] = useState<string | null>(null);
 
+  // Scoped events state
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [savingEvents, setSavingEvents] = useState(false);
+  const [eventsDirty, setEventsDirty] = useState(false);
+
   const toast = useToast();
 
-  // Fetch roles
+  const hasEventViewerRole = additionalRoles.some(isEventViewerRole);
+
   useEffect(() => {
     const fetchRoles = async () => {
       setLoading(true);
@@ -56,14 +80,36 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
     fetchRoles();
   }, []);
 
-  // Available roles for additional selection (exclude primary and already-added roles)
+  // Load events + scoped selection when Event Viewer role is present
+  useEffect(() => {
+    if (!hasEventViewerRole) return;
+
+    const loadEventsAndScope = async () => {
+      setEventsLoading(true);
+      try {
+        const [eventsRes, scopedIds] = await Promise.all([
+          eventsService.getEvents({ limit: 100, sortBy: 'startDate', sortOrder: 'desc' }),
+          membersService.getScopedEvents(user._id),
+        ]);
+        setEvents(eventsRes.items || []);
+        setSelectedEventIds(new Set(scopedIds));
+      } catch (error: any) {
+        console.error('Failed to load events:', error);
+        toast.error(error?.message || 'Failed to load events');
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+
+    loadEventsAndScope();
+  }, [hasEventViewerRole, user._id]);
+
   const availableForAdditional = roles.filter(
     (r) =>
       r._id !== selectedRoleId &&
       !additionalRoles.some((ar) => ar._id === r._id),
   );
 
-  // Handle primary role submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -86,14 +132,13 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
       onSuccess();
     } catch (error: any) {
       console.error('Failed to update user role:', error);
-      const message = error?.response?.data?.message || 'Failed to update user role';
+      const message = error?.response?.data?.message || error?.message || 'Failed to update user role';
       toast.error(message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Handle adding an additional role
   const handleAddRole = async () => {
     if (!addRoleId) return;
 
@@ -112,14 +157,13 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
       onRefresh?.();
     } catch (error: any) {
       console.error('Failed to add role:', error);
-      const message = error?.response?.data?.message || 'Failed to add role';
+      const message = error?.response?.data?.message || error?.message || 'Failed to add role';
       toast.error(message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Handle removing an additional role
   const handleRemoveRole = async (roleId: string) => {
     setRemovingRoleId(roleId);
     try {
@@ -129,10 +173,51 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
       onRefresh?.();
     } catch (error: any) {
       console.error('Failed to remove role:', error);
-      const message = error?.response?.data?.message || 'Failed to remove role';
+      const message = error?.response?.data?.message || error?.message || 'Failed to remove role';
       toast.error(message);
     } finally {
       setRemovingRoleId(null);
+    }
+  };
+
+  const toggleEvent = (eventId: string) => {
+    setSelectedEventIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) {
+        next.delete(eventId);
+      } else {
+        next.add(eventId);
+      }
+      return next;
+    });
+    setEventsDirty(true);
+  };
+
+  const handleSaveEventScope = async () => {
+    setSavingEvents(true);
+    try {
+      await membersService.setScopedEvents(user._id, Array.from(selectedEventIds));
+      toast.success('Event access updated');
+      setEventsDirty(false);
+      onRefresh?.();
+    } catch (error: any) {
+      console.error('Failed to save scoped events:', error);
+      const message = error?.response?.data?.message || error?.message || 'Failed to save event access';
+      toast.error(message);
+    } finally {
+      setSavingEvents(false);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return '';
     }
   };
 
@@ -176,7 +261,7 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
                 <div>
                   <p className="text-gray-500">Primary Role</p>
                   {user.role ? (
-                    <Badge variant="info" className="text-[10px]">
+                    <Badge variant="secondary" className="text-[10px]">
                       {user.role.displayName || user.role.name}
                     </Badge>
                   ) : (
@@ -271,6 +356,80 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
                 </div>
               )}
             </div>
+
+            {/* Scoped Event Access — shown when Event Viewer role is assigned */}
+            {hasEventViewerRole && (
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-purple-500" />
+                  Event Access
+                </label>
+                <p className="text-[10px] text-gray-400 mb-2">
+                  Select which events this user can view. If none are selected, they can see all events.
+                </p>
+
+                {eventsLoading ? (
+                  <div className="flex justify-center py-3">
+                    <LoadingSpinner />
+                  </div>
+                ) : events.length === 0 ? (
+                  <p className="text-[10px] text-gray-400">No events found</p>
+                ) : (
+                  <>
+                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                      {events.map((event) => {
+                        const checked = selectedEventIds.has(event._id);
+                        return (
+                          <label
+                            key={event._id}
+                            className={`flex items-center gap-2.5 px-2.5 py-2 cursor-pointer hover:bg-gray-50 transition-colors ${
+                              checked ? 'bg-purple-50/50' : ''
+                            }`}
+                          >
+                            <div
+                              className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                                checked
+                                  ? 'bg-purple-600 border-purple-600'
+                                  : 'border-gray-300'
+                              }`}
+                            >
+                              {checked && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleEvent(event._id)}
+                              className="sr-only"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-900 truncate">
+                                {event.title}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {formatDate(event.startDate)}
+                              </p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {eventsDirty && (
+                      <div className="flex justify-end mt-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleSaveEventScope}
+                          disabled={savingEvents}
+                        >
+                          {savingEvents ? <LoadingSpinner /> : 'Save Event Access'}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Warning */}
             {(selectedRoleId !== user.role?._id || additionalRoles.length !== (user.additionalRoles?.length || 0)) && (

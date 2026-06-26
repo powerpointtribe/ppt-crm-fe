@@ -775,8 +775,7 @@ export const eventsService = {
     eventId: string,
     params?: { page?: number; limit?: number; search?: string }
   ): Promise<{ data: any[]; total: number; page: number; limit: number }> => {
-    const response = await apiService.get<any>(`/events/${eventId}/testimonies`, { params })
-    return response.data
+    return apiService.get<any>(`/events/${eventId}/testimonies`, { params })
   },
 
   toggleTestimonyFeatured: async (testimonyId: string): Promise<any> => {

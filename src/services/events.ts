@@ -745,6 +745,48 @@ export const eventsService = {
     )
     return transformSingleResponse<any>(response)
   },
+
+  // ========== TESTIMONY ENDPOINTS ==========
+
+  getTestimonyFormInfo: async (slug: string): Promise<{ event: { title: string; bannerImage?: string; description?: string }; enabled: boolean }> => {
+    const response = await apiService.get<any>(`/events/public/${slug}/testimony-form`)
+    return transformSingleResponse<any>(response)
+  },
+
+  submitTestimony: async (
+    slug: string,
+    data: { fullName: string; email?: string; phone?: string; testimony: string; title?: string; isAnonymous?: boolean }
+  ): Promise<any> => {
+    const response = await apiService.post<any>(`/events/public/${slug}/testimonies`, data)
+    return transformSingleResponse<any>(response)
+  },
+
+  enableTestimonyForm: async (eventId: string): Promise<any> => {
+    const response = await apiService.post<any>(`/events/${eventId}/testimony-form/enable`)
+    return transformSingleResponse<any>(response)
+  },
+
+  disableTestimonyForm: async (eventId: string): Promise<any> => {
+    const response = await apiService.post<any>(`/events/${eventId}/testimony-form/disable`)
+    return transformSingleResponse<any>(response)
+  },
+
+  getTestimonies: async (
+    eventId: string,
+    params?: { page?: number; limit?: number; search?: string }
+  ): Promise<{ data: any[]; total: number; page: number; limit: number }> => {
+    const response = await apiService.get<any>(`/events/${eventId}/testimonies`, { params })
+    return transformSingleResponse<any>(response)
+  },
+
+  toggleTestimonyFeatured: async (testimonyId: string): Promise<any> => {
+    const response = await apiService.patch<any>(`/events/testimonies/${testimonyId}/toggle-featured`)
+    return transformSingleResponse<any>(response)
+  },
+
+  deleteTestimony: async (testimonyId: string): Promise<void> => {
+    await apiService.delete(`/events/testimonies/${testimonyId}`)
+  },
 }
 
 export type {

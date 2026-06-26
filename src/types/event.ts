@@ -145,6 +145,8 @@ export interface Event {
   registrationCount: number
   confirmedCount: number
   attendedCount: number
+  testimonyFormEnabled?: boolean
+  testimonyCount?: number
   createdAt: string
   updatedAt: string
 }

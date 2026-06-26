@@ -33,6 +33,11 @@ import {
   FileText,
   FileSpreadsheet,
   ChevronDown,
+  MessageSquare,
+  Star,
+  Link2,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react'
 import {
   PieChart,
@@ -62,6 +67,7 @@ import {
 } from '@/types/event'
 import { formatDate } from '@/utils/formatters'
 import { showToast } from '@/utils/toast'
+import TestimoniesTab from './TestimoniesTab'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import { membersService, Member } from '@/services/members-unified'
 import { cn } from '@/utils/cn'
@@ -185,11 +191,11 @@ export default function EventDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
-  const validTabs = ['info', 'registrations', 'sessions', 'analytics', 'accountability', 'committee', 'partners']
+  const validTabs = ['info', 'registrations', 'sessions', 'analytics', 'accountability', 'committee', 'partners', 'testimonies']
   const initialTab = validTabs.includes(searchParams.get('tab') || '')
     ? (searchParams.get('tab') as any)
     : 'info'
-  const [activeTab, setActiveTab] = useState<'info' | 'registrations' | 'sessions' | 'analytics' | 'accountability' | 'committee' | 'partners'>(initialTab)
+  const [activeTab, setActiveTab] = useState<'info' | 'registrations' | 'sessions' | 'analytics' | 'accountability' | 'committee' | 'partners' | 'testimonies'>(initialTab)
   const [registrationSearch, setRegistrationSearch] = useState('')
   const [registrationFilter, setRegistrationFilter] = useState<RegistrationStatus | ''>('')
   const [loadingRegistrations, setLoadingRegistrations] = useState(false)
@@ -936,6 +942,7 @@ export default function EventDetail() {
               { id: 'analytics', label: 'Analytics', icon: BarChart3 },
               { id: 'accountability', label: 'Accountability', icon: ClipboardCheck, permission: canViewRegistrations },
               { id: 'committee', label: 'Committee', icon: UserPlus },
+              { id: 'testimonies', label: 'Testimonies', icon: MessageSquare, count: event?.testimonyCount || undefined },
             ]
               .filter((tab) => tab.permission !== false)
               .map((tab) => {
@@ -2631,6 +2638,13 @@ export default function EventDetail() {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'testimonies' && (
+          <TestimoniesTab
+            eventId={id!}
+            event={event}
+          />
         )}
       </div>
 

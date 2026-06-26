@@ -118,7 +118,8 @@ export default function RequisitionsList() {
   const [successMessage, setSuccessMessage] = useState<string | null>(
     location.state?.message || null
   )
-  const [activeTab, setActiveTab] = useState<'all' | 'my'>('all')
+  const canViewAll = hasPermission('finance:view-requisitions')
+  const [activeTab, setActiveTab] = useState<'all' | 'my'>(canViewAll ? 'all' : 'my')
   const [showDateFilter, setShowDateFilter] = useState(false)
 
   const canCreate = hasPermission('finance:create-requisition')
@@ -290,7 +291,7 @@ export default function RequisitionsList() {
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-1">
             <div className="flex">
               {[
-                { key: 'all' as const, label: 'All Requisitions', icon: ListFilter },
+                ...(canViewAll ? [{ key: 'all' as const, label: 'All Requisitions', icon: ListFilter }] : []),
                 { key: 'my' as const, label: 'My Requisitions', icon: FileText },
               ].map((tab) => (
                 <button

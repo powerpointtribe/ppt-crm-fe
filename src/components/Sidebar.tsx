@@ -116,6 +116,12 @@ const menuGroups: MenuGroup[] = [
         hasDropdown: true,
         subItems: [
           {
+            icon: ClipboardList,
+            label: 'My Assignments',
+            path: '/my-assigned-first-timers',
+            requiredPermission: 'first-timers:view-assigned',
+          },
+          {
             icon: Phone,
             label: 'Call Reports',
             path: '/first-timers/call-reports',
@@ -267,8 +273,8 @@ const menuGroups: MenuGroup[] = [
       {
         icon: DollarSign,
         label: 'Finance',
-        path: '/finance/requisitions',
-        requiredPermission: 'finance:view-requisitions',
+        path: '/finance',
+        requiredPermission: 'finance:view-my-requisitions',
         hasDropdown: true,
         subItems: [
           {

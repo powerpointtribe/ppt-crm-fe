@@ -526,6 +526,7 @@ const styles = `
     content: '';
     position: absolute;
     inset: 0;
+    pointer-events: none;
     background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
     transform: translateX(-120%);
     transition: transform 0.6s var(--ease);

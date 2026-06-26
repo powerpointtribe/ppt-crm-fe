@@ -176,7 +176,7 @@ const sessionStatusColors: Record<string, 'default' | 'success' | 'warning' | 'd
 export default function EventDetail() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const { hasPermission } = useAuth()
+  const { hasPermission, member: authMember } = useAuth()
 
   const [event, setEvent] = useState<Event | null>(null)
   const [stats, setStats] = useState<EventStats | null>(null)
@@ -257,6 +257,10 @@ export default function EventDetail() {
   const canViewRegistrations = hasPermission('events:view-registrations')
   const canCheckIn = hasPermission('events:check-in')
   const canManageCommittee = hasPermission('events:manage-committee')
+  const isCommitteeMember = event?.committee?.some((c) => {
+    const cid = typeof c.member === 'string' ? c.member : (c.member as any)?._id
+    return cid === authMember?._id
+  }) ?? false
   const [deleting, setDeleting] = useState(false)
 
   // Edit/Delete handlers for registrations
@@ -787,7 +791,7 @@ export default function EventDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          {(canUpdate || canManageCommittee) &&
+          {(canUpdate || canManageCommittee || isCommitteeMember) &&
             !!event.registrationSettings?.applicationBaseUrl && (
             <Button
               variant="outline"

@@ -1,17 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import {
-  MessageSquare,
-  CheckCircle,
-  AlertCircle,
-  User,
-  Mail,
-  Phone,
-  Sparkles,
-  Send,
-  Loader2,
-} from 'lucide-react'
 import { eventsService } from '@/services/events'
 import { showToast } from '@/utils/toast'
 
@@ -25,15 +13,13 @@ export default function PublicTestimonyForm() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-
-  const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    title: '',
-    testimony: '',
-    isAnonymous: false,
-  })
+  const [anonymous, setAnonymous] = useState(false)
+  const [fullName, setFullName] = useState('')
+  const [testimony, setTestimony] = useState('')
+  const [nameError, setNameError] = useState(false)
+  const [storyError, setStoryError] = useState(false)
+  const [focusedField, setFocusedField] = useState<string | null>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!slug) return
@@ -58,24 +44,23 @@ export default function PublicTestimonyForm() {
     e.preventDefault()
     if (!slug) return
 
-    if (!form.isAnonymous && !form.fullName.trim()) {
-      showToast.error('Please enter your name or check "Submit anonymously"')
-      return
+    let ok = true
+    if (!anonymous && !fullName.trim()) {
+      setNameError(true)
+      ok = false
     }
-    if (!form.testimony.trim()) {
-      showToast.error('Please share your testimony')
-      return
+    if (!testimony.trim()) {
+      setStoryError(true)
+      ok = false
     }
+    if (!ok) return
 
     setSubmitting(true)
     try {
       await eventsService.submitTestimony(slug, {
-        fullName: form.isAnonymous ? 'Anonymous' : form.fullName.trim(),
-        email: form.email.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        testimony: form.testimony.trim(),
-        title: form.title.trim() || undefined,
-        isAnonymous: form.isAnonymous,
+        fullName: anonymous ? 'Anonymous' : fullName.trim(),
+        testimony: testimony.trim(),
+        isAnonymous: anonymous,
       })
       setSubmitted(true)
     } catch (err: any) {
@@ -87,58 +72,63 @@ export default function PublicTestimonyForm() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent" />
+      <div className="testimony-page">
+        <style>{styles}</style>
+        <div className="card">
+          <div style={{ padding: '60px 34px', textAlign: 'center' }}>
+            <div className="loader" />
+          </div>
+        </div>
       </div>
     )
   }
 
   if (error || !eventInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center"
-        >
-          <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-7 h-7 text-red-500" />
+      <div className="testimony-page">
+        <style>{styles}</style>
+        <div className="card">
+          <div className="done">
+            <div className="tick err-tick">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </div>
+            <h2>Unavailable</h2>
+            <p>{error || 'Something went wrong.'}</p>
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">Unavailable</h2>
-          <p className="text-sm text-gray-500">{error || 'Something went wrong.'}</p>
-        </motion.div>
+        </div>
       </div>
     )
   }
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center"
-        >
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-500" />
+      <div className="testimony-page">
+        <style>{styles}</style>
+        <div className="card" ref={cardRef}>
+          <div className="done">
+            <div className="tick">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </div>
+            <h2>Thank you</h2>
+            <p>Your testimony has been received. May it bless everyone who hears it.</p>
+            <button
+              type="button"
+              className="again"
+              onClick={() => {
+                setSubmitted(false)
+                setFullName('')
+                setTestimony('')
+                setAnonymous(false)
+              }}
+            >
+              Share another testimony
+            </button>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Thank You!</h2>
-          <p className="text-sm text-gray-500 mb-1">
-            Your testimony has been submitted successfully.
-          </p>
-          <p className="text-xs text-gray-400">
-            Thank you for sharing what God has done in your life.
-          </p>
-          <button
-            onClick={() => {
-              setSubmitted(false)
-              setForm({ fullName: '', email: '', phone: '', title: '', testimony: '', isAnonymous: false })
-            }}
-            className="mt-6 text-sm text-purple-600 hover:text-purple-700 font-medium"
-          >
-            Submit another testimony
-          </button>
-        </motion.div>
+        </div>
       </div>
     )
   }
@@ -146,186 +136,477 @@ export default function PublicTestimonyForm() {
   const { event } = eventInfo
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50">
-      {/* Banner */}
-      {event.bannerImage && (
-        <div className="relative h-48 sm:h-56 overflow-hidden">
-          <img
-            src={event.bannerImage}
-            alt={event.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        </div>
-      )}
+    <div className="testimony-page">
+      <style>{styles}</style>
+      <main className="card" ref={cardRef}>
+        <form onSubmit={handleSubmit} noValidate>
+          <p className="eyebrow">Share your story</p>
+          <h1>{event.title}</h1>
+          <p className="sub">Tell us what God has done through this gathering.</p>
 
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-xl overflow-hidden"
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-purple-200 text-xs font-medium uppercase tracking-wider">
-                  Share Your Story
+          {/* Anonymous toggle */}
+          <div
+            className={`anon${anonymous ? ' on' : ''}`}
+            role="switch"
+            aria-checked={anonymous}
+            tabIndex={0}
+            onClick={() => {
+              setAnonymous(!anonymous)
+              if (!anonymous) setNameError(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault()
+                setAnonymous(!anonymous)
+                if (!anonymous) setNameError(false)
+              }
+            }}
+          >
+            <span className="track" aria-hidden="true" />
+            <span>Share anonymously</span>
+          </div>
+
+          {/* Name field (collapses when anonymous) */}
+          <div className={`collapse${anonymous ? ' hide' : ''}`}>
+            <div className="inner">
+              <div className={`field${nameError ? ' errline' : ''}`}>
+                <label htmlFor="nameInput">Name</label>
+                <div className={`input-wrap${focusedField === 'name' ? ' focused' : ''}`}>
+                  <input
+                    id="nameInput"
+                    type="text"
+                    placeholder="Your name"
+                    autoComplete="name"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value)
+                      setNameError(false)
+                    }}
+                    onFocus={() => setFocusedField('name')}
+                    onBlur={() => setFocusedField(null)}
+                  />
+                </div>
+                <p className={`msg${nameError ? ' show' : ''}`}>
+                  Add your name, or switch on anonymous.
                 </p>
-                <h1 className="text-lg font-bold">{event.title}</h1>
               </div>
             </div>
-            <p className="text-purple-100 text-sm leading-relaxed">
-              We would love to hear what God has done in your life through this event.
-              Your testimony encourages others and glorifies God.
+          </div>
+
+          {/* Testimony */}
+          <div className={`field${storyError ? ' errline' : ''}`}>
+            <label htmlFor="story">Testimony</label>
+            <div className={`input-wrap${focusedField === 'story' ? ' focused' : ''}`}>
+              <textarea
+                id="story"
+                maxLength={2000}
+                placeholder="Share what God has done…"
+                value={testimony}
+                onChange={(e) => {
+                  setTestimony(e.target.value)
+                  setStoryError(false)
+                }}
+                onFocus={() => setFocusedField('story')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </div>
+            <div className="meta">
+              <span className="count">{testimony.length}</span>
+            </div>
+            <p className={`msg${storyError ? ' show' : ''}`}>
+              Tell us a little about what happened.
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Anonymous toggle */}
-            <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
-              <input
-                type="checkbox"
-                checked={form.isAnonymous}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, isAnonymous: e.target.checked }))
-                }
-                className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">
-                  Submit anonymously
-                </span>
-                <p className="text-xs text-gray-400">
-                  Your name won't be shown with your testimony
-                </p>
-              </div>
-            </label>
-
-            {!form.isAnonymous && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-3"
-              >
-                <div>
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
-                    <User className="w-3.5 h-3.5 text-gray-400" />
-                    Full Name <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    value={form.fullName}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, fullName: e.target.value }))
-                    }
-                    placeholder="Enter your full name"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all"
-                    required={!form.isAnonymous}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
-                      <Mail className="w-3.5 h-3.5 text-gray-400" />
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={form.email}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, email: e.target.value }))
-                      }
-                      placeholder="email@example.com"
-                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
-                      <Phone className="w-3.5 h-3.5 text-gray-400" />
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={form.phone}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, phone: e.target.value }))
-                      }
-                      placeholder="08012345678"
-                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all"
-                    />
-                  </div>
-                </div>
-              </motion.div>
+          <button className="go" type="submit" disabled={submitting}>
+            {submitting ? 'Sending…' : 'Share testimony'}
+            {!submitting && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
             )}
+          </button>
 
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
-                <MessageSquare className="w-3.5 h-3.5 text-gray-400" />
-                Title (optional)
-              </label>
-              <input
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
-                }
-                placeholder="e.g. God healed my marriage"
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-                Your Testimony <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                value={form.testimony}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, testimony: e.target.value }))
-                }
-                placeholder="Share what God has done..."
-                rows={5}
-                maxLength={5000}
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all resize-none"
-                required
-              />
-              <div className="flex justify-end mt-1">
-                <span className="text-[10px] text-gray-400">
-                  {form.testimony.length}/5000
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-medium text-sm hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Submit Testimony
-                </>
-              )}
-            </button>
-          </form>
-        </motion.div>
-
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Your testimony may be shared to encourage others.
-        </p>
-      </div>
+          <p className="foot">Your testimony may be shared to encourage others.</p>
+        </form>
+      </main>
     </div>
   )
 }
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+
+  .testimony-page {
+    --ink: #17161c;
+    --soft: #6b6975;
+    --faint: #a3a1ad;
+    --line: #e4e3e8;
+    --line-dark: #cdccd4;
+    --paper: #ffffff;
+    --canvas: #f4f3f1;
+    --accent: #4b3bd6;
+    --radius: 18px;
+
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background: var(--canvas);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .testimony-page .card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--paper);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    box-shadow: 0 18px 50px -34px rgba(20, 18, 40, 0.35);
+    overflow: hidden;
+  }
+
+  .testimony-page .card::before {
+    content: "";
+    display: block;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), #7b6cf0 60%, var(--accent));
+  }
+
+  .testimony-page form {
+    padding: 30px 30px 26px;
+  }
+
+  .testimony-page .eyebrow {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 9px;
+  }
+
+  .testimony-page h1 {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    font-size: 27px;
+    line-height: 1.1;
+    margin: 0 0 6px;
+    color: var(--ink);
+  }
+
+  .testimony-page .sub {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--soft);
+    margin: 0 0 26px;
+    max-width: 32ch;
+  }
+
+  /* Anonymous toggle */
+  .testimony-page .anon {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 6px;
+  }
+
+  .testimony-page .anon .track {
+    position: relative;
+    width: 34px;
+    height: 19px;
+    border-radius: 99px;
+    background: var(--line-dark);
+    transition: background 0.2s;
+    flex: none;
+  }
+
+  .testimony-page .anon .track::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s;
+  }
+
+  .testimony-page .anon.on .track {
+    background: var(--ink);
+  }
+
+  .testimony-page .anon.on .track::after {
+    transform: translateX(15px);
+  }
+
+  .testimony-page .anon span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--soft);
+    transition: color 0.2s;
+  }
+
+  .testimony-page .anon.on span {
+    color: var(--ink);
+  }
+
+  /* Fields — underline style */
+  .testimony-page .field {
+    padding-top: 20px;
+  }
+
+  .testimony-page .field label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 6px;
+  }
+
+  .testimony-page .input-wrap {
+    position: relative;
+  }
+
+  .testimony-page .input-wrap::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 1.5px;
+    width: 100%;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
+  }
+
+  .testimony-page .input-wrap.focused::after {
+    transform: scaleX(1);
+  }
+
+  .testimony-page input,
+  .testimony-page textarea {
+    width: 100%;
+    font-family: inherit;
+    font-size: 15.5px;
+    color: var(--ink);
+    border: none;
+    border-bottom: 1.5px solid var(--line-dark);
+    border-radius: 0;
+    background: transparent;
+    padding: 6px 0;
+    outline: none;
+  }
+
+  .testimony-page input::placeholder,
+  .testimony-page textarea::placeholder {
+    color: var(--faint);
+    font-size: 14.5px;
+  }
+
+  .testimony-page textarea {
+    resize: none;
+    line-height: 1.55;
+    min-height: 88px;
+    display: block;
+    font-size: 15px;
+  }
+
+  /* Name collapse animation */
+  .testimony-page .collapse {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.35s 0.18s ease, opacity 0.3s, padding-top 0.35s 0.18s ease;
+  }
+
+  .testimony-page .collapse > .inner {
+    overflow: hidden;
+  }
+
+  .testimony-page .collapse #nameInput {
+    transition: filter 0.28s ease, opacity 0.28s ease;
+  }
+
+  .testimony-page .collapse.hide {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    padding-top: 0;
+  }
+
+  .testimony-page .collapse.hide #nameInput {
+    filter: blur(6px);
+    opacity: 0;
+  }
+
+  .testimony-page .meta {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 7px;
+  }
+
+  .testimony-page .count {
+    font-size: 11px;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Error messages */
+  .testimony-page .msg {
+    font-size: 11.5px;
+    color: #b4452f;
+    margin-top: 7px;
+    display: none;
+  }
+
+  .testimony-page .msg.show {
+    display: block;
+  }
+
+  .testimony-page .errline input,
+  .testimony-page .errline textarea {
+    border-bottom-color: #b4452f;
+  }
+
+  /* Submit button */
+  .testimony-page button.go {
+    margin-top: 28px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #fff;
+    background: var(--ink);
+    border: none;
+    border-radius: 11px;
+    padding: 13px;
+    cursor: pointer;
+    transition: opacity 0.18s, transform 0.12s;
+  }
+
+  .testimony-page button.go:hover {
+    opacity: 0.88;
+  }
+
+  .testimony-page button.go:active {
+    transform: translateY(1px);
+  }
+
+  .testimony-page button.go:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .testimony-page button.go svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .testimony-page .foot {
+    text-align: center;
+    font-size: 11px;
+    color: var(--faint);
+    margin: 16px 0 0;
+    letter-spacing: 0.01em;
+  }
+
+  /* Success state */
+  .testimony-page .done {
+    padding: 54px 34px 56px;
+    text-align: center;
+  }
+
+  .testimony-page .done .tick {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    border: 1.5px solid var(--ink);
+    display: grid;
+    place-items: center;
+    animation: testimony-draw 0.4s ease both;
+  }
+
+  .testimony-page .done .tick.err-tick {
+    border-color: #b4452f;
+    color: #b4452f;
+  }
+
+  .testimony-page .done .tick svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .testimony-page .done h2 {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    font-size: 21px;
+    margin: 0 0 8px;
+  }
+
+  .testimony-page .done p {
+    font-size: 13px;
+    color: var(--soft);
+    line-height: 1.55;
+    margin: 0 auto;
+    max-width: 28ch;
+  }
+
+  .testimony-page .again {
+    margin-top: 24px;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 0;
+    transition: opacity 0.15s;
+  }
+
+  .testimony-page .again:hover {
+    opacity: 0.7;
+  }
+
+  /* Loader */
+  .testimony-page .loader {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--line);
+    border-top-color: var(--ink);
+    border-radius: 50%;
+    margin: 0 auto;
+    animation: testimony-spin 0.6s linear infinite;
+  }
+
+  @keyframes testimony-draw {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes testimony-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .testimony-page * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+`

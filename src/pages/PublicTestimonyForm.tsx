@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { eventsService } from '@/services/events'
 import { showToast } from '@/utils/toast'
@@ -19,7 +19,6 @@ export default function PublicTestimonyForm() {
   const [nameError, setNameError] = useState(false)
   const [storyError, setStoryError] = useState(false)
   const [focusedField, setFocusedField] = useState<string | null>(null)
-  const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!slug) return
@@ -72,11 +71,12 @@ export default function PublicTestimonyForm() {
 
   if (loading) {
     return (
-      <div className="testimony-page">
+      <div className="jt-page">
         <style>{styles}</style>
-        <div className="card">
+        <div className="jt-grain" />
+        <div className="jt-card">
           <div style={{ padding: '60px 34px', textAlign: 'center' }}>
-            <div className="loader" />
+            <div className="jt-loader" />
           </div>
         </div>
       </div>
@@ -85,11 +85,12 @@ export default function PublicTestimonyForm() {
 
   if (error || !eventInfo) {
     return (
-      <div className="testimony-page">
+      <div className="jt-page">
         <style>{styles}</style>
-        <div className="card">
-          <div className="done">
-            <div className="tick err-tick">
+        <div className="jt-grain" />
+        <div className="jt-card">
+          <div className="jt-done">
+            <div className="jt-tick jt-tick--err">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
@@ -104,11 +105,12 @@ export default function PublicTestimonyForm() {
 
   if (submitted) {
     return (
-      <div className="testimony-page">
+      <div className="jt-page">
         <style>{styles}</style>
-        <div className="card" ref={cardRef}>
-          <div className="done">
-            <div className="tick">
+        <div className="jt-grain" />
+        <div className="jt-card">
+          <div className="jt-done">
+            <div className="jt-tick">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 6 9 17l-5-5" />
               </svg>
@@ -117,7 +119,7 @@ export default function PublicTestimonyForm() {
             <p>Your testimony has been received. May it bless everyone who hears it.</p>
             <button
               type="button"
-              className="again"
+              className="jt-again"
               onClick={() => {
                 setSubmitted(false)
                 setFullName('')
@@ -136,17 +138,19 @@ export default function PublicTestimonyForm() {
   const { event } = eventInfo
 
   return (
-    <div className="testimony-page">
+    <div className="jt-page">
       <style>{styles}</style>
-      <main className="card" ref={cardRef}>
+      <div className="jt-grain" />
+
+      <main className="jt-card">
         <form onSubmit={handleSubmit} noValidate>
-          <p className="eyebrow">Share your story</p>
+          <p className="jt-eyebrow">Share your story</p>
           <h1>{event.title}</h1>
-          <p className="sub">Tell us what God has done through this gathering.</p>
+          <p className="jt-sub">Tell us what God has done through this gathering.</p>
 
           {/* Anonymous toggle */}
           <div
-            className={`anon${anonymous ? ' on' : ''}`}
+            className={`jt-anon${anonymous ? ' on' : ''}`}
             role="switch"
             aria-checked={anonymous}
             tabIndex={0}
@@ -162,31 +166,27 @@ export default function PublicTestimonyForm() {
               }
             }}
           >
-            <span className="track" aria-hidden="true" />
+            <span className="jt-track" aria-hidden="true" />
             <span>Share anonymously</span>
           </div>
 
-          {/* Name field (collapses when anonymous) */}
-          <div className={`collapse${anonymous ? ' hide' : ''}`}>
-            <div className="inner">
-              <div className={`field${nameError ? ' errline' : ''}`}>
-                <label htmlFor="nameInput">Name</label>
-                <div className={`input-wrap${focusedField === 'name' ? ' focused' : ''}`}>
-                  <input
-                    id="nameInput"
-                    type="text"
-                    placeholder="Your name"
-                    autoComplete="name"
-                    value={fullName}
-                    onChange={(e) => {
-                      setFullName(e.target.value)
-                      setNameError(false)
-                    }}
-                    onFocus={() => setFocusedField('name')}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                </div>
-                <p className={`msg${nameError ? ' show' : ''}`}>
+          {/* Name field */}
+          <div className={`jt-collapse${anonymous ? ' hide' : ''}`}>
+            <div className="jt-collapse-inner">
+              <div className={`jt-field${nameError ? ' jt-err' : ''}`}>
+                <label htmlFor="jt-name">Name</label>
+                <input
+                  id="jt-name"
+                  type="text"
+                  className={`jt-input${focusedField === 'name' ? ' focused' : ''}${nameError ? ' error' : ''}`}
+                  placeholder="Your name"
+                  autoComplete="name"
+                  value={fullName}
+                  onChange={(e) => { setFullName(e.target.value); setNameError(false) }}
+                  onFocus={() => setFocusedField('name')}
+                  onBlur={() => setFocusedField(null)}
+                />
+                <p className={`jt-msg${nameError ? ' show' : ''}`}>
                   Add your name, or switch on anonymous.
                 </p>
               </div>
@@ -194,32 +194,28 @@ export default function PublicTestimonyForm() {
           </div>
 
           {/* Testimony */}
-          <div className={`field${storyError ? ' errline' : ''}`}>
-            <label htmlFor="story">Testimony</label>
-            <div className={`input-wrap${focusedField === 'story' ? ' focused' : ''}`}>
-              <textarea
-                id="story"
-                maxLength={2000}
-                placeholder="Share what God has done…"
-                value={testimony}
-                onChange={(e) => {
-                  setTestimony(e.target.value)
-                  setStoryError(false)
-                }}
-                onFocus={() => setFocusedField('story')}
-                onBlur={() => setFocusedField(null)}
-              />
+          <div className={`jt-field${storyError ? ' jt-err' : ''}`}>
+            <label htmlFor="jt-story">Testimony</label>
+            <textarea
+              id="jt-story"
+              className={`jt-input${focusedField === 'story' ? ' focused' : ''}${storyError ? ' error' : ''}`}
+              maxLength={2000}
+              placeholder="Share what God has done…"
+              value={testimony}
+              onChange={(e) => { setTestimony(e.target.value); setStoryError(false) }}
+              onFocus={() => setFocusedField('story')}
+              onBlur={() => setFocusedField(null)}
+            />
+            <div className="jt-meta">
+              <span className="jt-count">{testimony.length}</span>
             </div>
-            <div className="meta">
-              <span className="count">{testimony.length}</span>
-            </div>
-            <p className={`msg${storyError ? ' show' : ''}`}>
+            <p className={`jt-msg${storyError ? ' show' : ''}`}>
               Tell us a little about what happened.
             </p>
           </div>
 
-          <button className="go" type="submit" disabled={submitting}>
-            {submitting ? 'Sending…' : 'Share testimony'}
+          <button className="jt-btn" type="submit" disabled={submitting}>
+            <span>{submitting ? 'Sending…' : 'Share testimony'}</span>
             {!submitting && (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M13 6l6 6-6 6" />
@@ -227,7 +223,7 @@ export default function PublicTestimonyForm() {
             )}
           </button>
 
-          <p className="foot">Your testimony may be shared to encourage others.</p>
+          <p className="jt-foot">Your testimony may be shared to encourage others.</p>
         </form>
       </main>
     </div>
@@ -235,250 +231,258 @@ export default function PublicTestimonyForm() {
 }
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
 
-  .testimony-page {
-    --ink: #17161c;
-    --soft: #6b6975;
-    --faint: #a3a1ad;
-    --line: #e4e3e8;
-    --line-dark: #cdccd4;
-    --paper: #ffffff;
-    --canvas: #f4f3f1;
-    --accent: #4b3bd6;
-    --radius: 18px;
+  .jt-page {
+    --bg: #0B0B0F;
+    --bg-card: #131318;
+    --bg-elevated: #1b1b20;
+    --gold: #C9A24B;
+    --gold-light: #d4b06a;
+    --gold-dim: rgba(201, 162, 75, 0.08);
+    --text: #e4e1e8;
+    --text-secondary: #d1c5b2;
+    --muted: rgba(209, 197, 178, 0.4);
+    --border: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.12);
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
-    background: var(--canvas);
-    color: var(--ink);
+    font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 40px 18px;
     -webkit-font-smoothing: antialiased;
+    position: relative;
   }
 
-  .testimony-page .card {
+  /* Grain overlay */
+  .jt-grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  /* Card */
+  .jt-card {
     width: 100%;
-    max-width: 400px;
-    background: var(--paper);
-    border-radius: var(--radius);
-    border: 1px solid var(--line);
-    box-shadow: 0 18px 50px -34px rgba(20, 18, 40, 0.35);
+    max-width: 420px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: 0.5rem;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
     overflow: hidden;
+    position: relative;
+    z-index: 2;
+    animation: jt-card-in 0.35s var(--ease);
   }
 
-  .testimony-page .card::before {
+  .jt-card::before {
     content: "";
     display: block;
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent), #7b6cf0 60%, var(--accent));
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
   }
 
-  .testimony-page form {
-    padding: 30px 30px 26px;
+  @keyframes jt-card-in {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  .testimony-page .eyebrow {
-    font-size: 10.5px;
+  .jt-card form {
+    padding: 32px 28px 28px;
+  }
+
+  /* Typography */
+  .jt-eyebrow {
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--faint);
-    margin: 0 0 9px;
+    color: var(--gold);
+    margin: 0 0 10px;
   }
 
-  .testimony-page h1 {
-    font-family: "Fraunces", serif;
+  .jt-card h1 {
+    font-family: 'Playfair Display', 'Georgia', serif;
     font-weight: 600;
-    font-size: 27px;
+    font-size: 28px;
     line-height: 1.1;
-    margin: 0 0 6px;
-    color: var(--ink);
+    margin: 0 0 8px;
+    color: var(--text);
   }
 
-  .testimony-page .sub {
+  .jt-sub {
     font-size: 13px;
-    line-height: 1.5;
-    color: var(--soft);
-    margin: 0 0 26px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin: 0 0 28px;
     max-width: 32ch;
   }
 
   /* Anonymous toggle */
-  .testimony-page .anon {
+  .jt-anon {
     display: inline-flex;
     align-items: center;
-    gap: 9px;
+    gap: 10px;
     cursor: pointer;
     user-select: none;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
 
-  .testimony-page .anon .track {
+  .jt-track {
     position: relative;
-    width: 34px;
-    height: 19px;
+    width: 36px;
+    height: 20px;
     border-radius: 99px;
-    background: var(--line-dark);
-    transition: background 0.2s;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-strong);
+    transition: background 0.25s var(--ease), border-color 0.25s var(--ease);
     flex: none;
   }
 
-  .testimony-page .anon .track::after {
+  .jt-track::after {
     content: "";
     position: absolute;
     top: 2px;
     left: 2px;
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-    transition: transform 0.2s;
+    background: var(--text-secondary);
+    transition: transform 0.25s var(--ease), background 0.25s var(--ease);
   }
 
-  .testimony-page .anon.on .track {
-    background: var(--ink);
+  .jt-anon.on .jt-track {
+    background: var(--gold-dim);
+    border-color: rgba(201, 162, 75, 0.3);
   }
 
-  .testimony-page .anon.on .track::after {
-    transform: translateX(15px);
+  .jt-anon.on .jt-track::after {
+    transform: translateX(16px);
+    background: var(--gold);
   }
 
-  .testimony-page .anon span {
+  .jt-anon > span:last-child {
     font-size: 13px;
     font-weight: 500;
-    color: var(--soft);
-    transition: color 0.2s;
+    color: var(--muted);
+    transition: color 0.2s var(--ease);
   }
 
-  .testimony-page .anon.on span {
-    color: var(--ink);
+  .jt-anon.on > span:last-child {
+    color: var(--text-secondary);
   }
 
-  /* Fields — underline style */
-  .testimony-page .field {
-    padding-top: 20px;
+  /* Fields */
+  .jt-field {
+    padding-top: 22px;
   }
 
-  .testimony-page .field label {
+  .jt-field label {
     display: block;
-    font-size: 11.5px;
+    font-size: 10.5px;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--faint);
-    margin-bottom: 6px;
+    color: var(--muted);
+    margin-bottom: 8px;
   }
 
-  .testimony-page .input-wrap {
-    position: relative;
-  }
-
-  .testimony-page .input-wrap::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    height: 1.5px;
-    width: 100%;
-    background: var(--accent);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.25s ease;
-  }
-
-  .testimony-page .input-wrap.focused::after {
-    transform: scaleX(1);
-  }
-
-  .testimony-page input,
-  .testimony-page textarea {
+  .jt-input {
     width: 100%;
     font-family: inherit;
-    font-size: 15.5px;
-    color: var(--ink);
-    border: none;
-    border-bottom: 1.5px solid var(--line-dark);
-    border-radius: 0;
-    background: transparent;
-    padding: 6px 0;
+    font-size: 15px;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    padding: 0.75rem 0.9rem;
     outline: none;
+    transition: border-color 0.25s var(--ease), background 0.25s var(--ease), box-shadow 0.25s var(--ease);
   }
 
-  .testimony-page input::placeholder,
-  .testimony-page textarea::placeholder {
-    color: var(--faint);
-    font-size: 14.5px;
+  .jt-input::placeholder {
+    color: var(--muted);
+    font-size: 14px;
   }
 
-  .testimony-page textarea {
+  .jt-input.focused {
+    border-color: rgba(201, 162, 75, 0.4);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(201, 162, 75, 0.06);
+  }
+
+  .jt-input.error {
+    border-color: #c0392b;
+  }
+
+  textarea.jt-input {
     resize: none;
     line-height: 1.55;
-    min-height: 88px;
+    min-height: 100px;
     display: block;
-    font-size: 15px;
   }
 
-  /* Name collapse animation */
-  .testimony-page .collapse {
+  /* Name collapse */
+  .jt-collapse {
     display: grid;
     grid-template-rows: 1fr;
-    transition: grid-template-rows 0.35s 0.18s ease, opacity 0.3s, padding-top 0.35s 0.18s ease;
+    transition: grid-template-rows 0.35s 0.12s var(--ease), opacity 0.3s var(--ease);
   }
 
-  .testimony-page .collapse > .inner {
+  .jt-collapse-inner {
     overflow: hidden;
   }
 
-  .testimony-page .collapse #nameInput {
-    transition: filter 0.28s ease, opacity 0.28s ease;
+  .jt-collapse #jt-name {
+    transition: filter 0.3s var(--ease), opacity 0.3s var(--ease);
   }
 
-  .testimony-page .collapse.hide {
+  .jt-collapse.hide {
     grid-template-rows: 0fr;
     opacity: 0;
-    padding-top: 0;
   }
 
-  .testimony-page .collapse.hide #nameInput {
-    filter: blur(6px);
+  .jt-collapse.hide #jt-name {
+    filter: blur(4px);
     opacity: 0;
   }
 
-  .testimony-page .meta {
+  .jt-meta {
     display: flex;
     justify-content: flex-end;
-    margin-top: 7px;
+    margin-top: 6px;
   }
 
-  .testimony-page .count {
+  .jt-count {
     font-size: 11px;
-    color: var(--faint);
+    color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
 
   /* Error messages */
-  .testimony-page .msg {
+  .jt-msg {
     font-size: 11.5px;
-    color: #b4452f;
-    margin-top: 7px;
+    color: #e74c3c;
+    margin-top: 6px;
     display: none;
   }
 
-  .testimony-page .msg.show {
+  .jt-msg.show {
     display: block;
   }
 
-  .testimony-page .errline input,
-  .testimony-page .errline textarea {
-    border-bottom-color: #b4452f;
-  }
-
   /* Submit button */
-  .testimony-page button.go {
+  .jt-btn {
     margin-top: 28px;
     width: 100%;
     display: flex;
@@ -486,125 +490,151 @@ const styles = `
     justify-content: center;
     gap: 8px;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.01em;
-    color: #fff;
-    background: var(--ink);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #0B0B0F;
+    background: var(--gold);
     border: none;
-    border-radius: 11px;
-    padding: 13px;
+    border-radius: 0.25rem;
+    padding: 14px 20px;
     cursor: pointer;
-    transition: opacity 0.18s, transform 0.12s;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s var(--ease), transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
   }
 
-  .testimony-page button.go:hover {
-    opacity: 0.88;
+  .jt-btn:hover {
+    background: var(--gold-light);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(201, 162, 75, 0.2);
   }
 
-  .testimony-page button.go:active {
-    transform: translateY(1px);
+  .jt-btn:active {
+    transform: translateY(0) scale(0.98);
   }
 
-  .testimony-page button.go:disabled {
+  .jt-btn:disabled {
     opacity: 0.5;
     cursor: default;
+    transform: none;
+    box-shadow: none;
   }
 
-  .testimony-page button.go svg {
+  .jt-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    transform: translateX(-120%);
+    transition: transform 0.6s var(--ease);
+  }
+
+  .jt-btn:hover::after {
+    transform: translateX(120%);
+  }
+
+  .jt-btn svg {
     width: 14px;
     height: 14px;
   }
 
-  .testimony-page .foot {
+  .jt-foot {
     text-align: center;
     font-size: 11px;
-    color: var(--faint);
-    margin: 16px 0 0;
+    color: var(--muted);
+    margin: 18px 0 0;
     letter-spacing: 0.01em;
   }
 
-  /* Success state */
-  .testimony-page .done {
-    padding: 54px 34px 56px;
+  /* Success / Error states */
+  .jt-done {
+    padding: 56px 34px 52px;
     text-align: center;
   }
 
-  .testimony-page .done .tick {
-    width: 46px;
-    height: 46px;
+  .jt-tick {
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    margin: 0 auto 20px;
-    border: 1.5px solid var(--ink);
+    margin: 0 auto 22px;
+    border: 1.5px solid var(--gold);
+    color: var(--gold);
     display: grid;
     place-items: center;
-    animation: testimony-draw 0.4s ease both;
+    animation: jt-draw 0.4s var(--ease) both;
   }
 
-  .testimony-page .done .tick.err-tick {
-    border-color: #b4452f;
-    color: #b4452f;
+  .jt-tick--err {
+    border-color: #c0392b;
+    color: #e74c3c;
   }
 
-  .testimony-page .done .tick svg {
+  .jt-tick svg {
     width: 22px;
     height: 22px;
   }
 
-  .testimony-page .done h2 {
-    font-family: "Fraunces", serif;
+  .jt-done h2 {
+    font-family: 'Playfair Display', 'Georgia', serif;
     font-weight: 600;
-    font-size: 21px;
-    margin: 0 0 8px;
+    font-size: 22px;
+    margin: 0 0 10px;
+    color: var(--text);
   }
 
-  .testimony-page .done p {
+  .jt-done p {
     font-size: 13px;
-    color: var(--soft);
-    line-height: 1.55;
+    color: var(--text-secondary);
+    line-height: 1.6;
     margin: 0 auto;
     max-width: 28ch;
   }
 
-  .testimony-page .again {
-    margin-top: 24px;
+  .jt-again {
+    margin-top: 28px;
     background: none;
-    border: none;
+    border: 1px solid var(--border-strong);
+    border-radius: 0.25rem;
     font-family: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding: 10px 20px;
     cursor: pointer;
-    padding: 0;
-    transition: opacity 0.15s;
+    transition: border-color 0.25s var(--ease), color 0.25s var(--ease);
   }
 
-  .testimony-page .again:hover {
-    opacity: 0.7;
+  .jt-again:hover {
+    border-color: rgba(201, 162, 75, 0.3);
+    color: var(--gold);
   }
 
   /* Loader */
-  .testimony-page .loader {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--line);
-    border-top-color: var(--ink);
+  .jt-loader {
+    width: 22px;
+    height: 22px;
+    border: 1.5px solid var(--border-strong);
+    border-top-color: var(--gold);
     border-radius: 50%;
     margin: 0 auto;
-    animation: testimony-spin 0.6s linear infinite;
+    animation: jt-spin 0.7s linear infinite;
   }
 
-  @keyframes testimony-draw {
+  @keyframes jt-draw {
     from { transform: scale(0.5); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
   }
 
-  @keyframes testimony-spin {
+  @keyframes jt-spin {
     to { transform: rotate(360deg); }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .testimony-page * {
+    .jt-page, .jt-page * {
       transition: none !important;
       animation: none !important;
     }

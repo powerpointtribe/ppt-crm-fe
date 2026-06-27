@@ -27,6 +27,23 @@ export default function PublicFeedbackForm() {
   const [dynamicErrors, setDynamicErrors] = useState<Record<string, boolean>>({})
   const htmlFormRef = useRef<HTMLDivElement | null>(null)
 
+  const setupHtmlFormInteractivity = useCallback((container: HTMLDivElement | null) => {
+    if (!container) return
+    const ratingGroups = container.querySelectorAll('.rating-group')
+    ratingGroups.forEach((group) => {
+      const stars = group.querySelectorAll('.star-btn')
+      stars.forEach((star) => {
+        star.addEventListener('click', () => {
+          const val = parseInt((star as HTMLElement).dataset.value || '0')
+          stars.forEach((s, i) => {
+            if (i < val) s.classList.add('active')
+            else s.classList.remove('active')
+          })
+        })
+      })
+    })
+  }, [])
+
   useEffect(() => {
     if (!slug) return
     const load = async () => {
@@ -213,23 +230,6 @@ export default function PublicFeedbackForm() {
       setSubmitting(false)
     }
   }
-
-  const setupHtmlFormInteractivity = useCallback((container: HTMLDivElement | null) => {
-    if (!container) return
-    const ratingGroups = container.querySelectorAll('.rating-group')
-    ratingGroups.forEach((group) => {
-      const stars = group.querySelectorAll('.star-btn')
-      stars.forEach((star) => {
-        star.addEventListener('click', () => {
-          const val = parseInt((star as HTMLElement).dataset.value || '0')
-          stars.forEach((s, i) => {
-            if (i < val) s.classList.add('active')
-            else s.classList.remove('active')
-          })
-        })
-      })
-    })
-  }, [])
 
   const renderDynamicField = (field: any) => {
     const val = dynamicValues[field.key] ?? ''

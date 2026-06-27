@@ -454,7 +454,7 @@ export default function PublicFeedbackForm() {
         <div className="jf-grain" />
         <main className="jf-card">
           <form onSubmit={handleHtmlFormSubmit} noValidate>
-            <p className="jf-eyebrow">{formConfig.description || "We'd love your feedback"}</p>
+            <p className="jf-eyebrow">We'd love your feedback</p>
             <h1>{event.title}</h1>
             <p className="jf-sub">{formConfig.description || 'Help us improve by sharing your experience.'}</p>
 
@@ -504,7 +504,7 @@ export default function PublicFeedbackForm() {
         <div className="jf-grain" />
         <main className="jf-card">
           <form onSubmit={handleDynamicSubmit} noValidate>
-            <p className="jf-eyebrow">{formConfig.description || "We'd love your feedback"}</p>
+            <p className="jf-eyebrow">We'd love your feedback</p>
             <h1>{event.title}</h1>
             <p className="jf-sub">{formConfig.description || 'Help us improve by sharing your experience.'}</p>
 

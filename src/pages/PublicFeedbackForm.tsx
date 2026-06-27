@@ -115,7 +115,10 @@ export default function PublicFeedbackForm() {
     )
   }
 
-  const formConfig = eventInfo?.formConfig || null
+  const rawFormConfig = eventInfo?.formConfig || null
+  const formConfig = rawFormConfig && (rawFormConfig.htmlContent || rawFormConfig.fields?.length > 0)
+    ? rawFormConfig
+    : null
   const successHeading = formConfig?.successHeading || 'Thank you'
   const successMsg = formConfig?.successMessage || 'Your feedback has been received. We appreciate you taking the time.'
   const btnText = formConfig?.submitButtonText || 'Submit feedback'

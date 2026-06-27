@@ -789,7 +789,7 @@ export const eventsService = {
 
   // ==================== Feedback ====================
 
-  getFeedbackFormInfo: async (slug: string): Promise<{ event: { title: string; bannerImage?: string; description?: string }; enabled: boolean }> => {
+  getFeedbackFormInfo: async (slug: string): Promise<{ event: { title: string; bannerImage?: string; description?: string }; enabled: boolean; formConfig?: any }> => {
     const response = await apiService.get<any>(`/events/public/${slug}/feedback-form`)
     return transformSingleResponse<any>(response)
   },

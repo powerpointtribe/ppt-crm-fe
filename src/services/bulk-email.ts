@@ -14,6 +14,10 @@ import {
   PaginatedResponse,
   BulkEmailStatistics,
   RecipientPreview,
+  FormTemplate,
+  CreateFormTemplateData,
+  UpdateFormTemplateData,
+  FormTemplateQueryParams,
 } from '@/types/bulk-email'
 
 const BASE_URL = '/bulk-email'
@@ -170,5 +174,39 @@ export const bulkEmailService = {
 
   async deleteMailingList(id: string): Promise<void> {
     await apiService.delete(`${BASE_URL}/mailing-lists/${id}`)
+  },
+
+  // ========== FORM TEMPLATES ==========
+
+  async getFormTemplates(params?: FormTemplateQueryParams): Promise<any> {
+    return apiService.get<any>(`${BASE_URL}/forms`, { params })
+  },
+
+  async getFormTemplateById(id: string): Promise<FormTemplate> {
+    return apiService.get<FormTemplate>(`${BASE_URL}/forms/${id}`)
+  },
+
+  async getActiveFormTemplates(): Promise<FormTemplate[]> {
+    return apiService.get<FormTemplate[]>(`${BASE_URL}/forms/active`)
+  },
+
+  async getFormModuleCounts(): Promise<{ module: string; count: number }[]> {
+    return apiService.get<{ module: string; count: number }[]>(`${BASE_URL}/forms/modules`)
+  },
+
+  async createFormTemplate(data: CreateFormTemplateData): Promise<FormTemplate> {
+    return apiService.post<FormTemplate>(`${BASE_URL}/forms`, data)
+  },
+
+  async updateFormTemplate(id: string, data: UpdateFormTemplateData): Promise<FormTemplate> {
+    return apiService.patch<FormTemplate>(`${BASE_URL}/forms/${id}`, data)
+  },
+
+  async deleteFormTemplate(id: string): Promise<void> {
+    await apiService.delete(`${BASE_URL}/forms/${id}`)
+  },
+
+  async getPublicFormConfig(id: string): Promise<FormTemplate> {
+    return apiService.get<FormTemplate>(`${BASE_URL}/forms/public/${id}`)
   },
 }

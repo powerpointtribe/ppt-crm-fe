@@ -88,6 +88,15 @@ export default function BulkEmailDashboard() {
       stat: null,
       action: 'Manage Lists',
     },
+    {
+      icon: FileText,
+      title: 'Forms',
+      desc: 'Build reusable forms for feedback, registration, and more',
+      path: '/bulk-email/forms',
+      color: 'from-indigo-500 to-indigo-600',
+      stat: null,
+      action: 'Manage Forms',
+    },
   ]
 
   return (
@@ -137,7 +146,7 @@ export default function BulkEmailDashboard() {
         </div>
 
         {/* Navigation cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {NAV_CARDS.map((card, i) => (
             <motion.div
               key={card.title}

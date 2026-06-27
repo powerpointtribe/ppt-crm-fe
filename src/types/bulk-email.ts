@@ -241,3 +241,132 @@ export interface RecipientPreview {
     email: string
   }>
 }
+
+// Form Templates
+
+export enum FormFieldType {
+  TEXT = 'text',
+  EMAIL = 'email',
+  PHONE = 'phone',
+  NUMBER = 'number',
+  TEXTAREA = 'textarea',
+  SELECT = 'select',
+  RADIO = 'radio',
+  CHECKBOX = 'checkbox',
+  TOGGLE = 'toggle',
+  RATING = 'rating',
+  DATE = 'date',
+  HEADING = 'heading',
+  PARAGRAPH = 'paragraph',
+}
+
+export enum FormTheme {
+  DEFAULT = 'default',
+  DARK = 'dark',
+  CUSTOM = 'custom',
+}
+
+export enum FormModule {
+  EVENTS = 'events',
+  FIRST_TIMERS = 'first-timers',
+  MEMBERS = 'members',
+  GENERAL = 'general',
+}
+
+export interface FormFieldOption {
+  label: string
+  value: string
+}
+
+export interface FormFieldValidation {
+  min?: number
+  max?: number
+  minLength?: number
+  maxLength?: number
+  pattern?: string
+}
+
+export interface FormField {
+  key: string
+  type: FormFieldType
+  label: string
+  placeholder?: string
+  required: boolean
+  width: 'full' | 'half'
+  order: number
+  options: FormFieldOption[]
+  validation: FormFieldValidation
+  helpText?: string
+  defaultValue?: string
+}
+
+export interface FormStyle {
+  theme: FormTheme
+  primaryColor?: string
+  backgroundColor?: string
+  textColor?: string
+  cardColor?: string
+  fontFamily?: string
+  headingFontFamily?: string
+}
+
+export interface FormTemplate {
+  _id: string
+  branch?: string | { _id: string; name: string }
+  name: string
+  slug?: string
+  description?: string
+  module: FormModule
+  fields: FormField[]
+  htmlContent?: string
+  style: FormStyle
+  submitButtonText: string
+  successMessage: string
+  successHeading?: string
+  allowAnonymous: boolean
+  isSystem?: boolean
+  isActive: boolean
+  createdBy?: string | { _id: string; firstName: string; lastName: string }
+  updatedBy?: string | { _id: string; firstName: string; lastName: string }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateFormTemplateData {
+  branch?: string
+  name: string
+  slug?: string
+  description?: string
+  module?: FormModule
+  fields?: Partial<FormField>[]
+  htmlContent?: string
+  style?: Partial<FormStyle>
+  submitButtonText?: string
+  successMessage?: string
+  successHeading?: string
+  allowAnonymous?: boolean
+  isActive?: boolean
+}
+
+export interface UpdateFormTemplateData {
+  name?: string
+  slug?: string
+  description?: string
+  module?: FormModule
+  fields?: Partial<FormField>[]
+  htmlContent?: string
+  style?: Partial<FormStyle>
+  submitButtonText?: string
+  successMessage?: string
+  successHeading?: string
+  allowAnonymous?: boolean
+  isActive?: boolean
+}
+
+export interface FormTemplateQueryParams {
+  page?: number
+  limit?: number
+  search?: string
+  module?: FormModule
+  isActive?: boolean
+}

@@ -786,6 +786,50 @@ export const eventsService = {
   deleteTestimony: async (testimonyId: string): Promise<void> => {
     await apiService.delete(`/events/testimonies/${testimonyId}`)
   },
+
+  // ==================== Feedback ====================
+
+  getFeedbackFormInfo: async (slug: string): Promise<{ event: { title: string; bannerImage?: string; description?: string }; enabled: boolean }> => {
+    const response = await apiService.get<any>(`/events/public/${slug}/feedback-form`)
+    return transformSingleResponse<any>(response)
+  },
+
+  submitFeedback: async (
+    slug: string,
+    data: { fullName: string; email?: string; rating?: number; message: string; isAnonymous?: boolean }
+  ): Promise<any> => {
+    const response = await apiService.post<any>(`/events/public/${slug}/feedbacks`, data)
+    return transformSingleResponse<any>(response)
+  },
+
+  enableFeedbackForm: async (eventId: string): Promise<any> => {
+    const response = await apiService.post<any>(`/events/${eventId}/feedback-form/enable`)
+    return transformSingleResponse<any>(response)
+  },
+
+  disableFeedbackForm: async (eventId: string): Promise<any> => {
+    const response = await apiService.post<any>(`/events/${eventId}/feedback-form/disable`)
+    return transformSingleResponse<any>(response)
+  },
+
+  getFeedbacks: async (
+    eventId: string,
+    params?: { page?: number; limit?: number; search?: string }
+  ): Promise<{ data: any[]; total: number; page: number; limit: number }> => {
+    return apiService.get<any>(`/events/${eventId}/feedbacks`, { params })
+  },
+
+  deleteFeedback: async (feedbackId: string): Promise<void> => {
+    await apiService.delete(`/events/feedbacks/${feedbackId}`)
+  },
+
+  linkFeedbackForm: async (eventId: string, formId: string): Promise<any> => {
+    return apiService.post<any>(`/events/${eventId}/feedback-form/link`, { formId })
+  },
+
+  unlinkFeedbackForm: async (eventId: string): Promise<any> => {
+    return apiService.post<any>(`/events/${eventId}/feedback-form/unlink`)
+  },
 }
 
 export type {

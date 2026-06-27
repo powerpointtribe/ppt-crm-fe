@@ -24,6 +24,7 @@ import PublicRequisitionAction from '@/pages/Finance/PublicRequisitionAction'
 import PublicActionResult from '@/pages/Finance/PublicActionResult'
 import PublicEventRegistration from '@/pages/PublicEventRegistration'
 import PublicTestimonyForm from '@/pages/PublicTestimonyForm'
+import PublicFeedbackForm from '@/pages/PublicFeedbackForm'
 import DocsPage from '@/pages/DocsPage'
 
 // Dashboard - Load immediately (most visited)
@@ -134,6 +135,9 @@ const EmailSendHistory = lazy(() => import('@/pages/BulkEmail/SendHistory'))
 const MailingLists = lazy(() => import('@/pages/BulkEmail/MailingLists'))
 const MailingListNew = lazy(() => import('@/pages/BulkEmail/MailingListNew'))
 const MailingListDetail = lazy(() => import('@/pages/BulkEmail/MailingListDetail'))
+const FormTemplates = lazy(() => import('@/pages/BulkEmail/Forms'))
+const FormBuilder = lazy(() => import('@/pages/BulkEmail/FormBuilder'))
+const FormDetail = lazy(() => import('@/pages/BulkEmail/FormDetail'))
 
 // Wrapper for lazy components with smooth loading
 function LazyPage({ children }: { children: React.ReactNode }) {
@@ -188,6 +192,7 @@ function App() {
           <Route path="/requisition-result" element={<PublicActionResult />} />
           <Route path="/event-registration/:slug" element={<PublicEventRegistration />} />
           <Route path="/event-testimony/:slug" element={<PublicTestimonyForm />} />
+          <Route path="/event-feedback/:slug" element={<PublicFeedbackForm />} />
           <Route path="/docs" element={<DocsPage />} />
 
           {/* Dashboard - Requires Login Only */}
@@ -703,6 +708,26 @@ function App() {
           <Route path="/bulk-email/mailing-lists/:id" element={
             <ProtectedRoute>
               <LazyPage><MailingListDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/forms" element={
+            <ProtectedRoute>
+              <LazyPage><FormTemplates /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/forms/new" element={
+            <ProtectedRoute>
+              <LazyPage><FormBuilder /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/forms/:id" element={
+            <ProtectedRoute>
+              <LazyPage><FormDetail /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/bulk-email/forms/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><FormBuilder /></LazyPage>
             </ProtectedRoute>
           } />
       </Routes>

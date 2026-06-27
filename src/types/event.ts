@@ -147,6 +147,9 @@ export interface Event {
   attendedCount: number
   testimonyFormEnabled?: boolean
   testimonyCount?: number
+  feedbackFormEnabled?: boolean
+  feedbackCount?: number
+  feedbackFormId?: string
   createdAt: string
   updatedAt: string
 }

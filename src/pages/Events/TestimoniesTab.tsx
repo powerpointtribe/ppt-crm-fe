@@ -16,13 +16,18 @@ import {
   User,
   Mail,
   Phone,
+  FileInput,
+  Unlink,
 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import Modal from '@/components/ui/Modal'
 import { eventsService } from '@/services/events'
+import { bulkEmailService } from '@/services/bulk-email'
 import { showToast } from '@/utils/toast'
 import type { Event } from '@/types/event'
+import type { FormTemplate } from '@/types/bulk-email'
 
 interface Testimony {
   _id: string
@@ -49,8 +54,13 @@ export default function TestimoniesTab({ eventId, event }: TestimoniesTabProps) 
   const [search, setSearch] = useState('')
   const [copied, setCopied] = useState(false)
   const [toggling, setToggling] = useState(false)
+  const [showFormSelector, setShowFormSelector] = useState(false)
+  const [availableForms, setAvailableForms] = useState<FormTemplate[]>([])
+  const [loadingForms, setLoadingForms] = useState(false)
+  const [linking, setLinking] = useState(false)
 
   const isEnabled = event?.testimonyFormEnabled ?? false
+  const linkedFormId = (event as any)?.testimonyFormId?._id || (event as any)?.testimonyFormId || null
   const slug = event?.registrationSlug || ''
   const testimonyLink = slug
     ? `${window.location.origin}/event-testimony/${slug}`
@@ -133,6 +143,51 @@ export default function TestimoniesTab({ eventId, event }: TestimoniesTabProps) 
     loadTestimonies()
   }
 
+  const openFormSelector = async () => {
+    setShowFormSelector(true)
+    setLoadingForms(true)
+    try {
+      const forms = await bulkEmailService.getActiveFormTemplates()
+      setAvailableForms(forms)
+    } catch {
+      showToast.error('Failed to load form templates')
+    } finally {
+      setLoadingForms(false)
+    }
+  }
+
+  const handleLinkForm = async (formId: string) => {
+    setLinking(true)
+    try {
+      await eventsService.linkTestimonyForm(eventId, formId)
+      showToast.success('Form linked successfully')
+      setShowFormSelector(false)
+      window.location.reload()
+    } catch {
+      showToast.error('Failed to link form')
+    } finally {
+      setLinking(false)
+    }
+  }
+
+  const handleUnlinkForm = async () => {
+    if (!confirm('Unlink the form template? The testimony form will use the default style.')) return
+    try {
+      await eventsService.unlinkTestimonyForm(eventId)
+      showToast.success('Form unlinked — using default style')
+      window.location.reload()
+    } catch {
+      showToast.error('Failed to unlink form')
+    }
+  }
+
+  const handleUseDefault = async () => {
+    if (linkedFormId) {
+      await handleUnlinkForm()
+    }
+    setShowFormSelector(false)
+  }
+
   const totalPages = Math.ceil(total / 10)
 
   const formatDate = (dateStr: string) => {
@@ -189,18 +244,40 @@ export default function TestimoniesTab({ eventId, event }: TestimoniesTabProps) 
                 {isEnabled ? 'Form Active' : 'Form Inactive'}
               </button>
 
-              {isEnabled && testimonyLink && (
-                <button
-                  onClick={handleCopyLink}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-200 transition-all"
-                >
-                  {copied ? (
-                    <Check className="w-3.5 h-3.5" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
+              {isEnabled && (
+                <>
+                  <button
+                    onClick={openFormSelector}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-200 transition-all"
+                  >
+                    <FileInput className="w-3.5 h-3.5" />
+                    {linkedFormId ? 'Change Form' : 'Select Form'}
+                  </button>
+
+                  {linkedFormId && (
+                    <button
+                      onClick={handleUnlinkForm}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-all"
+                    >
+                      <Unlink className="w-3.5 h-3.5" />
+                      Unlink
+                    </button>
                   )}
-                  {copied ? 'Copied!' : 'Copy Link'}
-                </button>
+
+                  {testimonyLink && (
+                    <button
+                      onClick={handleCopyLink}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-200 transition-all"
+                    >
+                      {copied ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      {copied ? 'Copied!' : 'Copy Link'}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -371,6 +448,103 @@ export default function TestimoniesTab({ eventId, event }: TestimoniesTabProps) 
           </div>
         )}
       </Card>
+
+      {/* Form Selector Modal */}
+      <Modal
+        isOpen={showFormSelector}
+        onClose={() => setShowFormSelector(false)}
+        title="Select Form Template"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Choose a pre-existing form template to use for this event's testimony collection, or use the default form style.
+          </p>
+
+          {loadingForms ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[350px] overflow-y-auto">
+              <button
+                onClick={handleUseDefault}
+                disabled={linking}
+                className={`w-full text-left p-3 rounded-lg border-2 transition-all hover:border-gray-300 ${
+                  !linkedFormId ? 'border-[#0D7770] bg-[#0D7770]/5' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 bg-gray-100 rounded-lg">
+                    <MessageSquare className="w-4 h-4 text-gray-600" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">Default Form</span>
+                    <span className="block text-[11px] text-gray-500">
+                      Use the built-in testimony form with standard fields
+                    </span>
+                  </div>
+                  {!linkedFormId && (
+                    <span className="ml-auto text-[10px] text-[#0D7770] font-medium bg-[#0D7770]/10 px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  )}
+                </div>
+              </button>
+
+              {availableForms.map((form) => (
+                <button
+                  key={form._id}
+                  onClick={() => handleLinkForm(form._id)}
+                  disabled={linking}
+                  className={`w-full text-left p-3 rounded-lg border-2 transition-all hover:border-indigo-300 ${
+                    linkedFormId === form._id
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-indigo-50 rounded-lg">
+                      <FileInput className="w-4 h-4 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-gray-900">{form.name}</span>
+                      <span className="block text-[11px] text-gray-500 truncate">
+                        {form.description || `${form.fields?.length || 0} fields · ${form.module}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-[10px] text-gray-400">
+                        {form.fields?.length || 0} fields
+                      </span>
+                      {linkedFormId === form._id && (
+                        <span className="text-[10px] text-indigo-600 font-medium bg-indigo-100 px-2 py-0.5 rounded-full">
+                          Linked
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))}
+
+              {availableForms.length === 0 && (
+                <div className="text-center py-6 text-gray-400">
+                  <FileInput className="w-6 h-6 mx-auto mb-2 opacity-40" />
+                  <p className="text-xs">No form templates created yet</p>
+                  <p className="text-[10px] mt-1">
+                    Create one in Messaging &rarr; Forms
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2 border-t border-gray-100">
+            <Button variant="outline" size="sm" onClick={() => setShowFormSelector(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

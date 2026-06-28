@@ -748,7 +748,7 @@ export const eventsService = {
 
   // ========== TESTIMONY ENDPOINTS ==========
 
-  getTestimonyFormInfo: async (slug: string): Promise<{ event: { title: string; bannerImage?: string; description?: string }; enabled: boolean }> => {
+  getTestimonyFormInfo: async (slug: string): Promise<{ event: { title: string; bannerImage?: string; description?: string }; enabled: boolean; formConfig?: any }> => {
     const response = await apiService.get<any>(`/events/public/${slug}/testimony-form`)
     return transformSingleResponse<any>(response)
   },
@@ -785,6 +785,14 @@ export const eventsService = {
 
   deleteTestimony: async (testimonyId: string): Promise<void> => {
     await apiService.delete(`/events/testimonies/${testimonyId}`)
+  },
+
+  linkTestimonyForm: async (eventId: string, formId: string): Promise<any> => {
+    return apiService.post<any>(`/events/${eventId}/testimony-form/link`, { formId })
+  },
+
+  unlinkTestimonyForm: async (eventId: string): Promise<any> => {
+    return apiService.post<any>(`/events/${eventId}/testimony-form/unlink`)
   },
 
   // ==================== Feedback ====================

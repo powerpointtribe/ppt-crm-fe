@@ -36,17 +36,6 @@ const DEFAULT_FEEDBACK_HTML = `<div class="form-group">
 </div>
 
 <div class="form-group">
-  <label>How would you rate the event?</label>
-  <div class="rating-group" data-name="rating">
-    <button type="button" class="star-btn" data-value="1">★</button>
-    <button type="button" class="star-btn" data-value="2">★</button>
-    <button type="button" class="star-btn" data-value="3">★</button>
-    <button type="button" class="star-btn" data-value="4">★</button>
-    <button type="button" class="star-btn" data-value="5">★</button>
-  </div>
-</div>
-
-<div class="form-group">
   <label for="message">Your Feedback <span class="required">*</span></label>
   <textarea id="message" name="message" placeholder="What did you enjoy? What could we improve?" rows="4" required></textarea>
 </div>`

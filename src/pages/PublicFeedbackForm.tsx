@@ -25,6 +25,7 @@ export default function PublicFeedbackForm() {
   const [focusedField, setFocusedField] = useState<string | null>(null)
   const [dynamicValues, setDynamicValues] = useState<Record<string, any>>({})
   const [dynamicErrors, setDynamicErrors] = useState<Record<string, boolean>>({})
+  const [formStep, setFormStep] = useState(0)
   const htmlFormRef = useRef<HTMLDivElement | null>(null)
 
   const setupHtmlFormInteractivity = useCallback((container: HTMLDivElement | null) => {
@@ -86,7 +87,6 @@ export default function PublicFeedbackForm() {
       await eventsService.submitFeedback(slug, {
         fullName: anonymous ? 'Anonymous' : fullName.trim(),
         email: email.trim() || undefined,
-        rating: rating || undefined,
         message: message.trim(),
         isAnonymous: anonymous,
       })
@@ -161,13 +161,12 @@ export default function PublicFeedbackForm() {
       const nameField = (formConfig.fields || []).find((f: any) => f.type === 'text' && (f.key === 'fullName' || f.key === 'name'))
       const emailField = (formConfig.fields || []).find((f: any) => f.type === 'email')
       const ratingField = (formConfig.fields || []).find((f: any) => f.type === 'rating')
-      const msgField = (formConfig.fields || []).find((f: any) => f.type === 'textarea')
 
       await eventsService.submitFeedback(slug, {
         fullName: anonymous ? 'Anonymous' : (dynamicValues[nameField?.key] || 'Anonymous'),
         email: dynamicValues[emailField?.key] || undefined,
         rating: dynamicValues[ratingField?.key] || undefined,
-        message: dynamicValues[msgField?.key] || JSON.stringify(dynamicValues),
+        message: JSON.stringify(dynamicValues),
         isAnonymous: anonymous,
       })
       setSubmitted(true)
@@ -254,7 +253,7 @@ export default function PublicFeedbackForm() {
     if (field.type === 'paragraph') {
       return (
         <div key={field.key} className="jf-field">
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+          <p style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.5, margin: 0, opacity: 0.85 }}>
             {field.label}
           </p>
         </div>
@@ -433,6 +432,7 @@ export default function PublicFeedbackForm() {
                 setAnonymous(false)
                 setDynamicValues({})
                 setDynamicErrors({})
+                setFormStep(0)
               }}
             >
               Submit more feedback
@@ -444,7 +444,6 @@ export default function PublicFeedbackForm() {
   }
 
   const { event } = eventInfo
-  const activeRating = hoverRating || rating
 
   // HTML form rendering (when a form template with htmlContent is linked)
   if (formConfig && formConfig.htmlContent) {
@@ -498,12 +497,51 @@ export default function PublicFeedbackForm() {
 
   // Dynamic form rendering (when a form template with structured fields is linked)
   if (formConfig && formConfig.fields?.length > 0) {
+    const sortedFields = (formConfig.fields || []).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+
+    // Split fields into sections by heading boundaries
+    const sections: any[][] = []
+    let current: any[] = []
+    for (const field of sortedFields) {
+      if (field.type === 'heading' && current.length > 0) {
+        sections.push(current)
+        current = []
+      }
+      current.push(field)
+    }
+    if (current.length > 0) sections.push(current)
+
+    const hasSections = sections.length > 1
+    const totalSteps = hasSections ? sections.length : 1
+    const isLastStep = formStep >= totalSteps - 1
+    const currentFields = hasSections ? sections[formStep] : sortedFields
+
+    const validateCurrentStep = () => {
+      const errs: Record<string, boolean> = {}
+      for (const field of currentFields) {
+        if (field.required && !dynamicValues[field.key]?.toString().trim()) {
+          errs[field.key] = true
+        }
+      }
+      if (Object.keys(errs).length > 0) {
+        setDynamicErrors((prev) => ({ ...prev, ...errs }))
+        return false
+      }
+      return true
+    }
+
+    const handleNext = () => {
+      if (validateCurrentStep()) {
+        setFormStep((s) => s + 1)
+      }
+    }
+
     return (
       <div className="jf-page">
         <style>{styles}</style>
         <div className="jf-grain" />
         <main className="jf-card">
-          <form onSubmit={handleDynamicSubmit} noValidate>
+          <form onSubmit={isLastStep ? handleDynamicSubmit : (e) => { e.preventDefault(); handleNext() }} noValidate>
             <p className="jf-eyebrow">We'd love your feedback</p>
             <h1>{event.title}</h1>
             <p className="jf-sub">{formConfig.description || 'Help us improve by sharing your experience.'}</p>
@@ -524,18 +562,35 @@ export default function PublicFeedbackForm() {
               </div>
             )}
 
-            {(formConfig.fields || [])
-              .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-              .map((field: any) => renderDynamicField(field))}
+            {hasSections && (
+              <div className="jf-steps">
+                {sections.map((_, i) => (
+                  <div key={i} className={`jf-step-dot${i === formStep ? ' active' : ''}${i < formStep ? ' done' : ''}`} />
+                ))}
+                <span className="jf-step-label">Step {formStep + 1} of {totalSteps}</span>
+              </div>
+            )}
 
-            <button className="jf-btn" type="submit" disabled={submitting}>
-              <span>{submitting ? 'Sending…' : btnText}</span>
-              {!submitting && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
+            {currentFields.map((field: any) => renderDynamicField(field))}
+
+            <div className="jf-nav">
+              {hasSections && formStep > 0 && (
+                <button type="button" className="jf-back" onClick={() => setFormStep((s) => s - 1)}>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5M11 18l-6-6 6-6" />
+                  </svg>
+                  Back
+                </button>
               )}
-            </button>
+              <button className="jf-btn" type="submit" disabled={submitting}>
+                <span>{isLastStep ? (submitting ? 'Sending…' : btnText) : 'Next'}</span>
+                {!submitting && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                )}
+              </button>
+            </div>
 
             <p className="jf-foot">Your feedback helps us create better experiences.</p>
           </form>
@@ -616,33 +671,6 @@ export default function PublicFeedbackForm() {
             </div>
           </div>
 
-          {/* Star Rating */}
-          <div className="jf-field">
-            <label>How would you rate the event?</label>
-            <div className="jf-stars">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  className={`jf-star${star <= activeRating ? ' active' : ''}`}
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  aria-label={`${star} star${star > 1 ? 's' : ''}`}
-                >
-                  <svg viewBox="0 0 24 24" fill={star <= activeRating ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                </button>
-              ))}
-              {rating > 0 && (
-                <span className="jf-rating-label">
-                  {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'][rating]}
-                </span>
-              )}
-            </div>
-          </div>
-
           {/* Message */}
           <div className={`jf-field${messageError ? ' jf-err' : ''}`}>
             <label htmlFor="jf-message">Your Feedback</label>
@@ -681,20 +709,20 @@ export default function PublicFeedbackForm() {
 }
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&display=swap');
 
   .jf-page {
-    --bg: #0B0B0F;
-    --bg-card: #131318;
-    --bg-elevated: #1b1b20;
-    --gold: #C9A24B;
-    --gold-light: #d4b06a;
-    --gold-dim: rgba(201, 162, 75, 0.08);
-    --text: #e4e1e8;
-    --text-secondary: #d1c5b2;
-    --muted: rgba(209, 197, 178, 0.4);
-    --border: rgba(255, 255, 255, 0.06);
-    --border-strong: rgba(255, 255, 255, 0.12);
+    --bg: #0a1628;
+    --bg-card: #0f1f38;
+    --bg-elevated: #122442;
+    --accent: #7eb8e0;
+    --accent-light: #a4cfe9;
+    --accent-dim: rgba(126, 184, 224, 0.08);
+    --text: #f0f2f5;
+    --text-secondary: #b0c4d8;
+    --muted: rgba(176, 196, 216, 0.45);
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.14);
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
     font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
@@ -707,6 +735,19 @@ const styles = `
     padding: 40px 18px;
     -webkit-font-smoothing: antialiased;
     position: relative;
+    overflow: hidden;
+  }
+
+  .jf-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 80%, rgba(30, 70, 120, 0.35) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 80% 20%, rgba(40, 80, 140, 0.25) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 100%, rgba(20, 50, 100, 0.3) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
   }
 
   .jf-grain {
@@ -714,7 +755,7 @@ const styles = `
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    opacity: 0.04;
+    opacity: 0.035;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
     background-repeat: repeat;
     background-size: 256px 256px;
@@ -723,21 +764,23 @@ const styles = `
   .jf-card {
     width: 100%;
     max-width: 420px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-strong);
-    border-radius: 0.5rem;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(170deg, rgba(18, 36, 66, 0.95) 0%, rgba(15, 31, 56, 0.98) 100%);
+    border: 1px solid rgba(126, 184, 224, 0.12);
+    border-radius: 0.75rem;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45), 0 0 60px rgba(30, 70, 130, 0.08);
     overflow: hidden;
     position: relative;
     z-index: 2;
     animation: jf-card-in 0.35s var(--ease);
+    backdrop-filter: blur(12px);
   }
 
   .jf-card::before {
     content: "";
     display: block;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
   }
 
   @keyframes jf-card-in {
@@ -752,17 +795,18 @@ const styles = `
     font-weight: 600;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--accent);
     margin: 0 0 10px;
   }
 
   .jf-card h1 {
-    font-family: 'Playfair Display', 'Georgia', serif;
-    font-weight: 600;
-    font-size: 28px;
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-weight: 700;
+    font-size: 34px;
     line-height: 1.1;
     margin: 0 0 8px;
-    color: var(--text);
+    color: #ffffff;
+    letter-spacing: 0.01em;
   }
 
   .jf-sub {
@@ -787,7 +831,7 @@ const styles = `
     width: 36px;
     height: 20px;
     border-radius: 99px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     border: 1px solid var(--border-strong);
     transition: background 0.25s var(--ease), border-color 0.25s var(--ease);
     flex: none;
@@ -806,13 +850,13 @@ const styles = `
   }
 
   .jf-anon.on .jf-track {
-    background: var(--gold-dim);
-    border-color: rgba(201, 162, 75, 0.3);
+    background: var(--accent-dim);
+    border-color: rgba(126, 184, 224, 0.35);
   }
 
   .jf-anon.on .jf-track::after {
     transform: translateX(16px);
-    background: var(--gold);
+    background: var(--accent);
   }
 
   .jf-anon > span:last-child {
@@ -832,7 +876,7 @@ const styles = `
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--text-secondary);
     margin-bottom: 8px;
   }
 
@@ -848,9 +892,9 @@ const styles = `
     font-family: inherit;
     font-size: 15px;
     color: var(--text);
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border);
-    border-radius: 0.25rem;
+    border-radius: 0.375rem;
     padding: 0.75rem 0.9rem;
     outline: none;
     transition: border-color 0.25s var(--ease), background 0.25s var(--ease), box-shadow 0.25s var(--ease);
@@ -859,9 +903,9 @@ const styles = `
   .jf-input::placeholder { color: var(--muted); font-size: 14px; }
 
   .jf-input.focused {
-    border-color: rgba(201, 162, 75, 0.4);
-    background: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 0 3px rgba(201, 162, 75, 0.06);
+    border-color: rgba(126, 184, 224, 0.45);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 3px rgba(126, 184, 224, 0.08);
   }
 
   .jf-input.error { border-color: #c0392b; }
@@ -929,12 +973,12 @@ const styles = `
 
   .jf-star svg { width: 24px; height: 24px; }
 
-  .jf-star.active { color: var(--gold); }
+  .jf-star.active { color: var(--accent); }
   .jf-star:hover { transform: scale(1.15); }
 
   .jf-rating-label {
     font-size: 12px;
-    color: var(--gold);
+    color: var(--accent);
     margin-left: 8px;
     font-weight: 500;
   }
@@ -952,10 +996,10 @@ const styles = `
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #0B0B0F;
-    background: var(--gold);
-    border: none;
-    border-radius: 0.25rem;
+    color: #ffffff;
+    background: linear-gradient(135deg, #1a4a7a 0%, #2568a8 100%);
+    border: 1px solid rgba(126, 184, 224, 0.2);
+    border-radius: 0.375rem;
     padding: 14px 20px;
     cursor: pointer;
     position: relative;
@@ -964,9 +1008,9 @@ const styles = `
   }
 
   .jf-btn:hover {
-    background: var(--gold-light);
+    background: linear-gradient(135deg, #1f5690 0%, #2d74b8 100%);
     transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(201, 162, 75, 0.2);
+    box-shadow: 0 8px 32px rgba(30, 80, 140, 0.3);
   }
 
   .jf-btn:active { transform: translateY(0) scale(0.98); }
@@ -977,7 +1021,7 @@ const styles = `
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
     transform: translateX(-120%);
     transition: transform 0.6s var(--ease);
   }
@@ -993,6 +1037,74 @@ const styles = `
     letter-spacing: 0.01em;
   }
 
+  /* Multi-step navigation */
+  .jf-steps {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 16px 0 4px;
+  }
+
+  .jf-step-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-strong);
+    transition: background 0.3s var(--ease), transform 0.3s var(--ease);
+  }
+
+  .jf-step-dot.active {
+    background: var(--accent);
+    transform: scale(1.3);
+  }
+
+  .jf-step-dot.done {
+    background: var(--accent-light);
+  }
+
+  .jf-step-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-left: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .jf-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+  }
+
+  .jf-back {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: none;
+    border: 1px solid var(--border-strong);
+    border-radius: 0.375rem;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: border-color 0.25s var(--ease), color 0.25s var(--ease);
+    flex-shrink: 0;
+  }
+
+  .jf-back:hover {
+    border-color: rgba(126, 184, 224, 0.35);
+    color: var(--accent);
+  }
+
+  .jf-nav .jf-btn {
+    margin-top: 0;
+    flex: 1;
+  }
+
   .jf-done { padding: 56px 34px 52px; text-align: center; }
 
   .jf-tick {
@@ -1000,8 +1112,8 @@ const styles = `
     height: 48px;
     border-radius: 50%;
     margin: 0 auto 22px;
-    border: 1.5px solid var(--gold);
-    color: var(--gold);
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
     display: grid;
     place-items: center;
     animation: jf-draw 0.4s var(--ease) both;
@@ -1011,11 +1123,11 @@ const styles = `
   .jf-tick svg { width: 22px; height: 22px; }
 
   .jf-done h2 {
-    font-family: 'Playfair Display', 'Georgia', serif;
-    font-weight: 600;
-    font-size: 22px;
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-weight: 700;
+    font-size: 24px;
     margin: 0 0 10px;
-    color: var(--text);
+    color: #ffffff;
   }
 
   .jf-done p {
@@ -1030,7 +1142,7 @@ const styles = `
     margin-top: 28px;
     background: none;
     border: 1px solid var(--border-strong);
-    border-radius: 0.25rem;
+    border-radius: 0.375rem;
     font-family: inherit;
     font-size: 11px;
     font-weight: 600;
@@ -1042,13 +1154,13 @@ const styles = `
     transition: border-color 0.25s var(--ease), color 0.25s var(--ease);
   }
 
-  .jf-again:hover { border-color: rgba(201, 162, 75, 0.3); color: var(--gold); }
+  .jf-again:hover { border-color: rgba(126, 184, 224, 0.35); color: var(--accent); }
 
   .jf-loader {
     width: 22px;
     height: 22px;
     border: 1.5px solid var(--border-strong);
-    border-top-color: var(--gold);
+    border-top-color: var(--accent);
     border-radius: 50%;
     margin: 0 auto;
     animation: jf-spin 0.7s linear infinite;
@@ -1091,7 +1203,7 @@ const styles = `
     font-size: 14px;
     font-family: 'Hanken Grotesk', system-ui, sans-serif;
     color: var(--text);
-    background: var(--bg);
+    background: rgba(10, 22, 40, 0.6);
     border: 1px solid var(--border-strong);
     border-radius: 0.5rem;
     outline: none;
@@ -1102,8 +1214,8 @@ const styles = `
   .jf-html-form input:focus,
   .jf-html-form select:focus,
   .jf-html-form textarea:focus {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 2px var(--gold-dim);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim);
   }
 
   .jf-html-form textarea {
@@ -1136,14 +1248,14 @@ const styles = `
 
   .jf-html-form .star-btn:hover,
   .jf-html-form .star-btn.active {
-    color: var(--gold);
-    border-color: var(--gold);
-    background: var(--gold-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-dim);
   }
 
   .jf-html-form input[type="checkbox"],
   .jf-html-form input[type="radio"] {
-    accent-color: var(--gold);
+    accent-color: var(--accent);
   }
 
   .jf-html-form .checkbox-label,
@@ -1161,7 +1273,7 @@ const styles = `
   }
 
   .jf-html-form h2, .jf-html-form h3, .jf-html-form h4 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Cormorant Garamond', serif;
     color: var(--text);
     margin: 20px 0 8px;
   }

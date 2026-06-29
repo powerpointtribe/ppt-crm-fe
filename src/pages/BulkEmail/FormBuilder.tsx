@@ -117,27 +117,34 @@ export default function FormBuilder() {
     return new Promise((resolve) => {
       const img = new Image()
       img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const scale = Math.min(1, maxWidth / img.width)
-        canvas.width = img.width * scale
-        canvas.height = img.height * scale
-        const ctx = canvas.getContext('2d')!
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        const url = img.src
 
-        const tryQuality = (q: number) => {
+        const compress = (width: number, quality: number) => {
+          const canvas = document.createElement('canvas')
+          const scale = Math.min(1, width / img.width)
+          canvas.width = Math.round(img.width * scale)
+          canvas.height = Math.round(img.height * scale)
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
           canvas.toBlob(
             (blob) => {
-              if (blob!.size > MAX_THUMB_BYTES && q > 0.3) {
-                tryQuality(q - 0.1)
+              if (blob!.size > MAX_THUMB_BYTES) {
+                if (quality > 0.3) compress(width, quality - 0.1)
+                else if (width > 600) compress(Math.round(width * 0.7), 0.5)
+                else {
+                  URL.revokeObjectURL(url)
+                  resolve(new File([blob!], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
+                }
               } else {
+                URL.revokeObjectURL(url)
                 resolve(new File([blob!], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
               }
             },
             'image/webp',
-            q,
+            quality,
           )
         }
-        tryQuality(0.75)
+        compress(maxWidth, 0.75)
       }
       img.src = URL.createObjectURL(file)
     })

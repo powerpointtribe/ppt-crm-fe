@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Save, Eye, EyeOff, Code, ImagePlus, X } from 'lucide-react'
+import {
+  ArrowLeft, Save, Eye, EyeOff, Code, ImagePlus, X,
+  Plus, Trash2, ChevronUp, ChevronDown, GripVertical,
+  Type, Mail, Phone, Hash, AlignLeft, List, CircleDot,
+  CheckSquare, ToggleLeft, Star, Calendar, Heading, FileText,
+} from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
@@ -9,7 +14,9 @@ import { uploadService } from '@/services/upload'
 import {
   FormTheme,
   FormModule,
+  FormFieldType,
   CreateFormTemplateData,
+  type FormField,
 } from '@/types/bulk-email'
 import { showToast } from '@/utils/toast'
 
@@ -26,6 +33,51 @@ const MODULE_OPTIONS = [
   { value: FormModule.MEMBERS, label: 'Members' },
 ]
 
+const FIELD_TYPES: { type: FormFieldType; label: string; icon: typeof Type; group: string }[] = [
+  { type: FormFieldType.HEADING, label: 'Section Heading', icon: Heading, group: 'Layout' },
+  { type: FormFieldType.PARAGRAPH, label: 'Paragraph', icon: FileText, group: 'Layout' },
+  { type: FormFieldType.TEXT, label: 'Text', icon: Type, group: 'Input' },
+  { type: FormFieldType.EMAIL, label: 'Email', icon: Mail, group: 'Input' },
+  { type: FormFieldType.PHONE, label: 'Phone', icon: Phone, group: 'Input' },
+  { type: FormFieldType.NUMBER, label: 'Number', icon: Hash, group: 'Input' },
+  { type: FormFieldType.DATE, label: 'Date', icon: Calendar, group: 'Input' },
+  { type: FormFieldType.TEXTAREA, label: 'Long Text', icon: AlignLeft, group: 'Input' },
+  { type: FormFieldType.SELECT, label: 'Dropdown', icon: List, group: 'Choice' },
+  { type: FormFieldType.RADIO, label: 'Radio', icon: CircleDot, group: 'Choice' },
+  { type: FormFieldType.CHECKBOX, label: 'Checkbox', icon: CheckSquare, group: 'Choice' },
+  { type: FormFieldType.TOGGLE, label: 'Toggle', icon: ToggleLeft, group: 'Choice' },
+  { type: FormFieldType.RATING, label: 'Rating', icon: Star, group: 'Special' },
+]
+
+const HAS_OPTIONS = new Set([FormFieldType.SELECT, FormFieldType.RADIO, FormFieldType.CHECKBOX])
+const HAS_PLACEHOLDER = new Set([
+  FormFieldType.TEXT, FormFieldType.EMAIL, FormFieldType.PHONE,
+  FormFieldType.NUMBER, FormFieldType.TEXTAREA, FormFieldType.DATE,
+])
+const IS_LAYOUT = new Set([FormFieldType.HEADING, FormFieldType.PARAGRAPH])
+
+function makeKey(label: string, index: number) {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '') || `field_${index}`
+}
+
+function newField(type: FormFieldType, order: number): FormField {
+  const label = FIELD_TYPES.find(f => f.type === type)?.label || 'Field'
+  return {
+    key: makeKey(label, order),
+    type,
+    label,
+    placeholder: '',
+    required: false,
+    width: 'full' as const,
+    order,
+    options: HAS_OPTIONS.has(type) ? [{ label: 'Option 1', value: 'option_1' }] : [],
+    validation: {},
+  }
+}
+
 const DEFAULT_FEEDBACK_HTML = `<div class="form-group">
   <label for="fullName">Full Name <span class="required">*</span></label>
   <input type="text" id="fullName" name="fullName" placeholder="Your name" required />
@@ -41,6 +93,242 @@ const DEFAULT_FEEDBACK_HTML = `<div class="form-group">
   <textarea id="message" name="message" placeholder="What did you enjoy? What could we improve?" rows="4" required></textarea>
 </div>`
 
+// ---------- Field Card ----------
+
+function FieldCard({
+  field,
+  index,
+  total,
+  onUpdate,
+  onRemove,
+  onMove,
+}: {
+  field: FormField
+  index: number
+  total: number
+  onUpdate: (f: FormField) => void
+  onRemove: () => void
+  onMove: (dir: -1 | 1) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const isLayout = IS_LAYOUT.has(field.type)
+  const hasOptions = HAS_OPTIONS.has(field.type)
+  const hasPlaceholder = HAS_PLACEHOLDER.has(field.type)
+  const meta = FIELD_TYPES.find(f => f.type === field.type)
+  const Icon = meta?.icon || Type
+
+  const set = (patch: Partial<FormField>) => onUpdate({ ...field, ...patch })
+
+  return (
+    <div className={`border rounded-lg transition-all ${
+      field.type === FormFieldType.HEADING
+        ? 'border-indigo-200 bg-indigo-50/40'
+        : 'border-gray-200 bg-white'
+    }`}>
+      {/* Collapsed row */}
+      <div
+        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <GripVertical className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+        <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide shrink-0">
+          {meta?.label}
+        </span>
+        <span className="text-sm text-gray-800 font-medium truncate flex-1">
+          {field.label}
+        </span>
+        {field.required && (
+          <span className="text-[10px] font-semibold text-red-500 shrink-0">REQ</span>
+        )}
+        <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => onMove(-1)}
+            disabled={index === 0}
+            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-20"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onMove(1)}
+            disabled={index === total - 1}
+            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-20"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onRemove}
+            className="p-1 text-gray-400 hover:text-red-500 ml-1"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded editor */}
+      {expanded && (
+        <div className="px-3 pb-3 pt-1 border-t border-gray-100 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 mb-1">Label</label>
+              <input
+                value={field.label}
+                onChange={e => {
+                  const label = e.target.value
+                  set({ label, key: makeKey(label, index) })
+                }}
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#0D7770]/30"
+              />
+            </div>
+            {hasPlaceholder && (
+              <div>
+                <label className="block text-[11px] font-medium text-gray-500 mb-1">Placeholder</label>
+                <input
+                  value={field.placeholder || ''}
+                  onChange={e => set({ placeholder: e.target.value })}
+                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#0D7770]/30"
+                />
+              </div>
+            )}
+          </div>
+
+          {!isLayout && (
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={field.required}
+                  onChange={e => set({ required: e.target.checked })}
+                  className="rounded border-gray-300 accent-[#0D7770]"
+                />
+                <span className="text-xs text-gray-600">Required</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <select
+                  value={field.width}
+                  onChange={e => set({ width: e.target.value as 'full' | 'half' })}
+                  className="text-xs border border-gray-200 rounded px-1.5 py-1"
+                >
+                  <option value="full">Full width</option>
+                  <option value="half">Half width</option>
+                </select>
+              </label>
+            </div>
+          )}
+
+          {hasOptions && (
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 mb-1">Options</label>
+              <div className="space-y-1.5">
+                {(field.options || []).map((opt, oi) => (
+                  <div key={oi} className="flex items-center gap-2">
+                    <input
+                      value={opt.label}
+                      onChange={e => {
+                        const updated = [...(field.options || [])]
+                        updated[oi] = { label: e.target.value, value: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '_') }
+                        set({ options: updated })
+                      }}
+                      className="flex-1 px-2.5 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#0D7770]/30"
+                      placeholder={`Option ${oi + 1}`}
+                    />
+                    <button
+                      onClick={() => {
+                        const updated = (field.options || []).filter((_, i) => i !== oi)
+                        set({ options: updated })
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-500"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => {
+                    const n = (field.options?.length || 0) + 1
+                    set({ options: [...(field.options || []), { label: `Option ${n}`, value: `option_${n}` }] })
+                  }}
+                  className="text-xs text-[#0D7770] hover:underline mt-1"
+                >
+                  + Add option
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!isLayout && (
+            <div>
+              <label className="block text-[11px] font-medium text-gray-500 mb-1">Help text <span className="text-gray-400">(optional)</span></label>
+              <input
+                value={field.helpText || ''}
+                onChange={e => set({ helpText: e.target.value })}
+                placeholder="Shown below the field"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-[#0D7770]/30"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------- Add Field Picker ----------
+
+function AddFieldPicker({ onAdd }: { onAdd: (type: FormFieldType) => void }) {
+  const [open, setOpen] = useState(false)
+  const groups = ['Layout', 'Input', 'Choice', 'Special']
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-[#0D7770] hover:text-[#0D7770] transition-colors flex items-center justify-center gap-1.5"
+      >
+        <Plus className="w-4 h-4" />
+        Add Field
+      </button>
+    )
+  }
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-gray-700">Choose field type</span>
+        <button onClick={() => setOpen(false)} className="p-0.5 text-gray-400 hover:text-gray-600">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      {groups.map(group => {
+        const items = FIELD_TYPES.filter(f => f.group === group)
+        if (!items.length) return null
+        return (
+          <div key={group}>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{group}</span>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {items.map(f => {
+                const Icon = f.icon
+                return (
+                  <button
+                    key={f.type}
+                    onClick={() => { onAdd(f.type); setOpen(false) }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:border-[#0D7770] hover:text-[#0D7770] transition-colors"
+                  >
+                    <Icon className="w-3 h-3" />
+                    {f.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ---------- Main FormBuilder ----------
+
 export default function FormBuilder() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -50,6 +338,9 @@ export default function FormBuilder() {
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+
+  // Editor mode: 'fields' (visual) or 'html' (raw)
+  const [editorMode, setEditorMode] = useState<'fields' | 'html'>('fields')
 
   // Form metadata
   const [name, setName] = useState('')
@@ -76,7 +367,10 @@ export default function FormBuilder() {
   const [uploadingThumb, setUploadingThumb] = useState(false)
   const thumbInputRef = useRef<HTMLInputElement>(null)
 
-  // HTML content
+  // Fields (visual editor)
+  const [fields, setFields] = useState<FormField[]>([])
+
+  // HTML content (raw editor)
   const [htmlContent, setHtmlContent] = useState(DEFAULT_FEEDBACK_HTML)
 
   useEffect(() => {
@@ -101,6 +395,25 @@ export default function FormBuilder() {
         setCardColor(form.style?.cardColor || '#ffffff')
         setHtmlContent(form.htmlContent || '')
         setThumbnail(form.thumbnail || '')
+
+        if (form.fields && form.fields.length > 0) {
+          setFields(form.fields.map((f, i) => ({
+            key: f.key,
+            type: f.type,
+            label: f.label,
+            placeholder: f.placeholder || '',
+            required: f.required ?? false,
+            width: f.width || 'full',
+            order: f.order ?? i,
+            options: f.options || [],
+            validation: f.validation || {},
+            helpText: f.helpText,
+            defaultValue: f.defaultValue,
+          })))
+          setEditorMode('fields')
+        } else if (form.htmlContent) {
+          setEditorMode('html')
+        }
       } catch {
         showToast.error('Failed to load form')
         navigate('/bulk-email/forms')
@@ -111,6 +424,8 @@ export default function FormBuilder() {
     load()
   }, [id, navigate])
 
+  // --- Thumbnail ---
+
   const MAX_THUMB_BYTES = 300 * 1024
 
   const compressImage = (file: File, maxWidth = 1200): Promise<File> => {
@@ -118,7 +433,6 @@ export default function FormBuilder() {
       const img = new Image()
       img.onload = () => {
         const url = img.src
-
         const compress = (width: number, quality: number) => {
           const canvas = document.createElement('canvas')
           const scale = Math.min(1, width / img.width)
@@ -166,6 +480,32 @@ export default function FormBuilder() {
       if (thumbInputRef.current) thumbInputRef.current.value = ''
     }
   }
+
+  // --- Field operations ---
+
+  const addField = (type: FormFieldType) => {
+    setFields(prev => [...prev, newField(type, prev.length)])
+  }
+
+  const updateField = (index: number, updated: FormField) => {
+    setFields(prev => prev.map((f, i) => i === index ? updated : f))
+  }
+
+  const removeField = (index: number) => {
+    setFields(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const moveField = (index: number, dir: -1 | 1) => {
+    setFields(prev => {
+      const arr = [...prev]
+      const target = index + dir
+      if (target < 0 || target >= arr.length) return arr
+      ;[arr[index], arr[target]] = [arr[target], arr[index]]
+      return arr
+    })
+  }
+
+  // --- Preview (HTML mode) ---
 
   const getStyleVars = () => {
     if (theme === FormTheme.DARK) {
@@ -237,92 +577,46 @@ export default function FormBuilder() {
       padding: 32px 28px;
       box-shadow: 0 8px 40px rgba(0,0,0,0.12);
     }
-    .form-group {
-      margin-bottom: 20px;
-    }
+    .form-group { margin-bottom: 20px; }
     label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
-      color: var(--text);
-      opacity: 0.7;
+      display: block; font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 6px; color: var(--text); opacity: 0.7;
     }
     .required { color: #ef4444; }
     .optional { font-weight: 400; opacity: 0.5; text-transform: none; }
-    input[type="text"],
-    input[type="email"],
-    input[type="tel"],
-    input[type="number"],
-    input[type="date"],
-    select,
-    textarea {
-      width: 100%;
-      padding: 10px 14px;
-      font-size: 14px;
-      font-family: var(--font);
-      color: var(--text);
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      outline: none;
-      transition: border-color 0.2s;
+    input[type="text"], input[type="email"], input[type="tel"],
+    input[type="number"], input[type="date"], select, textarea {
+      width: 100%; padding: 10px 14px; font-size: 14px;
+      font-family: var(--font); color: var(--text);
+      background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 8px; outline: none; transition: border-color 0.2s;
     }
     input:focus, select:focus, textarea:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary), transparent 80%);
     }
     textarea { resize: vertical; min-height: 80px; }
-    .rating-group {
-      display: flex;
-      gap: 6px;
-    }
+    .rating-group { display: flex; gap: 6px; }
     .star-btn {
-      width: 36px;
-      height: 36px;
-      font-size: 20px;
-      border: 1px solid var(--border);
-      background: var(--input-bg);
-      color: var(--text);
-      opacity: 0.3;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.15s;
+      width: 36px; height: 36px; font-size: 20px;
+      border: 1px solid var(--border); background: var(--input-bg);
+      color: var(--text); opacity: 0.3; border-radius: 8px;
+      cursor: pointer; transition: all 0.15s;
     }
     .star-btn:hover, .star-btn.active {
-      opacity: 1;
-      color: var(--primary);
-      border-color: var(--primary);
+      opacity: 1; color: var(--primary); border-color: var(--primary);
     }
     .submit-btn {
-      width: 100%;
-      padding: 12px;
-      font-size: 14px;
-      font-weight: 600;
-      color: white;
-      background: var(--primary);
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 8px;
+      width: 100%; padding: 12px; font-size: 14px; font-weight: 600;
+      color: white; background: var(--primary); border: none;
+      border-radius: 8px; cursor: pointer; margin-top: 8px;
     }
-    input[type="checkbox"],
-    input[type="radio"] {
-      accent-color: var(--primary);
-    }
+    input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
     .checkbox-label, .radio-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 400;
-      text-transform: none;
-      letter-spacing: 0;
-      opacity: 1;
-      cursor: pointer;
-      margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; font-weight: 400; text-transform: none;
+      letter-spacing: 0; opacity: 1; cursor: pointer; margin-bottom: 6px;
     }
   </style>
 </head>
@@ -336,7 +630,7 @@ export default function FormBuilder() {
   }
 
   useEffect(() => {
-    if (showPreview && previewRef.current) {
+    if (showPreview && editorMode === 'html' && previewRef.current) {
       const doc = previewRef.current.contentDocument
       if (doc) {
         doc.open()
@@ -344,25 +638,33 @@ export default function FormBuilder() {
         doc.close()
       }
     }
-  }, [showPreview, htmlContent, theme, primaryColor, backgroundColor, textColor, cardColor, submitButtonText])
+  }, [showPreview, editorMode, htmlContent, theme, primaryColor, backgroundColor, textColor, cardColor, submitButtonText])
+
+  // --- Save ---
 
   const handleSave = async () => {
     if (!name.trim()) {
       showToast.error('Form name is required')
       return
     }
-    if (!htmlContent.trim()) {
+    if (editorMode === 'html' && !htmlContent.trim()) {
       showToast.error('HTML content is required')
       return
     }
+    if (editorMode === 'fields' && fields.length === 0) {
+      showToast.error('Add at least one field')
+      return
+    }
+
+    const orderedFields = fields.map((f, i) => ({ ...f, order: i }))
 
     const data: CreateFormTemplateData = {
       name: name.trim(),
       slug: slug.trim() || undefined,
       description: description.trim() || undefined,
       module,
-      htmlContent,
-      fields: [],
+      fields: editorMode === 'fields' ? orderedFields : [],
+      htmlContent: editorMode === 'html' ? htmlContent : undefined,
       style: {
         theme,
         ...(theme === FormTheme.CUSTOM && {
@@ -435,18 +737,20 @@ export default function FormBuilder() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPreview(!showPreview)}
-            >
-              {showPreview ? (
-                <EyeOff className="w-3.5 h-3.5 mr-1.5" />
-              ) : (
-                <Eye className="w-3.5 h-3.5 mr-1.5" />
-              )}
-              {showPreview ? 'Hide Preview' : 'Preview'}
-            </Button>
+            {editorMode === 'html' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPreview(!showPreview)}
+              >
+                {showPreview ? (
+                  <EyeOff className="w-3.5 h-3.5 mr-1.5" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                {showPreview ? 'Hide Preview' : 'Preview'}
+              </Button>
+            )}
             <Button onClick={handleSave} disabled={saving}>
               <Save className="w-4 h-4 mr-1.5" />
               {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
@@ -676,51 +980,96 @@ export default function FormBuilder() {
           )}
         </div>
 
-        {/* HTML Editor + Preview */}
-        <div
-          className={`grid gap-5 ${showPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}
-        >
-          {/* Editor */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <Code className="w-4 h-4 text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-900">
-                Form HTML
-              </h2>
+        {/* Editor Mode Toggle */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Form Fields</h2>
+            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+              <button
+                onClick={() => setEditorMode('fields')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  editorMode === 'fields'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Visual Editor
+              </button>
+              <button
+                onClick={() => setEditorMode('html')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
+                  editorMode === 'html'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Code className="w-3 h-3" />
+                HTML
+              </button>
             </div>
-            <p className="text-xs text-gray-500">
-              Write your form fields using HTML. Use standard form elements
-              (input, textarea, select). The form will be styled
-              automatically based on the theme above.
-            </p>
-            <textarea
-              value={htmlContent}
-              onChange={(e) => setHtmlContent(e.target.value)}
-              placeholder="<div class='form-group'>&#10;  <label for='name'>Name</label>&#10;  <input type='text' id='name' name='name' placeholder='Your name' required />&#10;</div>"
-              className="w-full px-4 py-3 text-sm font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] bg-gray-50"
-              style={{ minHeight: 400, lineHeight: 1.6, tabSize: 2 }}
-              spellCheck={false}
-            />
           </div>
 
-          {/* Preview */}
-          {showPreview && (
-            <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <Eye className="w-4 h-4 text-gray-500" />
-                <h2 className="text-sm font-semibold text-gray-900">
-                  Live Preview
-                </h2>
-              </div>
-              <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-100">
-                <iframe
-                  ref={previewRef}
-                  className="w-full border-0"
-                  style={{ minHeight: 500 }}
-                  title="Form Preview"
-                  sandbox="allow-same-origin"
+          {editorMode === 'fields' ? (
+            <div className="space-y-2">
+              {fields.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">
+                  No fields yet. Click "Add Field" below to get started.
+                </p>
+              )}
+              {fields.map((field, i) => (
+                <FieldCard
+                  key={`${field.key}-${i}`}
+                  field={field}
+                  index={i}
+                  total={fields.length}
+                  onUpdate={(f) => updateField(i, f)}
+                  onRemove={() => removeField(i)}
+                  onMove={(dir) => moveField(i, dir)}
+                />
+              ))}
+              <AddFieldPicker onAdd={addField} />
+              {fields.some(f => f.type === FormFieldType.HEADING) && fields.filter(f => f.type === FormFieldType.HEADING).length >= 1 && (
+                <p className="text-[11px] text-indigo-500 mt-1">
+                  Headings split the form into multi-step sections on the public page.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className={`grid gap-5 ${showPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">
+                  Write your form fields using HTML. Use standard form elements (input, textarea, select).
+                  The form will be styled automatically based on the theme above.
+                </p>
+                <textarea
+                  value={htmlContent}
+                  onChange={(e) => setHtmlContent(e.target.value)}
+                  placeholder="<div class='form-group'>&#10;  <label for='name'>Name</label>&#10;  <input type='text' id='name' name='name' placeholder='Your name' required />&#10;</div>"
+                  className="w-full px-4 py-3 text-sm font-mono border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D7770]/20 focus:border-[#0D7770] bg-gray-50"
+                  style={{ minHeight: 400, lineHeight: 1.6, tabSize: 2 }}
+                  spellCheck={false}
                 />
               </div>
+
+              {showPreview && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-semibold text-gray-900">
+                      Live Preview
+                    </span>
+                  </div>
+                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-100">
+                    <iframe
+                      ref={previewRef}
+                      className="w-full border-0"
+                      style={{ minHeight: 500 }}
+                      title="Form Preview"
+                      sandbox="allow-same-origin"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

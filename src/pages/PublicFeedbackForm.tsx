@@ -167,6 +167,38 @@ export default function PublicFeedbackForm() {
   const btnText = formConfig?.submitButtonText || 'Submit feedback'
   const showAnonymous = formConfig ? formConfig.allowAnonymous : true
 
+  const getThemeVars = (): React.CSSProperties => {
+    const s = formConfig?.style
+    if (!s) return {}
+    const dim = (hex: string, a: number) => {
+      const r = parseInt(hex.slice(1, 3), 16)
+      const g = parseInt(hex.slice(3, 5), 16)
+      const b = parseInt(hex.slice(5, 7), 16)
+      return `rgba(${r},${g},${b},${a})`
+    }
+    const v: Record<string, string> = {}
+    if (s.backgroundColor) v['--bg'] = s.backgroundColor
+    if (s.cardColor) v['--bg-card'] = s.cardColor
+    if (s.primaryColor) {
+      v['--accent'] = s.primaryColor
+      v['--accent-light'] = s.primaryColor
+      v['--accent-dim'] = dim(s.primaryColor, 0.1)
+      const r = parseInt(s.primaryColor.slice(1, 3), 16)
+      const g = parseInt(s.primaryColor.slice(3, 5), 16)
+      const b = parseInt(s.primaryColor.slice(5, 7), 16)
+      v['--btn-text'] = (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5 ? '#1a1a1a' : '#ffffff'
+    }
+    if (s.textColor) {
+      v['--text'] = s.textColor
+      v['--text-secondary'] = dim(s.textColor, 0.65)
+      v['--muted'] = dim(s.textColor, 0.4)
+    }
+    if (s.headingFontFamily) v['--heading-font'] = `'${s.headingFontFamily}', serif`
+    if (s.fontFamily) v['--body-font'] = `'${s.fontFamily}', system-ui, sans-serif`
+    return v as React.CSSProperties
+  }
+  const themeVars = getThemeVars()
+
   const handleDynamicSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!slug || !formConfig) return

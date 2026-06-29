@@ -111,7 +111,9 @@ export default function FormBuilder() {
     load()
   }, [id, navigate])
 
-  const compressImage = (file: File, maxWidth = 1200, quality = 0.75): Promise<File> => {
+  const MAX_THUMB_BYTES = 300 * 1024
+
+  const compressImage = (file: File, maxWidth = 1200): Promise<File> => {
     return new Promise((resolve) => {
       const img = new Image()
       img.onload = () => {
@@ -121,13 +123,21 @@ export default function FormBuilder() {
         canvas.height = img.height * scale
         const ctx = canvas.getContext('2d')!
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        canvas.toBlob(
-          (blob) => {
-            resolve(new File([blob!], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
-          },
-          'image/webp',
-          quality,
-        )
+
+        const tryQuality = (q: number) => {
+          canvas.toBlob(
+            (blob) => {
+              if (blob!.size > MAX_THUMB_BYTES && q > 0.3) {
+                tryQuality(q - 0.1)
+              } else {
+                resolve(new File([blob!], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
+              }
+            },
+            'image/webp',
+            q,
+          )
+        }
+        tryQuality(0.75)
       }
       img.src = URL.createObjectURL(file)
     })

@@ -188,14 +188,20 @@ export default function FeedbackTab({ eventId, event }: FeedbackTabProps) {
     }
   }
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`w-3 h-3 ${i < rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`}
-      />
-    ))
+  const tryParseJSON = (str: string): Record<string, any> | null => {
+    try {
+      const p = JSON.parse(str)
+      return typeof p === 'object' && p !== null ? p : null
+    } catch { return null }
   }
+
+  const humanizeKey = (key: string) =>
+    key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()
+
+  const ratingColor = (n: number) =>
+    n >= 4 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+    n >= 3 ? 'bg-amber-50 text-amber-700 border-amber-100' :
+    'bg-red-50 text-red-700 border-red-100'
 
   return (
     <div className="space-y-4">
@@ -330,65 +336,88 @@ export default function FeedbackTab({ eventId, event }: FeedbackTabProps) {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {feedbacks.map((fb) => (
-              <div
-                key={fb._id}
-                className="p-4 hover:bg-gray-50/50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
-                      fb.isAnonymous
-                        ? 'bg-gray-200 text-gray-500'
-                        : 'bg-blue-100 text-blue-600'
-                    }`}
-                  >
-                    {fb.isAnonymous ? (
-                      <User className="w-3.5 h-3.5" />
-                    ) : (
-                      fb.fullName.charAt(0).toUpperCase()
-                    )}
-                  </div>
+            {feedbacks.map((fb) => {
+              const parsed = tryParseJSON(fb.message)
+              const ratings: [string, number][] = parsed
+                ? (Object.entries(parsed).filter(([, v]) => typeof v === 'number' && v >= 1 && v <= 5) as [string, number][])
+                : []
+              const texts: [string, string][] = parsed
+                ? (Object.entries(parsed).filter(([, v]) => typeof v === 'string' && String(v).trim()) as [string, string][])
+                : []
+              const avgRating = ratings.length > 0
+                ? Math.round(ratings.reduce((sum, [, v]) => sum + v, 0) / ratings.length * 10) / 10
+                : fb.rating || 0
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-900">
+              return (
+                <div key={fb._id} className="px-4 py-3.5 hover:bg-gray-50/50 transition-colors group">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        fb.isAnonymous ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600'
+                      }`}>
+                        {fb.isAnonymous ? <User className="w-3 h-3" /> : fb.fullName.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-[13px] font-semibold text-gray-800">
                         {fb.isAnonymous ? 'Anonymous' : fb.fullName}
                       </span>
-                      {fb.rating && (
-                        <div className="flex items-center gap-0.5">
-                          {renderStars(fb.rating)}
-                        </div>
-                      )}
-                      <span className="text-[10px] text-gray-400">
-                        {formatDate(fb.createdAt)}
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-gray-600 mt-1 leading-relaxed whitespace-pre-wrap">
-                      {fb.message}
-                    </p>
-
-                    {!fb.isAnonymous && fb.email && (
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="flex items-center gap-1 text-[10px] text-gray-400">
-                          <Mail className="w-2.5 h-2.5" />
-                          {fb.email}
+                      {avgRating > 0 && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-100">
+                          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                          {avgRating}
                         </span>
-                      </div>
-                    )}
+                      )}
+                      <span className="text-[10px] text-gray-400">{formatDate(fb.createdAt)}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(fb._id)}
+                      className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
 
-                  <button
-                    onClick={() => handleDelete(fb._id)}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
-                    title="Delete feedback"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {parsed ? (
+                    <div className="ml-8 mt-2 space-y-2">
+                      {ratings.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {ratings.map(([key, val]) => (
+                            <span
+                              key={key}
+                              className={`inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[10px] font-medium border ${ratingColor(val)}`}
+                            >
+                              <span className="font-bold">{val}</span>
+                              <span className="opacity-80">{humanizeKey(key)}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {texts.length > 0 && (
+                        <div className="space-y-1.5">
+                          {texts.map(([key, val]) => (
+                            <div key={key}>
+                              <span className="text-[10px] font-medium text-gray-400 tracking-wide">{humanizeKey(key)}</span>
+                              <p className="text-[13px] text-gray-600 leading-snug">{val}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="ml-8 mt-1.5 text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
+                      {fb.message}
+                    </p>
+                  )}
+
+                  {!fb.isAnonymous && fb.email && (
+                    <span className="ml-8 mt-1.5 inline-flex items-center gap-1 text-[10px] text-gray-400">
+                      <Mail className="w-2.5 h-2.5" />
+                      {fb.email}
+                    </span>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

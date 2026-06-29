@@ -324,6 +324,7 @@ export interface FormTemplate {
   successMessage: string
   successHeading?: string
   allowAnonymous: boolean
+  thumbnail?: string
   isSystem?: boolean
   isActive: boolean
   createdBy?: string | { _id: string; firstName: string; lastName: string }
@@ -345,6 +346,7 @@ export interface CreateFormTemplateData {
   successMessage?: string
   successHeading?: string
   allowAnonymous?: boolean
+  thumbnail?: string
   isActive?: boolean
 }
 
@@ -360,6 +362,7 @@ export interface UpdateFormTemplateData {
   successMessage?: string
   successHeading?: string
   allowAnonymous?: boolean
+  thumbnail?: string
   isActive?: boolean
 }
 

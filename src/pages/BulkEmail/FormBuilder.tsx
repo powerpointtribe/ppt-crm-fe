@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Save, Eye, EyeOff, Code } from 'lucide-react'
+import { ArrowLeft, Save, Eye, EyeOff, Code, ImagePlus, X } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { bulkEmailService } from '@/services/bulk-email'
+import { uploadService } from '@/services/upload'
 import {
   FormTheme,
   FormModule,
@@ -70,6 +71,11 @@ export default function FormBuilder() {
   const [textColor, setTextColor] = useState('#1a1a1a')
   const [cardColor, setCardColor] = useState('#ffffff')
 
+  // Thumbnail
+  const [thumbnail, setThumbnail] = useState('')
+  const [uploadingThumb, setUploadingThumb] = useState(false)
+  const thumbInputRef = useRef<HTMLInputElement>(null)
+
   // HTML content
   const [htmlContent, setHtmlContent] = useState(DEFAULT_FEEDBACK_HTML)
 
@@ -94,6 +100,7 @@ export default function FormBuilder() {
         setTextColor(form.style?.textColor || '#1a1a1a')
         setCardColor(form.style?.cardColor || '#ffffff')
         setHtmlContent(form.htmlContent || '')
+        setThumbnail(form.thumbnail || '')
       } catch {
         showToast.error('Failed to load form')
         navigate('/bulk-email/forms')
@@ -103,6 +110,45 @@ export default function FormBuilder() {
     }
     load()
   }, [id, navigate])
+
+  const compressImage = (file: File, maxWidth = 1200, quality = 0.75): Promise<File> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const scale = Math.min(1, maxWidth / img.width)
+        canvas.width = img.width * scale
+        canvas.height = img.height * scale
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(
+          (blob) => {
+            resolve(new File([blob!], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
+          },
+          'image/webp',
+          quality,
+        )
+      }
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingThumb(true)
+    try {
+      const compressed = await compressImage(file)
+      const result = await uploadService.uploadImage(compressed)
+      setThumbnail(result.url)
+      showToast.success('Thumbnail uploaded')
+    } catch {
+      showToast.error('Failed to upload thumbnail')
+    } finally {
+      setUploadingThumb(false)
+      if (thumbInputRef.current) thumbInputRef.current.value = ''
+    }
+  }
 
   const getStyleVars = () => {
     if (theme === FormTheme.DARK) {
@@ -321,6 +367,7 @@ export default function FormBuilder() {
       successMessage,
       successHeading: successHeading || undefined,
       allowAnonymous,
+      thumbnail: thumbnail || undefined,
       isActive,
     }
 
@@ -506,6 +553,51 @@ export default function FormBuilder() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Thumbnail */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-gray-900">Link Thumbnail</h2>
+          <p className="text-xs text-gray-500">
+            Image shown when the form link is shared on social media. Compressed to WebP before upload.
+          </p>
+          <input
+            ref={thumbInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleThumbnailUpload}
+            className="hidden"
+          />
+          {thumbnail ? (
+            <div className="relative inline-block">
+              <img
+                src={thumbnail}
+                alt="Thumbnail preview"
+                className="h-28 rounded-lg border border-gray-200 object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setThumbnail('')}
+                className="absolute -top-2 -right-2 p-1 bg-white rounded-full border border-gray-200 text-gray-400 hover:text-red-500 shadow-sm"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => thumbInputRef.current?.click()}
+              disabled={uploadingThumb}
+              className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-[#0D7770] hover:text-[#0D7770] transition-colors"
+            >
+              {uploadingThumb ? (
+                <LoadingSpinner />
+              ) : (
+                <ImagePlus className="w-4 h-4" />
+              )}
+              {uploadingThumb ? 'Uploading...' : 'Upload Thumbnail'}
+            </button>
+          )}
         </div>
 
         {/* Theme/Style */}

@@ -61,6 +61,32 @@ export default function PublicTestimonyForm() {
     load()
   }, [slug])
 
+  useEffect(() => {
+    if (!eventInfo) return
+    const title = `${eventInfo.event.title} — Testimony`
+    document.title = title
+    const metas: Record<string, string> = {
+      'og:title': title,
+      'og:description': eventInfo.formConfig?.description || 'Share your testimony with us.',
+      'og:type': 'website',
+    }
+    const thumb = eventInfo.formConfig?.thumbnail
+    if (thumb) {
+      metas['og:image'] = thumb
+      metas['twitter:card'] = 'summary_large_image'
+      metas['twitter:image'] = thumb
+    }
+    const tags: HTMLMetaElement[] = []
+    for (const [prop, content] of Object.entries(metas)) {
+      const tag = document.createElement('meta')
+      tag.setAttribute('property', prop)
+      tag.setAttribute('content', content)
+      document.head.appendChild(tag)
+      tags.push(tag)
+    }
+    return () => { tags.forEach((t) => t.remove()) }
+  }, [eventInfo])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!slug) return

@@ -647,24 +647,22 @@ export default function FormBuilder() {
       showToast.error('Form name is required')
       return
     }
-    if (editorMode === 'html' && !htmlContent.trim()) {
-      showToast.error('HTML content is required')
-      return
-    }
-    if (editorMode === 'fields' && fields.length === 0) {
-      showToast.error('Add at least one field')
+    if (fields.length === 0 && !htmlContent.trim()) {
+      showToast.error(editorMode === 'html' ? 'HTML content is required' : 'Add at least one field')
       return
     }
 
     const orderedFields = fields.map((f, i) => ({ ...f, order: i }))
+    const useFields = editorMode === 'fields' ? orderedFields.length > 0 : false
+    const useHtml = editorMode === 'html' ? !!htmlContent.trim() : !useFields && !!htmlContent.trim()
 
     const data: CreateFormTemplateData = {
       name: name.trim(),
       slug: slug.trim() || undefined,
       description: description.trim() || undefined,
       module,
-      fields: editorMode === 'fields' ? orderedFields : [],
-      htmlContent: editorMode === 'html' ? htmlContent : undefined,
+      fields: useFields ? orderedFields : [],
+      htmlContent: useHtml ? htmlContent : undefined,
       style: {
         theme,
         ...(theme === FormTheme.CUSTOM && {

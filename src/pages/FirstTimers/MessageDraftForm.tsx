@@ -10,6 +10,8 @@ import Badge from '@/components/ui/Badge'
 import { messageDraftsService, EmailTemplate, CreateMessageDraftData } from '@/services/message-drafts'
 import { firstTimersService, FirstTimer } from '@/services/first-timers'
 import { useToast } from '@/hooks/useToast'
+import { useAuth } from '@/contexts/AuthContext-unified'
+import { useAppStore } from '@/store'
 
 const BUILTIN_DEFAULTS: Record<number, { subject: string; message: string }> = {
   1: {
@@ -77,6 +79,9 @@ export default function MessageDraftForm() {
   const { id } = useParams<{ id?: string }>()
   const isEditing = !!id
   const toast = useToast()
+  const { hasPermission, member: currentUser } = useAuth()
+  const { selectedBranch, branches } = useAppStore()
+  const canViewAllBranches = hasPermission('branches:view-all')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -89,6 +94,7 @@ export default function MessageDraftForm() {
   const [selectedRecipientIds, setSelectedRecipientIds] = useState<string[]>([])
   const [scheduledDate, setScheduledDate] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
+  const [draftBranchId, setDraftBranchId] = useState<string | undefined>(undefined)
 
   // Data state
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
@@ -117,12 +123,12 @@ export default function MessageDraftForm() {
     }
   }, [id])
 
-  // Load first timers when individual mode selected
+  // Load first timers when individual mode selected or branch changes
   useEffect(() => {
-    if (recipientMode === 'individual' && firstTimers.length === 0) {
+    if (recipientMode === 'individual') {
       loadFirstTimers()
     }
-  }, [recipientMode])
+  }, [recipientMode, draftBranchId])
 
   // Debounced preview
   useEffect(() => {
@@ -175,6 +181,9 @@ export default function MessageDraftForm() {
         const minutes = t.getMinutes().toString().padStart(2, '0')
         setScheduledTime(`${hours}:${minutes}`)
       }
+      if (draft.branch) {
+        setDraftBranchId(typeof draft.branch === 'object' ? draft.branch._id : draft.branch)
+      }
     } catch (err: any) {
       toast.error('Failed to load draft', err?.message || 'An unexpected error occurred')
     } finally {
@@ -184,7 +193,13 @@ export default function MessageDraftForm() {
 
   const loadFirstTimers = async () => {
     try {
-      const res = await firstTimersService.getFirstTimers({ limit: 100 })
+      const branchId = canViewAllBranches
+        ? draftBranchId || selectedBranch?._id
+        : (currentUser as any)?.branch?._id || (currentUser as any)?.branch
+      const res = await firstTimersService.getFirstTimers({
+        limit: 100,
+        branchId: branchId || undefined,
+      })
       setFirstTimers(res.items || [])
     } catch (err) {
       console.error('Failed to load first timers:', err)
@@ -229,6 +244,7 @@ export default function MessageDraftForm() {
     recipientIds: recipientMode === 'individual' ? selectedRecipientIds : undefined,
     scheduledDate: recipientMode === 'by_date' ? serviceDate : scheduledDate,
     scheduledTime: scheduledTime || '09:00',
+    branch: canViewAllBranches ? draftBranchId || selectedBranch?._id : undefined,
   })
 
   const handleSave = async (status: 'draft' | 'scheduled' = 'draft') => {
@@ -562,6 +578,29 @@ export default function MessageDraftForm() {
               <p className="text-xs text-gray-500 mt-2 ml-8">Hand-pick specific first-timers to receive this message</p>
             </div>
           </div>
+
+          {/* Branch selector for view-all users */}
+          {canViewAllBranches && (
+            <Card className="mb-4">
+              <div className="p-5">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                <select
+                  value={draftBranchId || ''}
+                  onChange={e => {
+                    setDraftBranchId(e.target.value || undefined)
+                    setSelectedRecipientIds([])
+                  }}
+                  className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0D7770] focus:border-transparent outline-none"
+                >
+                  <option value="">All Branches</option>
+                  {branches.map(b => (
+                    <option key={b._id} value={b._id}>{b.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Select which branch to scope recipients to</p>
+              </div>
+            </Card>
+          )}
 
           {/* Conditional inputs */}
           {recipientMode === 'by_date' && (

@@ -301,6 +301,26 @@ export default function MessageDraftDetail() {
                   <p className="text-sm text-red-600 mt-1">{draft.failureReason}</p>
                 </div>
               )}
+
+              {/* Recipients List */}
+              {draft.recipients && draft.recipients.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Recipients</h3>
+                  <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                    {draft.recipients.map((r, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                        <div className="w-8 h-8 rounded-full bg-[#0D7770]/10 text-[#0D7770] flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                          {(r.firstName?.[0] || '').toUpperCase()}{(r.lastName?.[0] || '').toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">{r.firstName} {r.lastName}</p>
+                          <p className="text-xs text-gray-500 truncate">{r.email}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -308,6 +328,19 @@ export default function MessageDraftDetail() {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Metadata</h2>
             <div className="space-y-3">
+              {draft.branch && (
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <div>
+                    <span className="text-sm text-gray-500">Branch: </span>
+                    <span className="text-sm text-gray-900 font-medium">
+                      {typeof draft.branch === 'object' && draft.branch !== null
+                        ? draft.branch.name
+                        : 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+              )}
               {draft.createdBy && (
                 <div className="flex items-center gap-3">
                   <User className="w-4 h-4 text-gray-400" />

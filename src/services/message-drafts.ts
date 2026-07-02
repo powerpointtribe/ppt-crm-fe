@@ -30,6 +30,15 @@ export interface MessageDraft {
   successCount?: number
   failedCount?: number
   failureReason?: string
+  branch?: {
+    _id: string
+    name: string
+  }
+  recipients?: Array<{
+    firstName: string
+    lastName: string
+    email: string
+  }>
   createdAt?: string
   updatedAt?: string
 }
@@ -43,6 +52,7 @@ export interface CreateMessageDraftData {
   recipientIds?: string[]
   scheduledDate?: string
   scheduledTime: string
+  branch?: string
 }
 
 export interface UpdateMessageDraftData {
@@ -54,6 +64,7 @@ export interface UpdateMessageDraftData {
   recipientIds?: string[]
   scheduledDate?: string
   scheduledTime?: string
+  branch?: string
 }
 
 export interface MessageDraftSearchParams {

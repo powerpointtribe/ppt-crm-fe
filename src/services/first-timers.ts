@@ -584,6 +584,30 @@ export const firstTimersService = {
     return transformSingleResponse<{ firstTimer: FirstTimer; memberId: string }>(response) as { firstTimer: FirstTimer; memberId: string }
   },
 
+  // Export
+  exportFirstTimers: async (
+    fields: string[],
+    filters?: FirstTimerSearchParams,
+  ): Promise<void> => {
+    const params: Record<string, any> = { ...filters }
+    if (fields.length > 0) {
+      params.fields = fields.join(',')
+    }
+    const response = await apiService.get<Blob>('/first-timers/export', {
+      params,
+      responseType: 'blob' as any,
+    })
+    const blob = new Blob([response as any], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `first-timers-export-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  },
+
   // Report Statistics
   getReportStatistics: async (startDate: string, endDate: string): Promise<any> => {
     const response = await apiService.get<ApiResponse<any>>('/first-timers/reports/statistics', {

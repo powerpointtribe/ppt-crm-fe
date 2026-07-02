@@ -5,7 +5,7 @@ import {
   Plus, Phone, Mail, Calendar, User,
   MoreHorizontal, Trash2, UserPlus, Edit, Eye,
   Users, Clock, CheckCircle, TrendingUp, UserCheck,
-  X, Filter, RefreshCw, UserCog, Archive, ArchiveRestore, Upload, Cake
+  X, Filter, RefreshCw, UserCog, Archive, ArchiveRestore, Upload, Cake, Download
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -14,6 +14,7 @@ import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import PageToolbar, { SearchResult } from '@/components/ui/PageToolbar'
 import FilterModal from '@/components/ui/FilterModal'
 import AssignmentModal from '@/components/ui/AssignmentModal'
+import ExportFieldSelectorModal, { ExportFieldGroup } from '@/components/ui/ExportFieldSelectorModal'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/useToast'
 import { FirstTimer, FirstTimerSearchParams, firstTimersService, ArchiveStats, DateRangeFilter } from '@/services/first-timers'
@@ -69,6 +70,7 @@ export default function FirstTimers() {
   const [branchFilter, setBranchFilter] = useState('')
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null)
   const [showFilterModal, setShowFilterModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
 
   // Temp filter states for modal
   const [tempStatusFilter, setTempStatusFilter] = useState('')
@@ -324,6 +326,79 @@ export default function FirstTimers() {
     setDateFromFilter('')
     setDateToFilter('')
     setBranchFilter('')
+  }
+
+  const exportFieldGroups: ExportFieldGroup[] = [
+    {
+      label: 'Personal Info',
+      fields: [
+        { key: 'firstName', label: 'First Name' },
+        { key: 'lastName', label: 'Last Name' },
+        { key: 'phone', label: 'Phone' },
+        { key: 'email', label: 'Email' },
+        { key: 'gender', label: 'Gender' },
+        { key: 'dateOfBirth', label: 'Date of Birth' },
+        { key: 'occupation', label: 'Occupation' },
+        { key: 'maritalStatus', label: 'Marital Status' },
+        { key: 'address', label: 'Address' },
+      ],
+    },
+    {
+      label: 'Visit Info',
+      fields: [
+        { key: 'dateOfVisit', label: 'Date of Visit' },
+        { key: 'howDidYouHear', label: 'How Did You Hear' },
+        { key: 'visitorType', label: 'Visitor Type' },
+        { key: 'previousChurch', label: 'Previous Church' },
+        { key: 'totalVisits', label: 'Total Visits' },
+      ],
+    },
+    {
+      label: 'Status & Follow-up',
+      fields: [
+        { key: 'status', label: 'Status' },
+        { key: 'stage', label: 'Stage' },
+        { key: 'interestedInJoining', label: 'Interested in Joining' },
+        { key: 'integrationStage', label: 'Integration Stage' },
+        { key: 'converted', label: 'Converted' },
+        { key: 'callReportsCount', label: 'Call Reports' },
+        { key: 'followUpCount', label: 'Follow-up Count' },
+        { key: 'readyForIntegration', label: 'Ready for Integration' },
+        { key: 'isArchived', label: 'Archived' },
+      ],
+    },
+    {
+      label: 'Assignments',
+      fields: [
+        { key: 'branch', label: 'Branch' },
+        { key: 'assignedTo', label: 'Assigned To' },
+        { key: 'followUpPerson', label: 'Follow-up Person' },
+        { key: 'giaLeader', label: 'GIA Leader' },
+      ],
+    },
+    {
+      label: 'Other',
+      fields: [
+        { key: 'notes', label: 'Notes' },
+        { key: 'createdAt', label: 'Created At' },
+        { key: 'updatedAt', label: 'Updated At' },
+      ],
+    },
+  ]
+
+  const handleExport = async (fields: string[]) => {
+    const filters: FirstTimerSearchParams = {
+      search: searchTerm || undefined,
+      status: statusFilter as any || undefined,
+      visitorType: visitorTypeFilter as any || undefined,
+      howDidYouHear: howDidYouHearFilter as any || undefined,
+      visitDateFrom: dateFromFilter || undefined,
+      visitDateTo: dateToFilter || undefined,
+      branchId: branchFilter || undefined,
+      dateRange: dateRange !== 'all' ? dateRange : undefined,
+    }
+    await firstTimersService.exportFirstTimers(fields, filters)
+    toast.success('Export downloaded successfully')
   }
 
   // Pagination handlers
@@ -1075,6 +1150,16 @@ export default function FirstTimers() {
                   <UserCheck className="h-4 w-4 mr-2" />
                   My Assignments
                 </Button>
+                {hasPermission('first-timers:export') && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowExportModal(true)}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -2256,6 +2341,13 @@ export default function FirstTimers() {
           </div>
         </div>
       )}
+      <ExportFieldSelectorModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExport}
+        fieldGroups={exportFieldGroups}
+        title="Export First Timers"
+      />
     </Layout>
   )
 }

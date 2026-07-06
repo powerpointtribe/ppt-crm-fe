@@ -416,7 +416,7 @@ export default function FirstTimerDetail() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/first-timers')}
+            onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -806,6 +806,30 @@ export default function FirstTimerDetail() {
                           <span className="text-gray-900 capitalize">{firstTimer.visitorType.replace('_', ' ')}</span>
                         </div>
                       )}
+                      {firstTimer.invitedBy && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Invited By</span>
+                          <span className="text-gray-900">{firstTimer.invitedBy}</span>
+                        </div>
+                      )}
+                      {firstTimer.referredBy && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Referred By</span>
+                          <span className="text-gray-900">{firstTimer.referredBy}</span>
+                        </div>
+                      )}
+                      {firstTimer.previousChurch && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Previous Church</span>
+                          <span className="text-gray-900">{firstTimer.previousChurch}</span>
+                        </div>
+                      )}
+                      {firstTimer.serviceExperience && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Service Experience</span>
+                          <span className="text-gray-900 text-right max-w-[60%]">{firstTimer.serviceExperience}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1098,6 +1122,18 @@ export default function FirstTimerDetail() {
                           <p className="text-sm text-gray-900">{firstTimer.occupation}</p>
                         </div>
                       )}
+                      {(firstTimer as any).schoolName && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">School/University</p>
+                          <p className="text-sm text-gray-900">{(firstTimer as any).schoolName}</p>
+                        </div>
+                      )}
+                      {firstTimer.numberOfChildren !== undefined && firstTimer.numberOfChildren > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Number of Children</p>
+                          <p className="text-sm text-gray-900">{firstTimer.numberOfChildren}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1156,6 +1192,86 @@ export default function FirstTimerDetail() {
                           {interest}
                         </span>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Serving Interests */}
+                {firstTimer.servingInterests && firstTimer.servingInterests.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900 mb-4">Serving Interests</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {firstTimer.servingInterests.map((interest, idx) => (
+                        <span key={idx} className="px-3 py-1 text-sm text-teal-700 bg-teal-50 rounded-full">
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Social Media */}
+                {firstTimer.socialMediaHandles && Object.values(firstTimer.socialMediaHandles).some(Boolean) && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900 mb-4">Social Media</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {firstTimer.socialMediaHandles.facebook && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Facebook</p>
+                          <p className="text-sm text-gray-900">{firstTimer.socialMediaHandles.facebook}</p>
+                        </div>
+                      )}
+                      {firstTimer.socialMediaHandles.instagram && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Instagram</p>
+                          <p className="text-sm text-gray-900">{firstTimer.socialMediaHandles.instagram}</p>
+                        </div>
+                      )}
+                      {firstTimer.socialMediaHandles.twitter && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Twitter</p>
+                          <p className="text-sm text-gray-900">{firstTimer.socialMediaHandles.twitter}</p>
+                        </div>
+                      )}
+                      {firstTimer.socialMediaHandles.linkedin && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">LinkedIn</p>
+                          <p className="text-sm text-gray-900">{firstTimer.socialMediaHandles.linkedin}</p>
+                        </div>
+                      )}
+                      {firstTimer.socialMediaHandles.tiktok && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">TikTok</p>
+                          <p className="text-sm text-gray-900">{firstTimer.socialMediaHandles.tiktok}</p>
+                        </div>
+                      )}
+                      {firstTimer.socialMediaHandles.other && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Other</p>
+                          <p className="text-sm text-gray-900">{firstTimer.socialMediaHandles.other}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Contact */}
+                {(firstTimer.alternateContactMethod || firstTimer.website) && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900 mb-4">Additional Contact</h3>
+                    <div className="grid grid-cols-2 gap-6">
+                      {firstTimer.alternateContactMethod && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Alternate Contact</p>
+                          <p className="text-sm text-gray-900">{firstTimer.alternateContactMethod}</p>
+                        </div>
+                      )}
+                      {firstTimer.website && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Website</p>
+                          <p className="text-sm text-gray-900">{firstTimer.website}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

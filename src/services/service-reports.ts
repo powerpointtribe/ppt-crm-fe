@@ -7,6 +7,7 @@ export enum ServiceTag {
   SUNDAY_AFTER_SATURDAY_OUTREACH = 'sunday_after_saturday_outreach',
   THEMED_SERVICE = 'themed_service',
   BEGINNING_OF_NEW_SERIES = 'beginning_of_new_series',
+  CONTINUATION_OF_SERIES = 'continuation_of_series',
   CELEBRATION_SERVICE = 'celebration_service',
   SUNDAY_AFTER_VIRAL_POST = 'sunday_after_viral_post',
   OTHERS = 'others',
@@ -17,6 +18,7 @@ export const SERVICE_TAG_LABELS: Record<ServiceTag, string> = {
   [ServiceTag.SUNDAY_AFTER_SATURDAY_OUTREACH]: 'Sunday after Saturday Outreach',
   [ServiceTag.THEMED_SERVICE]: 'Themed Service',
   [ServiceTag.BEGINNING_OF_NEW_SERIES]: 'Beginning of New Series',
+  [ServiceTag.CONTINUATION_OF_SERIES]: 'Continuation of Series',
   [ServiceTag.CELEBRATION_SERVICE]: 'Celebration Service (Thanksgiving, Wedding, Baby Dedication etc.)',
   [ServiceTag.SUNDAY_AFTER_VIRAL_POST]: 'Sunday after Viral/Promoted Post on WhatsApp/Social Media',
   [ServiceTag.OTHERS]: 'Others',
@@ -38,6 +40,7 @@ export interface ServiceReport {
     lastName: string
     email: string
   }
+  seriesName?: string
   notes?: string
   branch?: { _id: string; name: string } | string
   isActive: boolean
@@ -58,6 +61,7 @@ export interface CreateServiceReportData {
   date: string
   serviceName: string
   serviceTags?: ServiceTag[]
+  seriesName?: string
   totalAttendance: number
   numberOfMales: number
   numberOfFemales: number
@@ -138,6 +142,11 @@ export const serviceReportsService = {
   getServiceReportById: async (id: string): Promise<ServiceReport> => {
     const response = await apiService.get<ApiResponse<ServiceReport>>(`/service-reports/${id}`)
     return transformSingleResponse<ServiceReport>(response) as ServiceReport
+  },
+
+  getSeriesNames: async (): Promise<string[]> => {
+    const response = await apiService.get<ApiResponse<string[]>>('/service-reports/series-names')
+    return (transformSingleResponse<string[]>(response) as string[]) || []
   },
 
   createServiceReport: async (data: CreateServiceReportData): Promise<ServiceReport> => {

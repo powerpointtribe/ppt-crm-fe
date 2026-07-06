@@ -145,6 +145,29 @@ export interface FirstTimer {
     lastName: string
   }
 
+  // Invitation & referral
+  invitedBy?: string
+  invitedByMember?: string | {
+    _id: string
+    firstName: string
+    lastName: string
+  }
+  referredBy?: string
+  previousChurch?: string
+  serviceExperience?: string
+  schoolName?: string
+  numberOfChildren?: number
+  alternateContactMethod?: string
+  website?: string
+  socialMediaHandles?: {
+    facebook?: string
+    instagram?: string
+    twitter?: string
+    linkedin?: string
+    tiktok?: string
+    other?: string
+  }
+
   // Profile photo
   profilePhotoUrl?: string
 

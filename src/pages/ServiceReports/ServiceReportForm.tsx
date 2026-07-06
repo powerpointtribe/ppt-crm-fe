@@ -32,6 +32,7 @@ const COMPACT_TAG_LABELS: Record<ServiceTag, string> = {
   [ServiceTag.SUNDAY_AFTER_SATURDAY_OUTREACH]: 'Post-Outreach',
   [ServiceTag.THEMED_SERVICE]: 'Themed',
   [ServiceTag.BEGINNING_OF_NEW_SERIES]: 'New Series',
+  [ServiceTag.CONTINUATION_OF_SERIES]: 'Continue Series',
   [ServiceTag.CELEBRATION_SERVICE]: 'Celebration',
   [ServiceTag.SUNDAY_AFTER_VIRAL_POST]: 'Post-Viral',
   [ServiceTag.OTHERS]: 'Other',
@@ -64,6 +65,11 @@ export default function ServiceReportForm({
   const [errors, setErrors] = useState<string[]>([])
   const [autoSync, setAutoSync] = useState(true)
   const [otherTagDescription, setOtherTagDescription] = useState(initialData?.notes?.startsWith('[Other: ') ? '' : '')
+  const [existingSeriesNames, setExistingSeriesNames] = useState<string[]>([])
+
+  useEffect(() => {
+    serviceReportsService.getSeriesNames().then(setExistingSeriesNames).catch(() => {})
+  }, [])
 
   // Validate attendance numbers in real-time
   useEffect(() => {
@@ -95,11 +101,26 @@ export default function ServiceReportForm({
     if (tag === ServiceTag.OTHERS && (formData.serviceTags || []).includes(tag)) {
       setOtherTagDescription('')
     }
+    const isRemoving = (formData.serviceTags || []).includes(tag)
+    let newTags: ServiceTag[]
+    if (isRemoving) {
+      newTags = (formData.serviceTags || []).filter(t => t !== tag)
+    } else {
+      newTags = [...(formData.serviceTags || []), tag]
+      if (tag === ServiceTag.BEGINNING_OF_NEW_SERIES) {
+        newTags = newTags.filter(t => t !== ServiceTag.CONTINUATION_OF_SERIES)
+      } else if (tag === ServiceTag.CONTINUATION_OF_SERIES) {
+        newTags = newTags.filter(t => t !== ServiceTag.BEGINNING_OF_NEW_SERIES)
+      }
+    }
+    const seriesRemoved = isRemoving && (
+      tag === ServiceTag.BEGINNING_OF_NEW_SERIES || tag === ServiceTag.CONTINUATION_OF_SERIES
+    )
+    const hasAnySeries = newTags.includes(ServiceTag.BEGINNING_OF_NEW_SERIES) || newTags.includes(ServiceTag.CONTINUATION_OF_SERIES)
     setFormData(prev => ({
       ...prev,
-      serviceTags: (prev.serviceTags || []).includes(tag)
-        ? (prev.serviceTags || []).filter(t => t !== tag)
-        : [...(prev.serviceTags || []), tag]
+      serviceTags: newTags,
+      seriesName: seriesRemoved && !hasAnySeries ? undefined : prev.seriesName,
     }))
   }
 
@@ -242,6 +263,51 @@ export default function ServiceReportForm({
                 maxLength={100}
                 className="w-full px-2.5 py-2 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-gray-400 bg-indigo-50/40"
               />
+            </motion.div>
+          )}
+          {((formData.serviceTags || []).includes(ServiceTag.BEGINNING_OF_NEW_SERIES) ||
+            (formData.serviceTags || []).includes(ServiceTag.CONTINUATION_OF_SERIES)) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15 }}
+              className="mt-2"
+            >
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Series Name
+              </label>
+              {(formData.serviceTags || []).includes(ServiceTag.CONTINUATION_OF_SERIES) && existingSeriesNames.length > 0 ? (
+                <div className="space-y-1.5">
+                  <select
+                    value={formData.seriesName || ''}
+                    onChange={(e) => handleInputChange('seriesName', e.target.value || undefined)}
+                    className="w-full px-2.5 py-2 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-indigo-50/40"
+                  >
+                    <option value="">Select an existing series...</option>
+                    {existingSeriesNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={formData.seriesName || ''}
+                    onChange={(e) => handleInputChange('seriesName', e.target.value || undefined)}
+                    placeholder="Or type a series name..."
+                    maxLength={200}
+                    className="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-gray-400"
+                  />
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={formData.seriesName || ''}
+                  onChange={(e) => handleInputChange('seriesName', e.target.value || undefined)}
+                  placeholder="Enter the series name..."
+                  maxLength={200}
+                  className="w-full px-2.5 py-2 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-gray-400 bg-indigo-50/40"
+                />
+              )}
             </motion.div>
           )}
         </AnimatePresence>

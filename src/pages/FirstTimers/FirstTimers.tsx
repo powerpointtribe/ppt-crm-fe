@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Plus, Phone, Mail, Calendar, User,
@@ -26,6 +26,7 @@ import { useAuth } from '@/contexts/AuthContext-unified'
 
 export default function FirstTimers() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
   const { selectedBranch, branches } = useAppStore()
   const { hasPermission, member: currentUser } = useAuth()
@@ -36,8 +37,12 @@ export default function FirstTimers() {
     if (hour < 17) return 'Good afternoon'
     return 'Good evening'
   }
-  const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'closed' | 'archived'>('all')
-  const [dateRange, setDateRange] = useState<DateRangeFilter>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'ready' | 'closed' | 'archived'>(
+    (searchParams.get('tab') as 'all' | 'ready' | 'closed' | 'archived') || 'all'
+  )
+  const [dateRange, setDateRange] = useState<DateRangeFilter>(
+    (searchParams.get('dateRange') as DateRangeFilter) || 'all'
+  )
   const [firstTimers, setFirstTimers] = useState<FirstTimer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<any>(null)
@@ -60,14 +65,14 @@ export default function FirstTimers() {
   const [selectedDistrict, setSelectedDistrict] = useState('')
   const [selectedUnit, setSelectedUnit] = useState('')
   const [loadingGroups, setLoadingGroups] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [assignedFilter, setAssignedFilter] = useState('')
-  const [visitorTypeFilter, setVisitorTypeFilter] = useState('')
-  const [howDidYouHearFilter, setHowDidYouHearFilter] = useState('')
-  const [dateFromFilter, setDateFromFilter] = useState('')
-  const [dateToFilter, setDateToFilter] = useState('')
-  const [branchFilter, setBranchFilter] = useState('')
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '')
+  const [assignedFilter, setAssignedFilter] = useState(searchParams.get('assigned') || '')
+  const [visitorTypeFilter, setVisitorTypeFilter] = useState(searchParams.get('visitorType') || '')
+  const [howDidYouHearFilter, setHowDidYouHearFilter] = useState(searchParams.get('howDidYouHear') || '')
+  const [dateFromFilter, setDateFromFilter] = useState(searchParams.get('dateFrom') || '')
+  const [dateToFilter, setDateToFilter] = useState(searchParams.get('dateTo') || '')
+  const [branchFilter, setBranchFilter] = useState(searchParams.get('branch') || '')
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null)
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
@@ -101,7 +106,7 @@ export default function FirstTimers() {
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false)
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1)
   const [pagination, setPagination] = useState<any>(null)
 
   const loadFirstTimers = useCallback(async (page: number = currentPage, tab: 'all' | 'ready' | 'closed' | 'archived' = activeTab) => {
@@ -185,6 +190,22 @@ export default function FirstTimers() {
     setCurrentPage(1)
     loadFirstTimers(1, activeTab)
   }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, selectedBranch, activeTab, dateRange])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (activeTab !== 'all') params.set('tab', activeTab)
+    if (searchTerm) params.set('search', searchTerm)
+    if (currentPage > 1) params.set('page', String(currentPage))
+    if (statusFilter) params.set('status', statusFilter)
+    if (assignedFilter) params.set('assigned', assignedFilter)
+    if (visitorTypeFilter) params.set('visitorType', visitorTypeFilter)
+    if (howDidYouHearFilter) params.set('howDidYouHear', howDidYouHearFilter)
+    if (dateFromFilter) params.set('dateFrom', dateFromFilter)
+    if (dateToFilter) params.set('dateTo', dateToFilter)
+    if (branchFilter) params.set('branch', branchFilter)
+    if (dateRange !== 'all') params.set('dateRange', dateRange)
+    setSearchParams(params, { replace: true })
+  }, [activeTab, searchTerm, currentPage, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, dateRange])
 
   useEffect(() => {
     loadStats()

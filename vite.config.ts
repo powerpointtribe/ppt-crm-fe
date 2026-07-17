@@ -45,21 +45,14 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         cleanupOutdatedCaches: true,
+        // NOTE: the API is deliberately NOT in runtimeCaching. It's dynamic,
+        // auth-scoped data — the service worker must not intercept it. The old
+        // NetworkFirst rule cached API responses (stale reads) and, worse,
+        // produced "FetchEvent.respondWith received an error: no-response"
+        // whenever the network hung with no cached copy. With no matching
+        // route, /api/* requests bypass the SW and the app's own error
+        // handling (axios timeouts) applies.
         runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/becrm\.powerpointtribe\.org\/api\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',

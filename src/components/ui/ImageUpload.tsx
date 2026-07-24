@@ -65,6 +65,8 @@ interface ImageUploadProps {
   placeholder?: string
   maxSizeMB?: number
   onError?: (error: string) => void
+  /** Storage folder for the upload, e.g. 'powerpoint/first-timers'. */
+  folder?: string
 }
 
 export default function ImageUpload({
@@ -73,7 +75,8 @@ export default function ImageUpload({
   className,
   placeholder = "Upload a photo",
   maxSizeMB = 5,
-  onError
+  onError,
+  folder = 'powerpoint/uploads'
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(value || null)
@@ -119,7 +122,7 @@ export default function ImageUpload({
       reader.readAsDataURL(compressed)
 
       // Upload compressed file to backend
-      const result = await uploadService.uploadImage(compressed)
+      const result = await uploadService.uploadImage(compressed, folder)
       onChange(result.url)
     } catch (error) {
       const errorMsg = 'Failed to upload image. Please try again.'

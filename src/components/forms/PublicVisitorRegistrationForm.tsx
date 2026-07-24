@@ -616,6 +616,7 @@ export default function PublicVisitorRegistrationForm({
             onChange={(url) => setValue('profilePhotoUrl', url)}
             placeholder="Upload your photo"
             maxSizeMB={5}
+            folder="powerpoint/first-timers"
             className="max-w-[200px] mx-auto"
           />
           <p className="text-xs text-gray-500 mt-3 text-center">

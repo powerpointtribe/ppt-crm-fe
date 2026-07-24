@@ -470,7 +470,7 @@ export default function FormBuilder() {
     setUploadingThumb(true)
     try {
       const compressed = await compressImage(file)
-      const result = await uploadService.uploadImage(compressed)
+      const result = await uploadService.uploadImage(compressed, 'powerpoint/bulk-email')
       setThumbnail(result.url)
       showToast.success('Thumbnail uploaded')
     } catch {

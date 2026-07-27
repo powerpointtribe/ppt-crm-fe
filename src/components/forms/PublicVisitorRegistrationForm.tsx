@@ -313,7 +313,7 @@ export default function PublicVisitorRegistrationForm({
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">🎂</div>
-            <h4 className="font-semibold text-gray-800">When did you arrive on the Planet?</h4>
+            <h4 className="font-semibold text-gray-800">When did you arrive on the Planet? <span className="text-red-500">*</span></h4>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <select
@@ -426,9 +426,12 @@ export default function PublicVisitorRegistrationForm({
             >
               <Input
                 {...register('schoolName')}
-                placeholder="Name of school/university"
+                placeholder="Name of school/university *"
                 className="transition-all duration-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
+              {errors.schoolName && (
+                <p className="text-red-500 text-sm mt-1">{errors.schoolName.message}</p>
+              )}
             </motion.div>
           )}
         </motion.div>
@@ -477,9 +480,12 @@ export default function PublicVisitorRegistrationForm({
           <div className="mt-3">
             <Input
               {...register('invitedBy')}
-              placeholder="Who invited you? (Name of person who invited you)"
+              placeholder="Who invited you? (Name of person who invited you) *"
               className="transition-all duration-300 focus:ring-2 focus:ring-green-500 focus:border-green-500"
             />
+            {errors.invitedBy && (
+              <p className="text-red-500 text-sm mt-1">{errors.invitedBy.message}</p>
+            )}
           </div>
         </motion.div>
 
@@ -539,8 +545,7 @@ export default function PublicVisitorRegistrationForm({
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="text-2xl">✨</div>
-            <h4 className="font-semibold text-gray-800">What did you enjoy about today's service?</h4>
-            <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">optional</span>
+            <h4 className="font-semibold text-gray-800">What did you enjoy about today's service? <span className="text-red-500">*</span></h4>
           </div>
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -581,6 +586,9 @@ export default function PublicVisitorRegistrationForm({
                 )
               })}
             </div>
+            {errors.serviceExperience && (
+              <p className="text-red-500 text-sm mt-1">{errors.serviceExperience.message}</p>
+            )}
 
             {/* Conditional Others field */}
             {(watch('serviceExperience') || []).includes('Others') && (

@@ -106,7 +106,7 @@ export interface FirstTimer {
 
   // New enhanced fields
   stage: 'new' | 'engaged' | 'closed'
-  interestedInJoining: boolean
+  interestedInJoining?: 'yes' | 'no' | 'maybe'
   integrationStage: 'none' | 'assigned_to_district' | 'started_cohort' | 'baptism_class' | 'baptized' | 'cell_group' | 'ministry_assigned' | 'leadership_training' | 'fully_integrated'
   integrationStageDate?: string
   assignedDistrict?: string

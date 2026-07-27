@@ -13,18 +13,17 @@ export const publicVisitorRegistrationSchema = z.object({
   // Visit Information (Required)
   dateOfVisit: z.string().min(1, 'Date of visit is required'),
 
-  // Optional Personal Details
-  dateOfBirth: z.string().optional().refine((val) => {
-    if (!val || val === '') return true; // Allow empty values
+  // Personal Details
+  dateOfBirth: z.string().min(1, 'Date of birth is required').refine((val) => {
     return /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(val);
-  }, { message: 'dateOfBirth must be in MM-DD format (month and day only)' }),
+  }, { message: 'Date of birth must be in MM-DD format (month and day only)' }),
   gender: z.enum(['male', 'female'], { required_error: 'Please select your gender' }),
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
   occupation: z.string().min(1, 'Occupation is required'),
   alternateContactMethod: z.string().optional(),
 
 
-  serviceExperience: z.array(z.string()).optional().default([]),
+  serviceExperience: z.array(z.string()).min(1, 'Please select at least one thing you enjoyed'),
   serviceExperienceOther: z.string().optional(),
   profilePhotoUrl: z.string().optional(),
 
@@ -70,17 +69,32 @@ export const publicVisitorRegistrationSchema = z.object({
   preferredContactMethod: z.enum(['phone', 'email', 'sms', 'whatsapp']).optional(),
   privacyConsent: z.boolean().optional(),
 }).refine((data) => {
-  // Validate date of visit is not in the future
   if (data.dateOfVisit) {
     const visitDate = new Date(data.dateOfVisit)
     const today = new Date()
-    today.setHours(23, 59, 59, 999) // Set to end of today
+    today.setHours(23, 59, 59, 999)
     return visitDate <= today
   }
   return true
 }, {
   message: 'Visit date cannot be in the future',
   path: ['dateOfVisit']
+}).refine((data) => {
+  if (data.occupation === 'Student') {
+    return !!data.schoolName?.trim()
+  }
+  return true
+}, {
+  message: 'School name is required for students',
+  path: ['schoolName']
+}).refine((data) => {
+  if (data.occupation === 'Student') {
+    return !!data.invitedBy?.trim()
+  }
+  return true
+}, {
+  message: 'Please specify who invited you',
+  path: ['invitedBy']
 })
 
 export type PublicVisitorRegistrationData = z.infer<typeof publicVisitorRegistrationSchema>
@@ -92,7 +106,7 @@ export const transformToFirstTimerData = (publicData: PublicVisitorRegistrationD
     lastName: publicData.lastName,
     phone: publicData.phone,
     email: publicData.email,
-    dateOfBirth: publicData.dateOfBirth && publicData.dateOfBirth.trim() !== '' ? publicData.dateOfBirth : undefined,
+    dateOfBirth: publicData.dateOfBirth,
     gender: publicData.gender,
     maritalStatus: publicData.maritalStatus,
     occupation: publicData.occupation,
@@ -108,7 +122,9 @@ export const transformToFirstTimerData = (publicData: PublicVisitorRegistrationD
     dateOfVisit: publicData.dateOfVisit,
     serviceType: publicData.serviceType,
     howDidYouHear: publicData.howDidYouHear,
-    visitorType: 'first_time' as const, // Default for public registration
+    invitedBy: publicData.invitedBy,
+    schoolName: publicData.schoolName || undefined,
+    visitorType: 'first_time' as const,
     familyMembers: publicData.familyMembers || [],
     interests: publicData.interests || [],
     servingInterests: publicData.servingInterests || [],

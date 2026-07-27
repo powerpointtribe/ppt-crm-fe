@@ -67,6 +67,7 @@ interface ReportStats {
   trafficSourceSummary: { name: string; value: number; percentage: number }[]
   joinUsChoicesByService: any[]
   joinUsChoicesSummary: { name: string; value: number; percentage: number }[]
+  serviceExperienceSummary: { name: string; value: number; percentage: number }[]
   secondTimerRetention: {
     byService: any[]
     expectedCount: number
@@ -378,6 +379,13 @@ export default function FirstTimerReports() {
       { name: 'Yes', value: 31, percentage: 66.0 },
       { name: 'Maybe', value: 10, percentage: 21.3 },
       { name: 'No', value: 6, percentage: 12.8 },
+    ],
+    serviceExperienceSummary: [
+      { name: 'The worship', value: 15, percentage: 31.9 },
+      { name: 'The sermon', value: 12, percentage: 25.5 },
+      { name: 'The atmosphere', value: 10, percentage: 21.3 },
+      { name: 'The people', value: 7, percentage: 14.9 },
+      { name: 'Everything', value: 3, percentage: 6.4 },
     ],
     secondTimerRetention: {
       byService: [
@@ -760,6 +768,51 @@ export default function FirstTimerReports() {
               </ChartCard>
             </div>
 
+            {/* Service Experience Feedback */}
+            {reportData.serviceExperienceSummary && reportData.serviceExperienceSummary.length > 0 && (
+              <ChartCard title="What Visitors Enjoyed" subtitle="Service experience feedback from first-timers" compact>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="h-52">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={reportData.serviceExperienceSummary.slice(0, 8)}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={70}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {reportData.serviceExperienceSummary.slice(0, 8).map((_entry, index) => (
+                            <Cell key={`exp-${index}`} fill={[...CHART_COLORS, '#F97316', '#14B8A6'][index % 8]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-col justify-center space-y-2 max-h-52 overflow-y-auto">
+                    {reportData.serviceExperienceSummary.map((item, index) => (
+                      <div key={item.name} className="flex items-start gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full mt-0.5 shrink-0"
+                          style={{ backgroundColor: [...CHART_COLORS, '#F97316', '#14B8A6'][index % 8] }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between text-xs gap-2">
+                            <span className="text-gray-600 dark:text-gray-400 truncate">{item.name}</span>
+                            <span className="font-semibold text-gray-900 dark:text-white shrink-0">{item.value}</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400">{item.percentage.toFixed(1)}%</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </ChartCard>
+            )}
+
             {/* Row 4: Detailed Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Traffic Source by Service */}
@@ -772,10 +825,15 @@ export default function FirstTimerReports() {
                       <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <Tooltip content={<CustomTooltip />} />
                       <Legend wrapperStyle={{ fontSize: '10px' }} />
-                      <Bar dataKey="Friend/Colleague" stackId="a" fill={CHART_COLORS[0]} />
-                      <Bar dataKey="Others" stackId="a" fill={CHART_COLORS[1]} />
-                      <Bar dataKey="Social Media" stackId="a" fill={CHART_COLORS[2]} />
-                      <Bar dataKey="Special Programs" stackId="a" fill={CHART_COLORS[3]} />
+                      <Bar dataKey="Friend/Colleague" stackId="a" fill="#6366F1" />
+                      <Bar dataKey="Family" stackId="a" fill="#8B5CF6" />
+                      <Bar dataKey="Social Media" stackId="a" fill="#06B6D4" />
+                      <Bar dataKey="Special Programs" stackId="a" fill="#10B981" />
+                      <Bar dataKey="Outreach" stackId="a" fill="#F59E0B" />
+                      <Bar dataKey="Advertisement" stackId="a" fill="#EC4899" />
+                      <Bar dataKey="Walk-in/Passerby" stackId="a" fill="#F97316" />
+                      <Bar dataKey="Media" stackId="a" fill="#14B8A6" />
+                      <Bar dataKey="Other" stackId="a" fill="#9CA3AF" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

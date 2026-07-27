@@ -830,6 +830,17 @@ export default function FirstTimerDetail() {
                           <span className="text-gray-900 text-right max-w-[60%]">{firstTimer.serviceExperience}</span>
                         </div>
                       )}
+                      {firstTimer.interestedInJoining && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Interested in Joining</span>
+                          <span className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize",
+                            firstTimer.interestedInJoining === 'yes' && "bg-green-100 text-green-700",
+                            firstTimer.interestedInJoining === 'maybe' && "bg-yellow-100 text-yellow-700",
+                            firstTimer.interestedInJoining === 'no' && "bg-red-100 text-red-700"
+                          )}>{firstTimer.interestedInJoining}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1122,10 +1133,10 @@ export default function FirstTimerDetail() {
                           <p className="text-sm text-gray-900">{firstTimer.occupation}</p>
                         </div>
                       )}
-                      {(firstTimer as any).schoolName && (
+                      {firstTimer.schoolName && (
                         <div>
                           <p className="text-xs text-gray-500 mb-1">School/University</p>
-                          <p className="text-sm text-gray-900">{(firstTimer as any).schoolName}</p>
+                          <p className="text-sm text-gray-900">{firstTimer.schoolName}</p>
                         </div>
                       )}
                       {firstTimer.numberOfChildren !== undefined && firstTimer.numberOfChildren > 0 && (

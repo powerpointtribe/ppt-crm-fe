@@ -6,7 +6,7 @@ export interface FollowUpRecord {
   date: string
   method: 'phone' | 'email' | 'sms' | 'whatsapp' | 'visit' | 'in_visit'
   notes: string
-  outcome: 'successful' | 'no_answer' | 'busy' | 'not_interested' | 'interested' | 'follow_up_needed'
+  outcome: 'successful' | 'no_answer' | 'busy' | 'not_interested' | 'interested' | 'undecided' | 'follow_up_needed'
   contactedBy: string | {
     _id: string
     firstName: string

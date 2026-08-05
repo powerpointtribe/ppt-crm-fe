@@ -14,7 +14,7 @@ const followUpSchema = z.object({
     required_error: 'Select a contact method'
   }),
   notes: z.string().optional(),
-  outcome: z.enum(['no_answer', 'busy', 'not_interested', 'interested', 'follow_up_needed'], {
+  outcome: z.enum(['no_answer', 'busy', 'not_interested', 'interested', 'undecided', 'follow_up_needed'], {
     required_error: 'Select an outcome'
   }),
   nextFollowUpDate: z.string().optional(),
@@ -53,6 +53,7 @@ const outcomes = [
   { value: 'no_answer', label: 'No Answer' },
   { value: 'busy', label: 'Busy' },
   { value: 'not_interested', label: 'Not Interested' },
+  { value: 'undecided', label: 'Undecided' },
   { value: 'follow_up_needed', label: 'Churched' }
 ]
 

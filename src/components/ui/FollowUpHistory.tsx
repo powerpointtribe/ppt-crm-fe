@@ -45,6 +45,7 @@ const getOutcomeIcon = (outcome: FollowUpRecord['outcome']) => {
     case 'no_answer': return Clock
     case 'busy': return Clock
     case 'not_interested': return XCircle
+    case 'undecided': return AlertCircle
     case 'follow_up_needed': return ArrowRight
     default: return AlertCircle
   }
@@ -57,6 +58,7 @@ const getOutcomeColor = (outcome: FollowUpRecord['outcome']) => {
     case 'no_answer': return 'text-yellow-600 bg-yellow-100'
     case 'busy': return 'text-yellow-600 bg-yellow-100'
     case 'not_interested': return 'text-red-600 bg-red-100'
+    case 'undecided': return 'text-amber-600 bg-amber-100'
     case 'follow_up_needed': return 'text-blue-600 bg-blue-100'
     default: return 'text-gray-600 bg-gray-100'
   }
@@ -93,6 +95,7 @@ const formatOutcomeLabel = (outcome: FollowUpRecord['outcome']) => {
     case 'no_answer': return 'No Answer'
     case 'busy': return 'Busy/Unavailable'
     case 'not_interested': return 'Not Interested'
+    case 'undecided': return 'Undecided'
     case 'follow_up_needed': return 'Follow-up Needed'
     default: return outcome
   }

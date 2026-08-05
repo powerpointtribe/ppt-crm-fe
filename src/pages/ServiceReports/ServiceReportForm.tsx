@@ -57,6 +57,7 @@ export default function ServiceReportForm({
     numberOfFemales: 0,
     numberOfChildren: 0,
     numberOfFirstTimers: 0,
+    headcountOnly: false,
     notes: '',
     branchId: defaultBranchId || '',
     ...initialData
@@ -77,15 +78,28 @@ export default function ServiceReportForm({
     setErrors(validationErrors)
   }, [formData.totalAttendance, formData.numberOfMales, formData.numberOfFemales, formData.numberOfChildren, formData.numberOfFirstTimers])
 
-  // Auto-sync total when autoSync is enabled
+  // Auto-sync total when autoSync is enabled (disabled for head-count-only reports,
+  // where the total is entered directly as the head count).
   useEffect(() => {
-    if (autoSync) {
+    if (autoSync && !formData.headcountOnly) {
       const calculatedTotal = formData.numberOfMales + formData.numberOfFemales + formData.numberOfChildren
       if (calculatedTotal !== formData.totalAttendance && calculatedTotal > 0) {
         setFormData(prev => ({ ...prev, totalAttendance: calculatedTotal }))
       }
     }
-  }, [formData.numberOfMales, formData.numberOfFemales, formData.numberOfChildren, autoSync])
+  }, [formData.numberOfMales, formData.numberOfFemales, formData.numberOfChildren, autoSync, formData.headcountOnly])
+
+  // Toggle head-count-only mode: turning it on clears the breakdown and switches
+  // the total to a manually-entered head count.
+  const toggleHeadcountOnly = () => {
+    setFormData(prev => {
+      const next = !prev.headcountOnly
+      return next
+        ? { ...prev, headcountOnly: true, numberOfMales: 0, numberOfFemales: 0, numberOfChildren: 0 }
+        : { ...prev, headcountOnly: false }
+    })
+    setAutoSync(false)
+  }
 
   const handleInputChange = (field: keyof CreateServiceReportData, value: any) => {
     if (field === 'totalAttendance') {
@@ -132,6 +146,12 @@ export default function ServiceReportForm({
     }
 
     const dataToSubmit = { ...formData }
+    // Head-count-only reports don't capture the gender/age breakdown.
+    if (formData.headcountOnly) {
+      dataToSubmit.numberOfMales = 0
+      dataToSubmit.numberOfFemales = 0
+      dataToSubmit.numberOfChildren = 0
+    }
     if ((formData.serviceTags || []).includes(ServiceTag.OTHERS) && otherTagDescription.trim()) {
       const prefix = `[Other: ${otherTagDescription.trim()}]`
       dataToSubmit.notes = formData.notes
@@ -320,22 +340,47 @@ export default function ServiceReportForm({
             <Users className="w-4 h-4 text-indigo-600" />
             <span className="text-xs font-semibold text-gray-800">Attendance</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setAutoSync(!autoSync)}
-            className={cn(
-              "flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors",
-              autoSync
-                ? "bg-indigo-100 text-indigo-700"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleHeadcountOnly}
+              title="For special events: capture only the total head count"
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors",
+                formData.headcountOnly
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              )}
+            >
+              <Users className="w-3 h-3" />
+              Head count only {formData.headcountOnly ? 'ON' : 'OFF'}
+            </button>
+            {!formData.headcountOnly && (
+              <button
+                type="button"
+                onClick={() => setAutoSync(!autoSync)}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors",
+                  autoSync
+                    ? "bg-indigo-100 text-indigo-700"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                )}
+              >
+                <Calculator className="w-3 h-3" />
+                Auto-sync {autoSync ? 'ON' : 'OFF'}
+              </button>
             )}
-          >
-            <Calculator className="w-3 h-3" />
-            Auto-sync {autoSync ? 'ON' : 'OFF'}
-          </button>
+          </div>
         </div>
+        {formData.headcountOnly && (
+          <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 mb-2">
+            Special event: only the total head count is required — the males / females / children breakdown is skipped.
+          </p>
+        )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className={cn('grid gap-2', formData.headcountOnly ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4')}>
+          {!formData.headcountOnly && (
+          <>
           {/* Males */}
           <div>
             <label className="block text-xs text-gray-500 mb-1 text-center">Males</label>
@@ -383,6 +428,8 @@ export default function ServiceReportForm({
               <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500"></div>
             </div>
           </div>
+          </>
+          )}
 
           {/* First Timers */}
           <div>
@@ -409,9 +456,11 @@ export default function ServiceReportForm({
         {/* Total Display */}
         <div className="mt-3 pt-3 border-t border-gray-200/60">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-600">Total Attendance</span>
+            <span className="text-xs font-medium text-gray-600">
+              {formData.headcountOnly ? 'Head count' : 'Total Attendance'}
+            </span>
             <div className="flex items-center gap-2">
-              {!autoSync && (
+              {(!autoSync || formData.headcountOnly) && (
                 <input
                   type="number"
                   min="0"
@@ -422,9 +471,9 @@ export default function ServiceReportForm({
               )}
               <div className={cn(
                 "px-3 py-1.5 rounded-lg font-bold text-lg",
-                autoSync ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600"
+                autoSync && !formData.headcountOnly ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600"
               )}>
-                {autoSync ? calculateTotal() : formData.totalAttendance}
+                {autoSync && !formData.headcountOnly ? calculateTotal() : formData.totalAttendance}
               </div>
             </div>
           </div>

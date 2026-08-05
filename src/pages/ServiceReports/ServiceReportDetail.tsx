@@ -245,12 +245,17 @@ export default function ServiceReportDetail() {
             <div className="relative">
               <div className="flex items-center gap-2 mb-4">
                 <Users className="w-5 h-5 text-indigo-200" />
-                <span className="text-sm font-medium text-indigo-200">Total Attendance</span>
+                <span className="text-sm font-medium text-indigo-200">{report.headcountOnly ? 'Head Count' : 'Total Attendance'}</span>
+                {report.headcountOnly && (
+                  <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/15 text-white">Special event · head count only</span>
+                )}
               </div>
 
               <div className="text-6xl font-bold mb-6">{report.totalAttendance}</div>
 
-              <div className="grid grid-cols-4 gap-4">
+              <div className={`grid gap-4 ${report.headcountOnly ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-4'}`}>
+                {!report.headcountOnly && (
+                <>
                 <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
                   <div className="flex items-center gap-1 mb-1">
                     <div className="w-2 h-2 rounded-full bg-blue-400" />
@@ -272,6 +277,8 @@ export default function ServiceReportDetail() {
                   </div>
                   <div className="text-2xl font-bold">{report.numberOfChildren}</div>
                 </div>
+                </>
+                )}
                 <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-purple-400/30">
                   <div className="flex items-center gap-1 mb-1">
                     <Sparkles className="w-3 h-3 text-purple-300" />
@@ -430,7 +437,8 @@ export default function ServiceReportDetail() {
                 </div>
               </motion.div>
 
-              {/* Demographics Chart */}
+              {/* Demographics Chart — skipped for head-count-only reports */}
+              {!report.headcountOnly && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -458,6 +466,7 @@ export default function ServiceReportDetail() {
                   </div>
                 </div>
               </motion.div>
+              )}
             </div>
           </div>
         </div>

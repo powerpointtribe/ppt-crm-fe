@@ -34,6 +34,7 @@ export interface ServiceReport {
   numberOfFemales: number
   numberOfChildren: number
   numberOfFirstTimers: number
+  headcountOnly?: boolean
   reportedBy: {
     _id: string
     firstName: string
@@ -67,6 +68,7 @@ export interface CreateServiceReportData {
   numberOfFemales: number
   numberOfChildren: number
   numberOfFirstTimers: number
+  headcountOnly?: boolean
   notes?: string
   branchId?: string
 }
@@ -309,7 +311,9 @@ export const serviceReportsService = {
   validateAttendanceNumbers: (data: CreateServiceReportData | UpdateServiceReportData): string[] => {
     const errors: string[] = []
 
-    if (data.totalAttendance !== undefined &&
+    // Head-count-only (special event) reports skip the gender/age breakdown rule.
+    if (!data.headcountOnly &&
+        data.totalAttendance !== undefined &&
         data.numberOfMales !== undefined &&
         data.numberOfFemales !== undefined &&
         data.numberOfChildren !== undefined) {

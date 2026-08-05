@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -185,10 +185,19 @@ export default function FirstTimers() {
     }
   }, [])
 
+  const isInitialLoad = useRef(true)
   useEffect(() => {
-    // Reset to page 1 when filters or tab change
+    // On the first mount, honour the page restored from the URL (e.g. when
+    // returning from a first-timer detail via Back) instead of forcing page 1.
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false
+      loadFirstTimers(currentPage, activeTab)
+      return
+    }
+    // Afterwards, a genuine filter/tab change should reset to page 1.
     setCurrentPage(1)
     loadFirstTimers(1, activeTab)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, selectedBranch, activeTab, dateRange])
 
   useEffect(() => {
@@ -205,6 +214,14 @@ export default function FirstTimers() {
     if (branchFilter) params.set('branch', branchFilter)
     if (dateRange !== 'all') params.set('dateRange', dateRange)
     setSearchParams(params, { replace: true })
+    // Remember the list's current query so "Back to First Timers" from a detail
+    // page can return to this exact state (page, tab, filters) regardless of how
+    // the detail was reached.
+    try {
+      sessionStorage.setItem('ft-list-search', params.toString())
+    } catch {
+      /* ignore storage errors */
+    }
   }, [activeTab, searchTerm, currentPage, statusFilter, assignedFilter, visitorTypeFilter, howDidYouHearFilter, dateFromFilter, dateToFilter, branchFilter, dateRange])
 
   useEffect(() => {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Search, Calendar, Clock, Send, Eye, Edit, Trash2,
   MessageSquare, CheckCircle, AlertCircle, Loader, Mail,
-  ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, Users
+  ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, Users, RefreshCw
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -295,6 +295,23 @@ export default function MessageDrafts() {
                                   </button>
                                 </>
                               )}
+                              {draft.status === 'failed' && (
+                                <>
+                                  <button
+                                    onClick={() => { setDraftToSend(draft); setSendNowModalOpen(true); setOpenMenuId(null) }}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50"
+                                  >
+                                    <RefreshCw className="w-3.5 h-3.5" /> Retry
+                                  </button>
+                                  <div className="h-px bg-gray-100 my-1"></div>
+                                  <button
+                                    onClick={() => { setDraftToDelete(draft); setDeleteModalOpen(true); setOpenMenuId(null) }}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                  </button>
+                                </>
+                              )}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -363,14 +380,18 @@ export default function MessageDrafts() {
           </div>
         </Modal>
 
-        {/* Send Now Modal */}
-        <Modal isOpen={sendNowModalOpen} onClose={() => setSendNowModalOpen(false)} title="Send Now">
+        {/* Send Now / Retry Modal */}
+        <Modal isOpen={sendNowModalOpen} onClose={() => setSendNowModalOpen(false)} title={draftToSend?.status === 'failed' ? 'Retry delivery' : 'Send Now'}>
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">This will send the email to all matching recipients immediately.</p>
+            <p className="text-sm text-gray-600">
+              {draftToSend?.status === 'failed'
+                ? 'This will re-attempt delivery to all matching recipients now.'
+                : 'This will send the email to all matching recipients immediately.'}
+            </p>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={() => setSendNowModalOpen(false)} disabled={sendLoading}>Cancel</Button>
               <Button size="sm" onClick={handleSendNow} disabled={sendLoading}>
-                {sendLoading ? 'Sending...' : 'Send Now'}
+                {sendLoading ? 'Sending...' : draftToSend?.status === 'failed' ? 'Retry' : 'Send Now'}
               </Button>
             </div>
           </div>

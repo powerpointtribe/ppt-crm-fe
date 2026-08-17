@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, Edit, Trash2, Send, Calendar, Clock, User,
-  CheckCircle, AlertCircle, Loader, MessageSquare, Mail
+  CheckCircle, AlertCircle, Loader, MessageSquare, Mail, RefreshCw
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Button from '@/components/ui/Button'
@@ -123,7 +123,8 @@ export default function MessageDraftDetail() {
 
   const StatusIcon = statusIcons[draft.status]
   const canEdit = draft.status === 'draft' || draft.status === 'scheduled'
-  const canSend = draft.status === 'draft' || draft.status === 'scheduled'
+  const isFailed = draft.status === 'failed'
+  const canSend = draft.status === 'draft' || draft.status === 'scheduled' || isFailed
   const canDelete = draft.status === 'draft' || draft.status === 'scheduled'
 
   return (
@@ -162,8 +163,8 @@ export default function MessageDraftDetail() {
                   onClick={() => setSendNowModalOpen(true)}
                   className="flex items-center gap-2"
                 >
-                  <Send className="w-4 h-4" />
-                  Send Now
+                  {isFailed ? <RefreshCw className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                  {isFailed ? 'Retry' : 'Send Now'}
                 </Button>
               )}
               {canDelete && (
@@ -415,11 +416,13 @@ export default function MessageDraftDetail() {
         <Modal
           isOpen={sendNowModalOpen}
           onClose={() => setSendNowModalOpen(false)}
-          title="Send Message Now"
+          title={isFailed ? 'Retry delivery' : 'Send Message Now'}
         >
           <div className="space-y-4">
             <p className="text-gray-600">
-              Are you sure you want to send this message now? It will be sent to all first timers from {formatDate(draft.scheduledDate)}.
+              {isFailed
+                ? `This will re-attempt delivery to all first timers from ${formatDate(draft.scheduledDate)}.`
+                : `Are you sure you want to send this message now? It will be sent to all first timers from ${formatDate(draft.scheduledDate)}.`}
             </p>
             <div className="flex justify-end gap-3">
               <Button
@@ -433,7 +436,7 @@ export default function MessageDraftDetail() {
                 onClick={handleSendNow}
                 disabled={sendLoading}
               >
-                {sendLoading ? 'Sending...' : 'Send Now'}
+                {sendLoading ? 'Sending...' : isFailed ? 'Retry' : 'Send Now'}
               </Button>
             </div>
           </div>

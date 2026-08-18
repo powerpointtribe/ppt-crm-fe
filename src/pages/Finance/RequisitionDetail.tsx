@@ -8,12 +8,14 @@ import {
   User,
   FileText,
   GitBranch,
+  Send,
 } from 'lucide-react'
 import Layout from '@/components/Layout'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import RequisitionTimeline from '@/components/finance/RequisitionTimeline'
 import { financeService } from '@/services/finance'
+import { showToast } from '@/utils/toast'
 import { useAuth } from '@/contexts/AuthContext-unified'
 import type { Requisition } from '@/types/finance'
 import { requisitionStatusConfig } from '@/types/finance'
@@ -107,6 +109,21 @@ export default function RequisitionDetail() {
       loadRequisition()
     } catch (err: any) {
       setError(err.message || 'Failed to submit')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleResendNotification = async () => {
+    try {
+      setActionLoading(true)
+      const res = await financeService.resendNotification(id!)
+      showToast.success(
+        res.message ||
+          `Notification re-sent to ${res.recipientCount} ${res.stage}(s).`
+      )
+    } catch (err: any) {
+      showToast.error(err.message || 'Failed to resend notification')
     } finally {
       setActionLoading(false)
     }
@@ -219,6 +236,30 @@ export default function RequisitionDetail() {
             {requisition.status === 'draft' && isOwner && (
               <Button onClick={handleSubmit} disabled={actionLoading}>
                 Submit for Approval
+              </Button>
+            )}
+            {(requisition.status === 'submitted' ||
+              requisition.status === 'pending_approval') && (
+              <Button
+                variant="outline"
+                onClick={handleResendNotification}
+                disabled={actionLoading}
+                title="Re-send the approval email to the branch approver(s)"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Resend to approver
+              </Button>
+            )}
+            {(requisition.status === 'approved' ||
+              requisition.status === 'pending_disbursement') && (
+              <Button
+                variant="outline"
+                onClick={handleResendNotification}
+                disabled={actionLoading}
+                title="Re-send the disbursement email to the branch disburser(s)"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Resend to disburser
               </Button>
             )}
             {canShowApproveReject && (

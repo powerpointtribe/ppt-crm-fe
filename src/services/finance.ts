@@ -171,6 +171,19 @@ export const financeService = {
   },
 
   /**
+   * Resend the pending notification email — to approver(s) while the
+   * requisition is awaiting approval, or disburser(s) once it is approved.
+   */
+  resendNotification: async (
+    id: string
+  ): Promise<{ stage: 'approver' | 'disburser'; recipientCount: number; message?: string }> => {
+    const response = await apiService.post<
+      ApiResponse<{ stage: 'approver' | 'disburser'; recipientCount: number }>
+    >(`/finance/requisitions/${id}/resend-notification`)
+    return { ...response.data, message: response.message }
+  },
+
+  /**
    * Approve a requisition
    */
   approveRequisition: async (

@@ -29,24 +29,54 @@ interface CartItem {
   quantity: number
 }
 
-interface VariantGroup {
+interface ColourOption {
   colour: string
+  fullColour: string
   images: string[]
   sizes: { size: string; stock: number; variant: ProductVariant }[]
 }
 
-function groupVariantsByColour(variants: ProductVariant[]): VariantGroup[] {
-  const groups: VariantGroup[] = []
-  let current: VariantGroup | null = null
+interface DesignGroup {
+  design: string
+  colours: ColourOption[]
+}
+
+const COLOUR_HEX: Record<string, string> = {
+  Black: '#3a3735',
+  Grey:  '#9a9590',
+  Blue:  '#5a6e8a',
+  Red:   '#96403c',
+}
+
+function parseDesignColour(colour: string): { design: string; color: string } {
+  const m = colour.match(/^(.+?)\s*\(([^)]+)\)$/)
+  return m ? { design: m[1].trim(), color: m[2].trim() } : { design: colour, color: '' }
+}
+
+function groupVariantsByDesign(variants: ProductVariant[]): DesignGroup[] {
+  const colourGroups: { fullColour: string; images: string[]; sizes: { size: string; stock: number; variant: ProductVariant }[] }[] = []
+  let cur: typeof colourGroups[0] | null = null
   for (const v of variants) {
-    const startsNewGroup = !current || v.colour !== current.colour || (v.images?.length && current.sizes.length > 0)
-    if (startsNewGroup) {
-      current = { colour: v.colour, images: v.images?.length ? [...v.images] : [], sizes: [] }
-      groups.push(current)
+    const newGroup = !cur || v.colour !== cur.fullColour || (v.images?.length && cur.sizes.length > 0)
+    if (newGroup) {
+      cur = { fullColour: v.colour, images: v.images?.length ? [...v.images] : [], sizes: [] }
+      colourGroups.push(cur)
     }
-    current!.sizes.push({ size: v.size, stock: v.stock, variant: v })
+    cur!.sizes.push({ size: v.size, stock: v.stock, variant: v })
   }
-  return groups
+
+  const designMap = new Map<string, DesignGroup>()
+  for (const cg of colourGroups) {
+    const { design, color } = parseDesignColour(cg.fullColour)
+    if (!designMap.has(design)) designMap.set(design, { design, colours: [] })
+    designMap.get(design)!.colours.push({
+      colour: color || cg.fullColour,
+      fullColour: cg.fullColour,
+      images: cg.images,
+      sizes: cg.sizes,
+    })
+  }
+  return Array.from(designMap.values())
 }
 
 // ─── Product card for store listing ─────────────────────────────
@@ -179,6 +209,22 @@ export default function PublicStorePage() {
 
   useEffect(() => { localStorage.setItem('store_cart', JSON.stringify(cart)) }, [cart])
 
+  // Prune stale cart items whose colour/size no longer exist in the product
+  useEffect(() => {
+    if (!product) return
+    const validKeys = new Set(product.variants.map(v => `${v.colour}|${v.size}`))
+    setCart(prev => {
+      const pruned = prev.filter(item => {
+        if (item.product._id !== product._id) return true
+        return validKeys.has(`${item.variant.colour}|${item.variant.size}`)
+      })
+      if (pruned.length < prev.length) {
+        showToast.info(`${prev.length - pruned.length} outdated item(s) removed from cart`)
+      }
+      return pruned.length === prev.length ? prev : pruned
+    })
+  }, [product])
+
   // Checkout
   const [couponCode, setCouponCode] = useState('')
   const [couponResult, setCouponResult] = useState<{ discountAmount: number; code: string } | null>(null)
@@ -215,27 +261,29 @@ export default function PublicStorePage() {
     }
   }
 
-  const variantGroups = useMemo(() =>
-    product ? groupVariantsByColour(product.variants) : []
+  const [selectedColour, setSelectedColour] = useState<string | null>(null)
+
+  const designGroups = useMemo(() =>
+    product ? groupVariantsByDesign(product.variants) : []
   , [product])
 
   const handleExpandVariant = (idx: number) => {
-    if (expandedIndex === idx) {
-      setExpandedIndex(null)
-      return
-    }
+    if (expandedIndex === idx) { setExpandedIndex(null); return }
     setExpandedIndex(idx)
-    const group = variantGroups[idx]
+    const group = designGroups[idx]
     if (group) {
-      const avail = group.sizes.find(s => s.stock > 0)
-      setSelectedSize(avail?.size || group.sizes[0]?.size || null)
+      const firstColour = group.colours[0]
+      setSelectedColour(firstColour?.colour || null)
+      const avail = firstColour?.sizes.find(s => s.stock > 0)
+      setSelectedSize(avail?.size || firstColour?.sizes[0]?.size || null)
     }
     setQuantity(1)
   }
 
-  const expandedGroup = expandedIndex !== null ? variantGroups[expandedIndex] ?? null : null
-  const selectedVariant = expandedGroup
-    ? expandedGroup.sizes.find(s => s.size === selectedSize)?.variant || null
+  const expandedGroup = expandedIndex !== null ? designGroups[expandedIndex] ?? null : null
+  const activeColourOption = expandedGroup?.colours.find(c => c.colour === selectedColour) || expandedGroup?.colours[0] || null
+  const selectedVariant = activeColourOption
+    ? activeColourOption.sizes.find(s => s.size === selectedSize)?.variant || null
     : null
 
   // ─── Cart ─────────────────────────────────────────────────────
@@ -254,6 +302,7 @@ export default function PublicStorePage() {
     })
     showToast.success(`Added to cart`)
     setQuantity(1)
+    setExpandedIndex(null)
   }
 
   const removeFromCart = (index: number) => setCart(prev => prev.filter((_, i) => i !== index))
@@ -345,7 +394,7 @@ export default function PublicStorePage() {
                         {img && <img src={img} alt="" className="w-16 h-16 rounded-md object-cover flex-shrink-0" />}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-gray-900 text-sm truncate">{item.product.name}</p>
-                          <p className="text-xs text-gray-500">{item.variant.size} / {item.variant.colour}</p>
+                          <p className="text-xs text-gray-500">{parseDesignColour(item.variant.colour).design} · {parseDesignColour(item.variant.colour).color} · {item.variant.size}</p>
                           <p className="text-sm font-semibold text-indigo-600 mt-1">{formatPrice(item.product.price)}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
@@ -376,7 +425,7 @@ export default function PublicStorePage() {
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 {cart.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm">
-                    <span className="text-gray-600">{item.product.name} ({item.variant.size}/{item.variant.colour}) x{item.quantity}</span>
+                    <span className="text-gray-600">{parseDesignColour(item.variant.colour).design} ({parseDesignColour(item.variant.colour).color}, {item.variant.size}) x{item.quantity}</span>
                     <span className="text-gray-900">{formatPrice(item.product.price * item.quantity)}</span>
                   </div>
                 ))}
@@ -481,7 +530,7 @@ export default function PublicStorePage() {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{product.name}</h1>
           <div className="flex items-center gap-3 mt-1">
             <p className="text-xl font-bold text-indigo-600">{formatPrice(product.price)}</p>
-            <span className="text-xs text-gray-400">{variantGroups.length} designs available</span>
+            <span className="text-xs text-gray-400">{designGroups.length} designs available</span>
           </div>
           {product.description && <p className="text-gray-500 mt-1 text-sm">{product.description}</p>}
         </div>
@@ -490,9 +539,11 @@ export default function PublicStorePage() {
       {/* Variant cards grid */}
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-          {variantGroups.map((group, idx) => {
-            const thumb = group.images[0] || product.images?.[0]
-            const totalStock = group.sizes.reduce((s, sz) => s + sz.stock, 0)
+          {designGroups.map((group, idx) => {
+            const firstWithImages = group.colours.find(c => c.images.length > 0)
+            const thumb = firstWithImages?.images[0] || product.images?.[0]
+            const totalStock = group.colours.reduce((s, c) => s + c.sizes.reduce((s2, sz) => s2 + sz.stock, 0), 0)
+            const availableColours = group.colours.map(c => c.colour)
 
             return (
               <button
@@ -502,7 +553,7 @@ export default function PublicStorePage() {
               >
                 {thumb ? (
                   <div className="aspect-square overflow-hidden">
-                    <img src={thumb} alt={group.colour} className="w-full h-full object-cover group-hover/card:scale-105 transition duration-300" />
+                    <img src={thumb} alt={group.design} className="w-full h-full object-cover group-hover/card:scale-105 transition duration-300" />
                   </div>
                 ) : (
                   <div className="aspect-square bg-gray-50 flex items-center justify-center">
@@ -510,11 +561,13 @@ export default function PublicStorePage() {
                   </div>
                 )}
                 <div className="p-2.5">
-                  <h3 className="font-semibold text-gray-900 text-xs sm:text-sm truncate group-hover/card:text-indigo-600 transition-colors">{group.colour}</h3>
+                  <h3 className="font-semibold text-gray-900 text-xs sm:text-sm truncate group-hover/card:text-indigo-600 transition-colors">{group.design}</h3>
                   <p className="text-xs font-bold text-indigo-600 mt-0.5">{formatPrice(product.price)}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <p className="text-[10px] text-gray-400">{group.sizes.map(s => s.size).join(' · ')}</p>
-                    {totalStock === 0 && <span className="text-[9px] px-1 py-px rounded-full bg-red-50 text-red-500 font-medium">Sold out</span>}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {availableColours.map(c => (
+                      <span key={c} className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: COLOUR_HEX[c] || '#ccc' }} />
+                    ))}
+                    {totalStock === 0 && <span className="text-[9px] px-1 py-px rounded-full bg-red-50 text-red-500 font-medium ml-auto">Sold out</span>}
                   </div>
                 </div>
               </button>
@@ -543,51 +596,90 @@ export default function PublicStorePage() {
               {/* Image side */}
               <div className="sm:w-[55%] flex-shrink-0 bg-gray-50">
                 <div className="p-3 sm:p-4 sm:h-full sm:flex sm:flex-col sm:justify-center">
-                  {expandedGroup.images.length > 0 ? (
-                    <ImageViewer images={expandedGroup.images} />
-                  ) : product.images?.length ? (
-                    <ImageViewer images={product.images} />
-                  ) : (
-                    <div className="aspect-square rounded-xl bg-gray-100 flex items-center justify-center">
-                      <ShoppingCart className="w-10 h-10 text-gray-200" />
-                    </div>
-                  )}
+                  {(() => {
+                    const imgs = activeColourOption?.images.length ? activeColourOption.images
+                      : expandedGroup.colours.find(c => c.images.length)?.images || product.images || []
+                    return imgs.length > 0 ? (
+                      <ImageViewer images={imgs} />
+                    ) : (
+                      <div className="aspect-square rounded-xl bg-gray-100 flex items-center justify-center">
+                        <ShoppingCart className="w-10 h-10 text-gray-200" />
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 
               {/* Details side */}
               <div className="sm:w-[45%] p-5 sm:p-6 flex flex-col justify-center gap-4 sm:overflow-y-auto sm:max-h-[92vh]">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">{expandedGroup.colour}</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">{expandedGroup.design}</h2>
                   <p className="text-xl font-bold text-indigo-600 mt-1">{formatPrice(product.price)}</p>
                 </div>
 
-                {/* Size selector */}
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Size</p>
-                  <div className="flex flex-wrap gap-2">
-                    {expandedGroup.sizes.map(s => {
-                      const isActive = selectedSize === s.size
-                      const hasStock = s.stock > 0
-                      return (
-                        <button
-                          key={s.size}
-                          onClick={() => { setSelectedSize(s.size); setQuantity(1) }}
-                          disabled={!hasStock}
-                          className={`w-12 h-12 rounded-xl border-2 text-sm font-semibold transition-all ${
-                            isActive
-                              ? 'border-indigo-600 bg-indigo-600 text-white shadow-md'
-                              : hasStock
-                                ? 'border-gray-200 text-gray-700 hover:border-indigo-400 hover:bg-indigo-50'
-                                : 'border-gray-100 text-gray-300 line-through cursor-not-allowed'
-                          }`}
-                        >
-                          {s.size}
-                        </button>
-                      )
-                    })}
+                {/* Colour selector */}
+                {expandedGroup.colours.length > 1 && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Colour <span className="font-normal text-gray-400">— {selectedColour}</span></p>
+                    <div className="flex flex-wrap gap-2">
+                      {expandedGroup.colours.map(c => {
+                        const isActive = selectedColour === c.colour
+                        const colourStock = c.sizes.reduce((s, sz) => s + sz.stock, 0)
+                        return (
+                          <button
+                            key={c.colour}
+                            onClick={() => {
+                              setSelectedColour(c.colour)
+                              const avail = c.sizes.find(s => s.stock > 0)
+                              setSelectedSize(avail?.size || c.sizes[0]?.size || null)
+                              setQuantity(1)
+                            }}
+                            disabled={colourStock === 0}
+                            title={c.colour}
+                            className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${
+                              isActive
+                                ? 'border-indigo-600 ring-2 ring-indigo-200 scale-110'
+                                : colourStock > 0
+                                  ? 'border-gray-200 hover:border-gray-400 hover:scale-105'
+                                  : 'border-gray-100 opacity-30 cursor-not-allowed'
+                            }`}
+                          >
+                            <span className="w-7 h-7 rounded-full" style={{ backgroundColor: COLOUR_HEX[c.colour] || '#ccc' }} />
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Size selector */}
+                {activeColourOption && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Size</p>
+                    <div className="flex flex-wrap gap-2">
+                      {activeColourOption.sizes.map(s => {
+                        const isActive = selectedSize === s.size
+                        const hasStock = s.stock > 0
+                        return (
+                          <button
+                            key={s.size}
+                            onClick={() => { setSelectedSize(s.size); setQuantity(1) }}
+                            disabled={!hasStock}
+                            className={`w-12 h-12 rounded-xl border-2 text-sm font-semibold transition-all ${
+                              isActive
+                                ? 'border-indigo-600 bg-indigo-600 text-white shadow-md'
+                                : hasStock
+                                  ? 'border-gray-200 text-gray-700 hover:border-indigo-400 hover:bg-indigo-50'
+                                  : 'border-gray-100 text-gray-300 line-through cursor-not-allowed'
+                            }`}
+                          >
+                            {s.size}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Quantity */}
                 {selectedVariant && selectedVariant.stock > 0 && (

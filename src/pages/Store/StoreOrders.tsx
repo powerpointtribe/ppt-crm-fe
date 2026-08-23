@@ -4,7 +4,7 @@ import { getOrders, updateOrderStatus, getOrderStats, verifyOrderPayment, type O
 import { showToast } from '@/utils/toast'
 import {
   Package, DollarSign, TrendingUp, ShoppingBag,
-  ChevronRight, Search, X, User, Phone, Mail,
+  ChevronRight, Search, X, User, Phone, Mail, Download,
 } from 'lucide-react'
 
 const STATUS_OPTIONS = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'failed']
@@ -139,6 +139,53 @@ export default function StoreOrders() {
 
   const totalItemsSold = stats?.totalItemsSold ?? 0
 
+  const [exporting, setExporting] = useState(false)
+  const handleExportCSV = async () => {
+    try {
+      setExporting(true)
+      const all = await getOrders({ page: 1, limit: 10000, status: statusFilter || undefined, search: debouncedSearch || undefined })
+      const rows = all.data.flatMap((o: Order) =>
+        o.items.map(item => {
+          const cm = item.colour?.match(/^(.+?)\s*\(([^)]+)\)$/)
+          const design = cm ? cm[1].trim() : item.colour || ''
+          const color = cm ? cm[2].trim() : ''
+          return [
+            o.orderNumber,
+            formatDate(o.createdAt),
+            o.delivery.fullName,
+            o.delivery.email || o.customerEmail || '',
+            o.delivery.phone,
+            o.delivery.address + (o.delivery.city ? ', ' + o.delivery.city : '') + (o.delivery.state ? ', ' + o.delivery.state : ''),
+            item.productName,
+            design,
+            color,
+            item.size || '',
+            item.quantity,
+            item.unitPrice,
+            item.totalPrice,
+            o.status,
+            o.paymentStatus,
+            o.totalAmount,
+          ]
+        })
+      )
+      const header = ['Order #', 'Date', 'Customer', 'Email', 'Phone', 'Address', 'Product', 'Design', 'Colour', 'Size', 'Qty', 'Unit Price', 'Item Total', 'Status', 'Payment', 'Order Total']
+      const csv = [header, ...rows].map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      showToast.success(`Exported ${all.data.length} orders`)
+    } catch {
+      showToast.error('Failed to export orders')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <Layout title="Orders" subtitle="Manage store orders">
 
@@ -222,21 +269,31 @@ export default function StoreOrders() {
         </div>
       )}
 
-      {/* Search bar */}
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by order #, name, email..."
-          className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        />
-        {search && (
-          <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            <X className="w-4 h-4" />
-          </button>
-        )}
+      {/* Search + Export */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by order #, name, email..."
+            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <button
+          onClick={handleExportCSV}
+          disabled={exporting || orders.length === 0}
+          className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Download className="w-4 h-4" />
+          {exporting ? 'Exporting...' : 'Export'}
+        </button>
       </div>
 
       {/* Orders table */}

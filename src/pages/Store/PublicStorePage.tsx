@@ -368,9 +368,8 @@ export default function PublicStorePage() {
     }
   }
 
-  // ─── Cart drawer (shared) ─────────────────────────────────────
-  function CartDrawer() {
-    return (
+  // ─── Cart drawer (inline to avoid remounting on state change) ──
+  const cartDrawer = (showCart || showCheckout) && (
       <div className="fixed inset-0 z-50 flex justify-end" style={{ animation: 'storeFadeIn .2s ease' }}>
         <div className="absolute inset-0 bg-black/50" onClick={() => { setShowCart(false); setShowCheckout(false) }} />
         <div className="relative w-full max-w-md bg-white h-full overflow-y-auto shadow-xl" style={{ animation: 'storeFadeIn .25s ease' }}>
@@ -469,8 +468,7 @@ export default function PublicStorePage() {
           )}
         </div>
       </div>
-    )
-  }
+  )
 
   if (loading) {
     return (
@@ -505,7 +503,7 @@ export default function PublicStorePage() {
             </div>
           )}
         </div>
-        {(showCart || showCheckout) && <CartDrawer />}
+        {cartDrawer}
       </div>
     )
   }
@@ -715,7 +713,7 @@ export default function PublicStorePage() {
         </div>
       )}
 
-      {(showCart || showCheckout) && <CartDrawer />}
+      {cartDrawer}
     </div>
   )
 }

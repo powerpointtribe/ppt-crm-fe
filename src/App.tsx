@@ -26,8 +26,8 @@ import PublicEventRegistration from '@/pages/PublicEventRegistration'
 import PublicTestimonyForm from '@/pages/PublicTestimonyForm'
 import PublicFeedbackForm from '@/pages/PublicFeedbackForm'
 import DocsPage from '@/pages/DocsPage'
-import PublicStorePage from '@/pages/Store/PublicStorePage'
-import PaymentVerify from '@/pages/Store/PaymentVerify'
+const PublicStorePage = lazy(() => import('@/pages/Store/PublicStorePage'))
+const PaymentVerify = lazy(() => import('@/pages/Store/PaymentVerify'))
 
 // Dashboard - Load immediately (most visited)
 import Dashboard from '@/pages/Dashboard'
@@ -201,9 +201,9 @@ function App() {
           <Route path="/event-testimony/:slug" element={<PublicTestimonyForm />} />
           <Route path="/event-feedback/:slug" element={<PublicFeedbackForm />} />
           <Route path="/docs" element={<DocsPage />} />
-          <Route path="/store" element={<PublicStorePage />} />
-          <Route path="/store/payment/verify" element={<PaymentVerify />} />
-          <Route path="/store/:slug" element={<PublicStorePage />} />
+          <Route path="/store" element={<LazyPage><PublicStorePage /></LazyPage>} />
+          <Route path="/store/payment/verify" element={<LazyPage><PaymentVerify /></LazyPage>} />
+          <Route path="/store/:slug" element={<LazyPage><PublicStorePage /></LazyPage>} />
 
           {/* Dashboard - Requires Login Only */}
           <Route path="/dashboard" element={

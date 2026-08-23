@@ -19,6 +19,22 @@ function ensureAnimStyles() {
   }
 }
 
+function setMeta(name: string, content: string) {
+  let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null
+  if (!el) {
+    el = document.createElement('meta')
+    el.name = name
+    document.head.appendChild(el)
+  }
+  el.content = content
+}
+
+function trackStoreEvent(event: string, data?: Record<string, any>) {
+  const w = window as any
+  if (typeof w.gtag === 'function') w.gtag('event', event, data)
+  if (typeof w.fbq === 'function') w.fbq('trackCustom', event, data)
+}
+
 function formatPrice(amount: number) {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(amount)
 }
@@ -110,7 +126,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
 }
 
 // ─── Image viewer with auto-play crossfade ──────────────────────
-function ImageViewer({ images }: { images: string[] }) {
+function ImageViewer({ images, alt = 'Product image' }: { images: string[]; alt?: string }) {
   const [current, setCurrent] = useState(0)
   const [playing, setPlaying] = useState(false)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -140,7 +156,7 @@ function ImageViewer({ images }: { images: string[] }) {
           <img
             key={url}
             src={url}
-            alt=""
+            alt={`${alt} ${i + 1} of ${images.length}`}
             className="absolute inset-0 w-full h-full object-cover"
             style={{ opacity: i === current ? 1 : 0, transition: 'opacity 0.6s ease-in-out' }}
           />
@@ -173,7 +189,7 @@ function ImageViewer({ images }: { images: string[] }) {
               onClick={() => goTo(i)}
               className={`flex-1 aspect-square rounded overflow-hidden border-2 transition ${i === current ? 'border-indigo-500' : 'border-transparent hover:border-indigo-300'}`}
             >
-              <img src={url} alt="" className="w-full h-full object-cover" />
+              <img src={url} alt={`${alt} thumbnail ${i + 1}`} className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -236,6 +252,18 @@ export default function PublicStorePage() {
     if (slug) loadProduct(slug)
     else loadAllProducts()
   }, [slug])
+
+  useEffect(() => {
+    if (product) {
+      document.title = `${product.name} | Store`
+      setMeta('description', product.description || `Shop ${product.name} — ${designGroups.length} designs available. ${formatPrice(product.price)} each.`)
+      trackStoreEvent('page_viewed', { product: product.name, slug: product.slug })
+    } else if (!slug) {
+      document.title = 'Store'
+      setMeta('description', 'Browse our collection of church merchandise.')
+    }
+    return () => { document.title = 'Church Management System' }
+  }, [product, slug])
 
   const loadProduct = async (s: string) => {
     try {
@@ -300,6 +328,14 @@ export default function PublicStorePage() {
       }
       return [...prev, { product, variant: selectedVariant, quantity }]
     })
+    trackStoreEvent('add_to_cart', {
+      product: product.name,
+      design: parseDesignColour(selectedVariant.colour).design,
+      colour: parseDesignColour(selectedVariant.colour).color,
+      size: selectedVariant.size,
+      quantity,
+      price: product.price,
+    })
     showToast.success(`Added to cart`)
     setQuantity(1)
     setExpandedIndex(null)
@@ -339,9 +375,12 @@ export default function PublicStorePage() {
     if (cart.length === 0) return
     if (!delivery.fullName.trim()) { showToast.error('Full name is required'); return }
     if (!delivery.email.trim()) { showToast.error('Email is required'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery.email.trim())) { showToast.error('Please enter a valid email address'); return }
     if (!delivery.phone.trim()) { showToast.error('Phone number is required'); return }
+    if (!/^(\+?234|0)\d{10}$/.test(delivery.phone.trim().replace(/[\s-]/g, ''))) { showToast.error('Please enter a valid Nigerian phone number'); return }
     try {
       setSubmitting(true)
+      trackStoreEvent('checkout_initiated', { items: cart.length, total })
       const order = await createOrder({
         items: cart.map(c => ({
           product: c.product._id,
@@ -360,6 +399,7 @@ export default function PublicStorePage() {
         customerPhone: delivery.phone.trim(),
       })
       const payment = await initiatePayment(order._id)
+      trackStoreEvent('payment_initiated', { orderNumber: order.orderNumber, total: order.totalAmount })
       window.location.href = payment.paymentLink
     } catch (err: any) {
       showToast.error(err?.message || 'Failed to place order')
@@ -390,7 +430,7 @@ export default function PublicStorePage() {
                     const img = item.variant.images?.[0] || item.product.images?.[0]
                     return (
                       <div key={idx} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
-                        {img && <img src={img} alt="" className="w-16 h-16 rounded-md object-cover flex-shrink-0" />}
+                        {img && <img src={img} alt={`${item.product.name} - ${parseDesignColour(item.variant.colour).design}`} className="w-16 h-16 rounded-md object-cover flex-shrink-0" />}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-gray-900 text-sm truncate">{item.product.name}</p>
                           <p className="text-xs text-gray-500">{parseDesignColour(item.variant.colour).design} · {parseDesignColour(item.variant.colour).color} · {item.variant.size}</p>
@@ -608,7 +648,7 @@ export default function PublicStorePage() {
                     const imgs = activeColourOption?.images.length ? activeColourOption.images
                       : expandedGroup.colours.find(c => c.images.length)?.images || product.images || []
                     return imgs.length > 0 ? (
-                      <ImageViewer images={imgs} />
+                      <ImageViewer images={imgs} alt={`${expandedGroup.design} ${activeColourOption?.colour || ''} T-shirt`} />
                     ) : (
                       <div className="aspect-square rounded-xl bg-gray-100 flex items-center justify-center">
                         <ShoppingCart className="w-10 h-10 text-gray-200" />
@@ -638,13 +678,14 @@ export default function PublicStorePage() {
                             key={c.colour}
                             onClick={() => {
                               setSelectedColour(c.colour)
+                              trackStoreEvent('colour_selected', { design: expandedGroup.design, colour: c.colour })
                               const currentSizeAvail = selectedSize && c.sizes.find(s => s.size === selectedSize && s.stock > 0)
                               if (!currentSizeAvail) {
                                 const avail = c.sizes.find(s => s.stock > 0)
                                 setSelectedSize(avail?.size || c.sizes[0]?.size || null)
                               }
                               setQuantity(1)
-                            }
+                            }}
                             disabled={colourStock === 0}
                             title={c.colour}
                             className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${
@@ -674,7 +715,7 @@ export default function PublicStorePage() {
                         return (
                           <button
                             key={s.size}
-                            onClick={() => { setSelectedSize(s.size); setQuantity(1) }}
+                            onClick={() => { setSelectedSize(s.size); setQuantity(1); trackStoreEvent('size_selected', { design: expandedGroup.design, size: s.size }) }}
                             disabled={!hasStock}
                             className={`w-12 h-12 rounded-xl border-2 text-sm font-semibold transition-all ${
                               isActive

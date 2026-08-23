@@ -13,6 +13,9 @@ export default function PaymentVerify() {
     verify()
   }, [])
 
+  const productSlug = searchParams.get('product')
+  const storePath = productSlug ? `/store/${productSlug}` : '/store'
+
   const verify = async () => {
     const transactionId = searchParams.get('transaction_id')
     const orderNumber = searchParams.get('order')
@@ -80,7 +83,7 @@ export default function PaymentVerify() {
             )}
 
             <button
-              onClick={() => navigate('/store')}
+              onClick={() => navigate(storePath)}
               className="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
             >
               Continue Shopping
@@ -96,7 +99,7 @@ export default function PaymentVerify() {
               We couldn't verify your payment. If you were charged, please contact support with your order details.
             </p>
             <button
-              onClick={() => navigate('/store')}
+              onClick={() => navigate(storePath)}
               className="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
             >
               Back to Store

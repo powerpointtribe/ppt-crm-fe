@@ -34,6 +34,7 @@ export interface OrderItem {
   quantity: number
   unitPrice: number
   totalPrice: number
+  images?: string[]
 }
 
 export interface DeliveryInfo {
@@ -210,6 +211,11 @@ export async function verifyPayment(transactionId: string) {
   const res = await apiService.get<SingleResponse<any>>('/store/public/payment/verify', {
     params: { transaction_id: transactionId },
   })
+  return res.data
+}
+
+export async function verifyOrderPayment(orderId: string) {
+  const res = await apiService.post<SingleResponse<any>>(`/store/orders/${orderId}/verify-payment`)
   return res.data
 }
 

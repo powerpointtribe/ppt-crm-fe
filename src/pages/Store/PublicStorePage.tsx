@@ -513,13 +513,23 @@ export default function PublicStorePage() {
   // ─── Single product page ──────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Floating cart */}
+      {/* Proceed to checkout bar */}
       {cartItemCount > 0 && (
-        <button onClick={() => { setShowCart(true); setShowCheckout(false) }}
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition text-sm">
-          <ShoppingCart className="w-4 h-4" />
-          <span className="font-semibold">{cartItemCount}</span>
-        </button>
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 py-3 safe-area-bottom">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+            <div className="text-sm text-gray-600">
+              <span className="font-semibold text-gray-900">{cartItemCount} item{cartItemCount !== 1 ? 's' : ''}</span>
+              <span className="mx-1.5 text-gray-300">·</span>
+              {formatPrice(cartSubtotal)}
+            </div>
+            <button
+              onClick={() => { setShowCart(true); setShowCheckout(false) }}
+              className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold text-sm hover:bg-indigo-700 transition shadow-sm"
+            >
+              Proceed to Checkout
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Header */}

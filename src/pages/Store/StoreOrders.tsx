@@ -7,7 +7,7 @@ import {
   ChevronRight, Search, X, User, Phone, Mail,
 } from 'lucide-react'
 
-const STATUS_OPTIONS = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']
+const STATUS_OPTIONS = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'failed']
 
 const STATUS_STYLE: Record<string, { dot: string; bg: string; text: string }> = {
   pending:    { dot: 'bg-amber-400',   bg: 'bg-amber-50',   text: 'text-amber-700' },
@@ -17,6 +17,7 @@ const STATUS_STYLE: Record<string, { dot: string; bg: string; text: string }> = 
   delivered:  { dot: 'bg-emerald-400', bg: 'bg-emerald-50', text: 'text-emerald-700' },
   cancelled:  { dot: 'bg-red-400',     bg: 'bg-red-50',     text: 'text-red-700' },
   refunded:   { dot: 'bg-gray-400',    bg: 'bg-gray-50',    text: 'text-gray-600' },
+  failed:     { dot: 'bg-orange-400',  bg: 'bg-orange-50',  text: 'text-orange-700' },
 }
 
 const PAYMENT_STYLE: Record<string, { dot: string; text: string }> = {
@@ -54,9 +55,6 @@ const formatDate = (date: string) =>
 
 const formatTime = (date: string) =>
   new Date(date).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
-
-const isExpired = (createdAt: string) =>
-  Date.now() - new Date(createdAt).getTime() > 10 * 60 * 1000
 
 function parseDesignColour(colour: string) {
   const m = colour?.match(/^(.+?)\s*\(([^)]+)\)$/)
@@ -286,9 +284,9 @@ export default function StoreOrders() {
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">
                         <StatusBadge status={order.status} />
-                        {order.status === 'pending' && order.paymentStatus === 'pending' && isExpired(order.createdAt) && (
+                        {order.status === 'failed' && (
                           <span className="inline-flex items-center gap-1 text-[10px] text-orange-600 bg-orange-50 rounded px-1.5 py-0.5 font-medium">
-                            Payment expired · can verify
+                            Can still verify
                           </span>
                         )}
                       </div>
@@ -423,13 +421,13 @@ export default function StoreOrders() {
                 </div>
               </div>
 
-              {/* Verify pending payment */}
+              {/* Verify payment */}
               {selectedOrder.paymentStatus !== 'successful' && selectedOrder.flutterwaveRef && (
                 <div className="border-t pt-4">
-                  {selectedOrder.status === 'pending' && isExpired(selectedOrder.createdAt) && (
+                  {selectedOrder.status === 'failed' && (
                     <div className="mb-3 flex items-center gap-2 p-2.5 bg-orange-50 border border-orange-200 rounded-lg">
                       <span className="w-2 h-2 bg-orange-400 rounded-full flex-shrink-0" />
-                      <p className="text-xs text-orange-700">Payment window expired — you can still verify if the customer paid</p>
+                      <p className="text-xs text-orange-700">Payment expired — you can still verify if the customer paid</p>
                     </div>
                   )}
                   <button
@@ -446,7 +444,7 @@ export default function StoreOrders() {
               <div className="border-t pt-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Update Status</p>
                 <div className="grid grid-cols-4 gap-1.5">
-                  {STATUS_OPTIONS.filter(s => s !== 'paid').map(s => {
+                  {STATUS_OPTIONS.filter(s => s !== 'paid' && s !== 'failed').map(s => {
                     const style = STATUS_STYLE[s] || STATUS_STYLE.pending
                     const active = selectedOrder.status === s
                     return (

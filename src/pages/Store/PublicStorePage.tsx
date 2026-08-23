@@ -638,10 +638,13 @@ export default function PublicStorePage() {
                             key={c.colour}
                             onClick={() => {
                               setSelectedColour(c.colour)
-                              const avail = c.sizes.find(s => s.stock > 0)
-                              setSelectedSize(avail?.size || c.sizes[0]?.size || null)
+                              const currentSizeAvail = selectedSize && c.sizes.find(s => s.size === selectedSize && s.stock > 0)
+                              if (!currentSizeAvail) {
+                                const avail = c.sizes.find(s => s.stock > 0)
+                                setSelectedSize(avail?.size || c.sizes[0]?.size || null)
+                              }
                               setQuantity(1)
-                            }}
+                            }
                             disabled={colourStock === 0}
                             title={c.colour}
                             className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${

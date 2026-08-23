@@ -44,6 +44,9 @@ import {
   GraduationCap,
   BookMarked,
   Clock,
+  ShoppingBag,
+  ShoppingCart,
+  Ticket,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -262,6 +265,32 @@ const menuGroups: MenuGroup[] = [
             label: 'Reports',
             path: '/inventory/reports',
             requiredPermission: 'inventory:view-stats',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Store',
+    items: [
+      {
+        icon: ShoppingBag,
+        label: 'Store',
+        path: '/store/products',
+        requiredPermission: 'store:view-products',
+        hasDropdown: true,
+        subItems: [
+          {
+            icon: ShoppingCart,
+            label: 'Orders',
+            path: '/store/orders',
+            requiredPermission: 'store:view-orders',
+          },
+          {
+            icon: Ticket,
+            label: 'Coupons',
+            path: '/store/coupons',
+            requiredPermission: 'store:manage-coupons',
           },
         ],
       },

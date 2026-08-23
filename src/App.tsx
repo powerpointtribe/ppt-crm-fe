@@ -26,6 +26,8 @@ import PublicEventRegistration from '@/pages/PublicEventRegistration'
 import PublicTestimonyForm from '@/pages/PublicTestimonyForm'
 import PublicFeedbackForm from '@/pages/PublicFeedbackForm'
 import DocsPage from '@/pages/DocsPage'
+import PublicStorePage from '@/pages/Store/PublicStorePage'
+import PaymentVerify from '@/pages/Store/PaymentVerify'
 
 // Dashboard - Load immediately (most visited)
 import Dashboard from '@/pages/Dashboard'
@@ -77,6 +79,11 @@ const TraineeAssignment = lazy(() => import('@/pages/WorkersTraining/TraineeAssi
 
 const InventoryDashboard = lazy(() => import('@/pages/Inventory/InventoryDashboard'))
 const InventoryItems = lazy(() => import('@/pages/Inventory/InventoryItems'))
+
+const StoreProducts = lazy(() => import('@/pages/Store/StoreProducts'))
+const ProductForm = lazy(() => import('@/pages/Store/ProductForm'))
+const StoreOrders = lazy(() => import('@/pages/Store/StoreOrders'))
+const StoreCoupons = lazy(() => import('@/pages/Store/StoreCoupons'))
 
 const AuditDashboard = lazy(() => import('@/pages/Audit/AuditDashboard'))
 const AuditLogs = lazy(() => import('@/pages/Audit/AuditLogs'))
@@ -194,6 +201,9 @@ function App() {
           <Route path="/event-testimony/:slug" element={<PublicTestimonyForm />} />
           <Route path="/event-feedback/:slug" element={<PublicFeedbackForm />} />
           <Route path="/docs" element={<DocsPage />} />
+          <Route path="/store" element={<PublicStorePage />} />
+          <Route path="/store/payment/verify" element={<PaymentVerify />} />
+          <Route path="/store/:slug" element={<PublicStorePage />} />
 
           {/* Dashboard - Requires Login Only */}
           <Route path="/dashboard" element={
@@ -432,6 +442,33 @@ function App() {
           <Route path="/inventory/items" element={
             <ProtectedRoute>
               <LazyPage><InventoryItems /></LazyPage>
+            </ProtectedRoute>
+          } />
+
+          {/* Store Management */}
+          <Route path="/store/products" element={
+            <ProtectedRoute>
+              <LazyPage><StoreProducts /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/store/products/new" element={
+            <ProtectedRoute>
+              <LazyPage><ProductForm /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/store/products/:id/edit" element={
+            <ProtectedRoute>
+              <LazyPage><ProductForm /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/store/orders" element={
+            <ProtectedRoute>
+              <LazyPage><StoreOrders /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/store/coupons" element={
+            <ProtectedRoute>
+              <LazyPage><StoreCoupons /></LazyPage>
             </ProtectedRoute>
           } />
 

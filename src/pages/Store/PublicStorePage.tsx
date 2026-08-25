@@ -106,7 +106,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
     >
       {firstImage ? (
         <div className="aspect-square overflow-hidden">
-          <img src={firstImage} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+          <img src={firstImage} alt={product.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-300" />
         </div>
       ) : (
         <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
@@ -601,7 +601,7 @@ export default function PublicStorePage() {
               >
                 {thumb ? (
                   <div className="aspect-square overflow-hidden">
-                    <img src={thumb} alt={group.design} className="w-full h-full object-cover group-hover/card:scale-105 transition duration-300" />
+                    <img src={thumb} alt={group.design} className="w-full h-full object-cover object-top group-hover/card:scale-105 transition duration-300" />
                   </div>
                 ) : (
                   <div className="aspect-square bg-gray-50 flex items-center justify-center">

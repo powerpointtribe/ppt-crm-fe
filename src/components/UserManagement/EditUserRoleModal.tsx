@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Edit, Plus, Trash2, Calendar, Check } from 'lucide-react';
+import { X, Edit, Plus, Trash2, Calendar, ShoppingBag, Check } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
@@ -10,6 +10,7 @@ import type { ActiveUser } from '../../services/user-invitations';
 import { rolesService } from '../../services/roles';
 import { membersService } from '../../services/members-unified';
 import { eventsService } from '../../services/events';
+import { getProducts } from '../../services/store';
 
 interface Role {
   _id: string;
@@ -17,6 +18,7 @@ interface Role {
   displayName: string;
   description?: string;
   isActive: boolean;
+  modules?: string[];
 }
 
 interface EventItem {
@@ -24,6 +26,12 @@ interface EventItem {
   title: string;
   startDate: string;
   status?: string;
+}
+
+interface ProductItem {
+  _id: string;
+  name: string;
+  isActive: boolean;
 }
 
 interface EditUserRoleModalProps {
@@ -34,11 +42,23 @@ interface EditUserRoleModalProps {
 }
 
 const EVENT_VIEWER_NAMES = ['event viewer', 'event-viewer', 'eventviewer'];
+const STORE_ROLE_NAMES = [
+  'store viewer', 'store-viewer', 'storeviewer',
+  'store manager', 'store-manager', 'storemanager',
+  'store owner', 'store-owner', 'storeowner',
+];
 
 function isEventViewerRole(role: { name: string; displayName?: string }) {
   const n = (role.name || '').toLowerCase();
   const d = (role.displayName || '').toLowerCase();
   return EVENT_VIEWER_NAMES.some((ev) => n.includes(ev) || d.includes(ev));
+}
+
+function isStoreRole(role: { name: string; displayName?: string; modules?: string[] }) {
+  if (role.modules?.includes('store')) return true;
+  const n = (role.name || '').toLowerCase();
+  const d = (role.displayName || '').toLowerCase();
+  return STORE_ROLE_NAMES.some((sv) => n.includes(sv) || d.includes(sv));
 }
 
 export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh }: EditUserRoleModalProps) {
@@ -59,9 +79,21 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
   const [savingEvents, setSavingEvents] = useState(false);
   const [eventsDirty, setEventsDirty] = useState(false);
 
+  // Scoped products state
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [savingProducts, setSavingProducts] = useState(false);
+  const [productsDirty, setProductsDirty] = useState(false);
+
   const toast = useToast();
 
   const hasEventViewerRole = additionalRoles.some(isEventViewerRole);
+
+  const selectedPrimaryRole = roles.find((r) => r._id === selectedRoleId);
+  const hasStoreRole =
+    additionalRoles.some((r) => isStoreRole(r)) ||
+    (selectedPrimaryRole ? isStoreRole(selectedPrimaryRole) : false);
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -103,6 +135,29 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
 
     loadEventsAndScope();
   }, [hasEventViewerRole, user._id]);
+
+  // Load products + scoped selection when Store Viewer role is present
+  useEffect(() => {
+    if (!hasStoreRole) return;
+
+    const loadProductsAndScope = async () => {
+      setProductsLoading(true);
+      try {
+        const [productsRes, scopedIds] = await Promise.all([
+          getProducts({ limit: 100 }),
+          membersService.getScopedProducts(user._id),
+        ]);
+        setProducts((productsRes as any)?.items || productsRes || []);
+        setSelectedProductIds(new Set(scopedIds));
+      } catch (error: any) {
+        toast.error(error?.message || 'Failed to load products');
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    loadProductsAndScope();
+  }, [hasStoreRole, user._id]);
 
   const availableForAdditional = roles.filter(
     (r) =>
@@ -206,6 +261,34 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
       toast.error(message);
     } finally {
       setSavingEvents(false);
+    }
+  };
+
+  const toggleProduct = (productId: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+    setProductsDirty(true);
+  };
+
+  const handleSaveProductScope = async () => {
+    setSavingProducts(true);
+    try {
+      await membersService.setScopedProducts(user._id, Array.from(selectedProductIds));
+      toast.success('Store product access updated');
+      setProductsDirty(false);
+      onRefresh?.();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to save product access';
+      toast.error(message);
+    } finally {
+      setSavingProducts(false);
     }
   };
 
@@ -423,6 +506,84 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
                           disabled={savingEvents}
                         >
                           {savingEvents ? <LoadingSpinner /> : 'Save Event Access'}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Scoped Store Product Access — shown when Store Viewer/Manager role is assigned */}
+            {hasStoreRole && (
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-1.5">
+                  <ShoppingBag className="w-3.5 h-3.5 text-emerald-500" />
+                  Store Product Access
+                </label>
+                <p className="text-[10px] text-gray-400 mb-2">
+                  Select which products this user can manage. If none are selected, they can see all products.
+                </p>
+
+                {productsLoading ? (
+                  <div className="flex justify-center py-3">
+                    <LoadingSpinner />
+                  </div>
+                ) : products.length === 0 ? (
+                  <p className="text-[10px] text-gray-400">No products found</p>
+                ) : (
+                  <>
+                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                      {products.map((product) => {
+                        const checked = selectedProductIds.has(product._id);
+                        return (
+                          <label
+                            key={product._id}
+                            className={`flex items-center gap-2.5 px-2.5 py-2 cursor-pointer hover:bg-gray-50 transition-colors ${
+                              checked ? 'bg-emerald-50/50' : ''
+                            }`}
+                          >
+                            <div
+                              className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                                checked
+                                  ? 'bg-emerald-600 border-emerald-600'
+                                  : 'border-gray-300'
+                              }`}
+                            >
+                              {checked && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleProduct(product._id)}
+                              className="sr-only"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-900 truncate">
+                                {product.name}
+                              </p>
+                            </div>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                              product.isActive
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {product.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {productsDirty && (
+                      <div className="flex justify-end mt-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleSaveProductScope}
+                          disabled={savingProducts}
+                        >
+                          {savingProducts ? <LoadingSpinner /> : 'Save Product Access'}
                         </Button>
                       </div>
                     )}

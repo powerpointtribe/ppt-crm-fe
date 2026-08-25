@@ -160,6 +160,16 @@ export const membersService = {
     return transformSingleResponse<Member>(response) as Member
   },
 
+  getScopedProducts: async (id: string): Promise<string[]> => {
+    const response = await apiService.get<string[]>(`/members/${id}/scoped-products`)
+    return (response as any) || []
+  },
+
+  setScopedProducts: async (id: string, productIds: string[]): Promise<Member> => {
+    const response = await apiService.put<ApiResponse<Member>>(`/members/${id}/scoped-products`, { productIds })
+    return transformSingleResponse<Member>(response) as Member
+  },
+
   assignUnit: async (id: string, unitData: { unit: string; unitType: string; district?: string }): Promise<Member> => {
     const response = await apiService.patch<ApiResponse<Member>>(`/members/${id}/assign-unit`, unitData)
     return transformSingleResponse<Member>(response) as Member

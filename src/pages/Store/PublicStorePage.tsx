@@ -334,7 +334,10 @@ export default function PublicStorePage() {
         updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + quantity }
         return updated
       }
-      return [...prev, { product, variant: selectedVariant, quantity }]
+      const variantWithImages = selectedVariant.images?.length
+        ? selectedVariant
+        : { ...selectedVariant, images: activeColourOption?.images || [] }
+      return [...prev, { product, variant: variantWithImages, quantity }]
     })
     trackStoreEvent('add_to_cart', {
       product: product.name,

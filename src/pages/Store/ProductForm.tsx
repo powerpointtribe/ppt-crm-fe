@@ -5,6 +5,7 @@ import Layout from '@/components/Layout'
 import { createProduct, updateProduct, getProductById, deleteProduct, type ProductVariant } from '@/services/store'
 import { showToast } from '@/utils/toast'
 import { apiService } from '@/services/api'
+import { useAuth } from '@/contexts/AuthContext-unified'
 
 const DEFAULT_SIZES = ['S', 'M', 'L', 'XL', 'XXL']
 
@@ -89,7 +90,9 @@ interface FormData {
 export default function ProductForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { member } = useAuth()
   const isEdit = !!id
+  const isSuperAdmin = member?.role?.level === 100
 
   const [form, setForm] = useState<FormData>({
     name: '',
@@ -647,8 +650,8 @@ export default function ProductForm() {
           </button>
         </div>
 
-        {/* Danger Zone — edit mode only */}
-        {isEdit && (
+        {/* Danger Zone — super admin only */}
+        {isEdit && isSuperAdmin && (
           <div className="border border-red-200 rounded-xl overflow-hidden">
             <div className="bg-red-50 px-6 py-3 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-red-600" />

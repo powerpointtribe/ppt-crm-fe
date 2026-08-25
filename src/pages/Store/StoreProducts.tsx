@@ -106,7 +106,7 @@ export default function StoreProducts() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {products.map((product) => (
-                    <tr key={product._id} className="hover:bg-gray-50">
+                    <tr key={product._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/store/products/${product._id}/edit`)}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {product.images?.[0] ? (
@@ -138,7 +138,7 @@ export default function StoreProducts() {
                           {product.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleToggleActive(product)}

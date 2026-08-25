@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ShoppingCart, Minus, Plus, Tag, ChevronLeft, Check, X, Play, Pause } from 'lucide-react'
+import { ShoppingCart, Minus, Plus, Tag, ChevronLeft, Check, X, Play, Pause, Eye } from 'lucide-react'
 import {
   getProductBySlug, getActiveProducts, createOrder, initiatePayment,
   validateCoupon, type Product, type ProductVariant,
@@ -70,19 +70,19 @@ function parseDesignColour(colour: string): { design: string; color: string } {
 }
 
 function groupVariantsByDesign(variants: ProductVariant[]): DesignGroup[] {
-  const colourGroups: { fullColour: string; images: string[]; sizes: { size: string; stock: number; variant: ProductVariant }[] }[] = []
-  let cur: typeof colourGroups[0] | null = null
+  const colourMap = new Map<string, { fullColour: string; images: string[]; sizes: { size: string; stock: number; variant: ProductVariant }[] }>()
   for (const v of variants) {
-    const newGroup = !cur || v.colour !== cur.fullColour
-    if (newGroup) {
-      cur = { fullColour: v.colour, images: v.images?.length ? [...v.images] : [], sizes: [] }
-      colourGroups.push(cur)
+    let cg = colourMap.get(v.colour)
+    if (!cg) {
+      cg = { fullColour: v.colour, images: v.images?.length ? [...v.images] : [], sizes: [] }
+      colourMap.set(v.colour, cg)
     }
-    cur!.sizes.push({ size: v.size, stock: v.stock, variant: v })
+    cg.sizes.push({ size: v.size, stock: v.stock, variant: v })
+    if (!cg.images.length && v.images?.length) cg.images = [...v.images]
   }
 
   const designMap = new Map<string, DesignGroup>()
-  for (const cg of colourGroups) {
+  for (const cg of colourMap.values()) {
     const { design, color } = parseDesignColour(cg.fullColour)
     if (!designMap.has(design)) designMap.set(design, { design, colours: [] })
     designMap.get(design)!.colours.push({
@@ -104,15 +104,23 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
       onClick={onClick}
       className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition group"
     >
-      {firstImage ? (
-        <div className="aspect-square overflow-hidden">
-          <img src={firstImage} alt={product.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-300" />
+      <div className="relative">
+        {firstImage ? (
+          <div className="aspect-square overflow-hidden">
+            <img src={firstImage} alt={product.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-300" />
+          </div>
+        ) : (
+          <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+            <ShoppingCart className="w-12 h-12 text-indigo-300" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 hidden sm:flex items-center justify-center">
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white text-gray-900 px-4 py-2 rounded-full text-sm font-medium flex items-center gap-1.5 shadow-lg">
+            <Eye className="w-4 h-4" />
+            View
+          </span>
         </div>
-      ) : (
-        <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-          <ShoppingCart className="w-12 h-12 text-indigo-300" />
-        </div>
-      )}
+      </div>
       <div className="p-4">
         <h3 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition">{product.name}</h3>
         {product.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{product.description}</p>}

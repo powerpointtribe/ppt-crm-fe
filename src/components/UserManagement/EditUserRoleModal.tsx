@@ -147,7 +147,8 @@ export default function EditUserRoleModal({ user, onClose, onSuccess, onRefresh 
           getProducts({ limit: 100 }),
           membersService.getScopedProducts(user._id),
         ]);
-        setProducts((productsRes as any)?.items || productsRes || []);
+        const list = (productsRes as any)?.data || (productsRes as any)?.items || [];
+        setProducts(Array.isArray(list) ? list : []);
         setSelectedProductIds(new Set(scopedIds));
       } catch (error: any) {
         toast.error(error?.message || 'Failed to load products');

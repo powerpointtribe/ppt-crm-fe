@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Upload, X, AlertTriangle, ChevronDown } from 'lucide-react'
 import Layout from '@/components/Layout'
-import { createProduct, updateProduct, getProductById, type ProductVariant } from '@/services/store'
+import { createProduct, updateProduct, getProductById, deleteProduct, type ProductVariant } from '@/services/store'
 import { showToast } from '@/utils/toast'
 import { apiService } from '@/services/api'
 
@@ -105,6 +105,18 @@ export default function ProductForm() {
   const [groups, setGroups] = useState<VariantGroup[]>([makeGroup()])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [dangerLoading, setDangerLoading] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set())
+
+  const toggleCollapse = (key: number) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (isEdit) loadProduct()
@@ -296,6 +308,33 @@ export default function ProductForm() {
     }
   }
 
+  const handleToggleActive = async () => {
+    try {
+      setDangerLoading(true)
+      await updateProduct(id!, { isActive: !form.isActive } as any)
+      setForm(prev => ({ ...prev, isActive: !prev.isActive }))
+      showToast.success(form.isActive ? 'Product deactivated' : 'Product activated')
+      setConfirmDeactivate(false)
+    } catch {
+      showToast.error('Failed to update product status')
+    } finally {
+      setDangerLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      setDangerLoading(true)
+      await deleteProduct(id!)
+      showToast.success('Product deleted')
+      navigate('/store/products')
+    } catch {
+      showToast.error('Failed to delete product')
+    } finally {
+      setDangerLoading(false)
+    }
+  }
+
   if (loading && isEdit) {
     return (
       <Layout title="Loading Product...">
@@ -458,15 +497,29 @@ export default function ProductForm() {
               <div key={group.key} className="border border-gray-200 rounded-lg overflow-hidden">
                 {/* Variant header */}
                 <div className="bg-gray-50 px-4 py-3 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleCollapse(group.key)}
+                    className="p-0.5 text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${collapsedGroups.has(group.key) ? '-rotate-90' : ''}`} />
+                  </button>
                   <span className="text-xs font-bold text-gray-400 uppercase">Variant {groupIdx + 1}</span>
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={group.colour}
-                      onChange={(e) => updateGroup(group.key, { colour: e.target.value })}
-                      className="w-full max-w-sm px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="e.g. White, Black - Front Print, Navy Blue..."
-                    />
+                  <div className="flex-1 flex items-center gap-2 min-w-0">
+                    {collapsedGroups.has(group.key) ? (
+                      <span className="text-sm text-gray-700 truncate">{group.colour || 'Untitled'}</span>
+                    ) : (
+                      <input
+                        type="text"
+                        value={group.colour}
+                        onChange={(e) => updateGroup(group.key, { colour: e.target.value })}
+                        className="w-full max-w-sm px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="e.g. White, Black - Front Print, Navy Blue..."
+                      />
+                    )}
+                    {collapsedGroups.has(group.key) && (
+                      <span className="text-xs text-gray-400 flex-shrink-0">{group.sizes.length} sizes · {group.images.length} images</span>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -479,6 +532,8 @@ export default function ProductForm() {
                   </button>
                 </div>
 
+                {/* Variant body — collapsible */}
+                {!collapsedGroups.has(group.key) && <>
                 {/* Variant images */}
                 <div className="px-4 py-3 border-b border-gray-100">
                   <label className="block text-xs font-medium text-gray-500 mb-2">Images</label>
@@ -572,6 +627,7 @@ export default function ProductForm() {
                     Add size
                   </button>
                 </div>
+                </>}
               </div>
             ))}
           </div>
@@ -594,6 +650,101 @@ export default function ProductForm() {
             {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
           </button>
         </div>
+
+        {/* Danger Zone — edit mode only */}
+        {isEdit && (
+          <div className="border border-red-200 rounded-xl overflow-hidden">
+            <div className="bg-red-50 px-6 py-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <h2 className="text-sm font-semibold text-red-700">Danger Zone</h2>
+            </div>
+            <div className="bg-white p-6 space-y-4">
+              {/* Deactivate / Activate */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">{form.isActive ? 'Deactivate' : 'Activate'} this product</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {form.isActive
+                      ? 'This product will no longer be visible on the public store.'
+                      : 'This product will become visible on the public store again.'}
+                  </p>
+                </div>
+                {!confirmDeactivate ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeactivate(true)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg border transition ${
+                      form.isActive
+                        ? 'border-red-300 text-red-700 hover:bg-red-50'
+                        : 'border-green-300 text-green-700 hover:bg-green-50'
+                    }`}
+                  >
+                    {form.isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeactivate(false)}
+                      className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleActive}
+                      disabled={dangerLoading}
+                      className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-50 ${
+                        form.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                      }`}
+                    >
+                      {dangerLoading ? 'Processing...' : `Yes, ${form.isActive ? 'deactivate' : 'activate'} it`}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-red-100" />
+
+              {/* Delete */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">Delete this product</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Permanently remove this product and all its variants. This cannot be undone.
+                  </p>
+                </div>
+                {!confirmDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="px-4 py-2 text-sm font-medium rounded-lg border border-red-300 text-red-700 hover:bg-red-50 transition"
+                  >
+                    Delete
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={dangerLoading}
+                      className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition disabled:opacity-50"
+                    >
+                      {dangerLoading ? 'Deleting...' : 'Yes, delete permanently'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </form>
       </div>
     </Layout>

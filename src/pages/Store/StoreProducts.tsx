@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Edit, Trash2, Eye, EyeOff, Search } from 'lucide-react'
+import { Plus, Edit, Eye, Search } from 'lucide-react'
 import Layout from '@/components/Layout'
-import { getProducts, deleteProduct, updateProduct, type Product } from '@/services/store'
+import { getProducts, type Product } from '@/services/store'
 import { showToast } from '@/utils/toast'
 
 export default function StoreProducts() {
@@ -27,27 +27,6 @@ export default function StoreProducts() {
   }
 
   useEffect(() => { fetchProducts() }, [page, search])
-
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-    try {
-      await deleteProduct(id)
-      showToast.success('Product deleted')
-      fetchProducts()
-    } catch {
-      showToast.error('Failed to delete product')
-    }
-  }
-
-  const handleToggleActive = async (product: Product) => {
-    try {
-      await updateProduct(product._id, { isActive: !product.isActive } as any)
-      showToast.success(product.isActive ? 'Product deactivated' : 'Product activated')
-      fetchProducts()
-    } catch {
-      showToast.error('Failed to update product')
-    }
-  }
 
   const totalStock = (p: Product) =>
     p.variants.reduce((sum, v) => sum + v.stock, 0)
@@ -141,11 +120,11 @@ export default function StoreProducts() {
                       <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => handleToggleActive(product)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 rounded"
-                            title={product.isActive ? 'Deactivate' : 'Activate'}
+                            onClick={() => navigate(`/store/products/${product._id}/edit`)}
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 rounded"
+                            title="View"
                           >
-                            {product.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            <Eye className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => navigate(`/store/products/${product._id}/edit`)}
@@ -153,13 +132,6 @@ export default function StoreProducts() {
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(product._id, product.name)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>

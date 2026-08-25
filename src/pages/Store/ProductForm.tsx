@@ -108,14 +108,10 @@ export default function ProductForm() {
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [dangerLoading, setDangerLoading] = useState(false)
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set())
+  const [expandedGroup, setExpandedGroup] = useState<number | null>(null)
 
   const toggleCollapse = (key: number) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      return next
-    })
+    setExpandedGroup(prev => prev === key ? null : key)
   }
 
   useEffect(() => {
@@ -502,11 +498,11 @@ export default function ProductForm() {
                     onClick={() => toggleCollapse(group.key)}
                     className="p-0.5 text-gray-400 hover:text-gray-600 transition"
                   >
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${collapsedGroups.has(group.key) ? '-rotate-90' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedGroup !== group.key ? '-rotate-90' : ''}`} />
                   </button>
                   <span className="text-xs font-bold text-gray-400 uppercase">Variant {groupIdx + 1}</span>
                   <div className="flex-1 flex items-center gap-2 min-w-0">
-                    {collapsedGroups.has(group.key) ? (
+                    {expandedGroup !== group.key ? (
                       <span className="text-sm text-gray-700 truncate">{group.colour || 'Untitled'}</span>
                     ) : (
                       <input
@@ -517,7 +513,7 @@ export default function ProductForm() {
                         placeholder="e.g. White, Black - Front Print, Navy Blue..."
                       />
                     )}
-                    {collapsedGroups.has(group.key) && (
+                    {expandedGroup !== group.key && (
                       <span className="text-xs text-gray-400 flex-shrink-0">{group.sizes.length} sizes · {group.images.length} images</span>
                     )}
                   </div>
@@ -533,7 +529,7 @@ export default function ProductForm() {
                 </div>
 
                 {/* Variant body — collapsible */}
-                {!collapsedGroups.has(group.key) && <>
+                {expandedGroup === group.key && <>
                 {/* Variant images */}
                 <div className="px-4 py-3 border-b border-gray-100">
                   <label className="block text-xs font-medium text-gray-500 mb-2">Images</label>

@@ -73,7 +73,7 @@ function groupVariantsByDesign(variants: ProductVariant[]): DesignGroup[] {
   const colourGroups: { fullColour: string; images: string[]; sizes: { size: string; stock: number; variant: ProductVariant }[] }[] = []
   let cur: typeof colourGroups[0] | null = null
   for (const v of variants) {
-    const newGroup = !cur || v.colour !== cur.fullColour || (v.images?.length && cur.sizes.length > 0)
+    const newGroup = !cur || v.colour !== cur.fullColour
     if (newGroup) {
       cur = { fullColour: v.colour, images: v.images?.length ? [...v.images] : [], sizes: [] }
       colourGroups.push(cur)

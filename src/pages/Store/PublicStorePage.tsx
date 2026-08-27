@@ -58,10 +58,16 @@ interface DesignGroup {
 }
 
 const COLOUR_HEX: Record<string, string> = {
-  Black: '#3a3735',
-  Grey:  '#9a9590',
-  Blue:  '#5a6e8a',
-  Red:   '#96403c',
+  Black:  '#3a3735',
+  Grey:   '#9a9590',
+  Blue:   '#5a6e8a',
+  Red:    '#96403c',
+  Purple: '#7b5e8a',
+  Brown:  '#5c3d2e',
+  Tan:    '#a07850',
+  Green:  '#506040',
+  Orange: '#c86830',
+  Pink:   '#c08090',
 }
 
 function parseDesignColour(colour: string): { design: string; color: string } {

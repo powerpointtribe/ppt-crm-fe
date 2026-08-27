@@ -605,8 +605,11 @@ export default function PublicStorePage() {
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
           {designGroups.map((group, idx) => {
+            const THUMB_COLOURS = ['Black', 'Grey', 'Blue', 'Red', 'Purple', 'Brown', 'Tan', 'Green', 'Orange', 'Pink']
+            const targetColour = THUMB_COLOURS[idx % THUMB_COLOURS.length]
             const colourWithImages = group.colours.filter(c => c.images.length > 0)
-            const thumb = (colourWithImages[idx % colourWithImages.length] || colourWithImages[0])?.images[0] || product.images?.[0]
+            const thumbOption = colourWithImages.find(c => c.colour === targetColour) || colourWithImages[0]
+            const thumb = thumbOption?.images[0] || product.images?.[0]
             const totalStock = group.colours.reduce((s, c) => s + c.sizes.reduce((s2, sz) => s2 + sz.stock, 0), 0)
             const availableColours = group.colours.map(c => c.colour)
 

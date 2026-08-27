@@ -605,8 +605,8 @@ export default function PublicStorePage() {
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
           {designGroups.map((group, idx) => {
-            const firstWithImages = group.colours.find(c => c.images.length > 0)
-            const thumb = firstWithImages?.images[0] || product.images?.[0]
+            const colourWithImages = group.colours.filter(c => c.images.length > 0)
+            const thumb = (colourWithImages[idx % colourWithImages.length] || colourWithImages[0])?.images[0] || product.images?.[0]
             const totalStock = group.colours.reduce((s, c) => s + c.sizes.reduce((s2, sz) => s2 + sz.stock, 0), 0)
             const availableColours = group.colours.map(c => c.colour)
 

@@ -653,8 +653,8 @@ export default function PublicStorePage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ animation: 'storeFadeIn .15s ease' }}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setExpandedIndex(null)} />
           <div
-            className="relative w-full sm:w-auto sm:max-w-2xl sm:mx-4 max-h-[92vh] bg-white sm:rounded-2xl overflow-hidden shadow-2xl rounded-t-2xl"
-            style={{ animation: 'storeSlideUp .25s ease-out' }}
+            className="relative w-full sm:w-auto sm:max-w-2xl sm:mx-4 bg-white sm:rounded-2xl overflow-hidden shadow-2xl rounded-t-2xl"
+            style={{ maxHeight: '92dvh', animation: 'storeSlideUp .25s ease-out' }}
           >
             {/* Close */}
             <button
@@ -664,7 +664,7 @@ export default function PublicStorePage() {
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex flex-col sm:flex-row max-h-[92vh] overflow-y-auto sm:overflow-hidden">
+            <div className="flex flex-col sm:flex-row overflow-y-auto sm:overflow-hidden" style={{ maxHeight: '92dvh' }}>
               {/* Image side */}
               <div className="sm:w-[55%] flex-shrink-0 bg-gray-50">
                 <div className="p-3 sm:p-4 sm:h-full sm:flex sm:flex-col sm:justify-center">

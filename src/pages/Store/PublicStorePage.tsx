@@ -309,15 +309,20 @@ export default function PublicStorePage() {
     product ? groupVariantsByDesign(product.variants) : []
   , [product])
 
+  const THUMB_COLOURS = ['Black', 'Grey', 'Blue', 'Red', 'Purple', 'Brown', 'Tan', 'Green', 'Orange', 'Pink']
+
   const handleExpandVariant = (idx: number) => {
     if (expandedIndex === idx) { setExpandedIndex(null); return }
     setExpandedIndex(idx)
     const group = designGroups[idx]
     if (group) {
-      const firstColour = group.colours[0]
-      setSelectedColour(firstColour?.colour || null)
-      const avail = firstColour?.sizes.find(s => s.stock > 0)
-      setSelectedSize(avail?.size || firstColour?.sizes[0]?.size || null)
+      const targetColour = THUMB_COLOURS[idx % THUMB_COLOURS.length]
+      const colourWithImages = group.colours.filter(c => c.images.length > 0)
+      const thumbMatch = colourWithImages.find(c => c.colour === targetColour)
+      const startColour = thumbMatch || group.colours[0]
+      setSelectedColour(startColour?.colour || null)
+      const avail = startColour?.sizes.find(s => s.stock > 0)
+      setSelectedSize(avail?.size || startColour?.sizes[0]?.size || null)
     }
     setQuantity(1)
   }
@@ -605,7 +610,6 @@ export default function PublicStorePage() {
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
           {designGroups.map((group, idx) => {
-            const THUMB_COLOURS = ['Black', 'Grey', 'Blue', 'Red', 'Purple', 'Brown', 'Tan', 'Green', 'Orange', 'Pink']
             const targetColour = THUMB_COLOURS[idx % THUMB_COLOURS.length]
             const colourWithImages = group.colours.filter(c => c.images.length > 0)
             const thumbOption = colourWithImages.find(c => c.colour === targetColour) || colourWithImages[0]

@@ -149,6 +149,14 @@ export async function getOrderStats() {
   return res.data
 }
 
+export async function bulkUpdateOrderStatus(orders: { orderNumber: string; status: string }[]) {
+  const res = await apiService.patch<SingleResponse<{ updated: number; skipped: number; errors: string[] }>>(
+    '/store/orders/bulk-status',
+    { orders },
+  )
+  return res.data
+}
+
 // ─── Admin: Coupons ─────────────────────────────────────────────
 
 export async function getCoupons(params?: Record<string, any>) {

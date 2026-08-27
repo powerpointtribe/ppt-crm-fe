@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import Layout from '@/components/Layout'
-import { getOrders, updateOrderStatus, getOrderStats, verifyOrderPayment, type Order } from '@/services/store'
+import { getOrders, updateOrderStatus, getOrderStats, verifyOrderPayment, bulkUpdateOrderStatus, type Order } from '@/services/store'
 import { showToast } from '@/utils/toast'
 import {
   Package, DollarSign, TrendingUp, ShoppingBag,
-  ChevronRight, Search, X, User, Phone, Mail, Download,
+  ChevronRight, Search, X, User, Phone, Mail, Download, Upload, CheckSquare,
 } from 'lucide-react'
 
 const STATUS_OPTIONS = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'failed']
@@ -71,11 +71,16 @@ export default function StoreOrders() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkUpdating, setBulkUpdating] = useState(false)
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(1) }, 400)
     return () => clearTimeout(t)
   }, [search])
+
+  useEffect(() => { setSelectedIds(new Set()) }, [page, statusFilter, debouncedSearch])
 
   const fetchData = async () => {
     try {
@@ -186,6 +191,106 @@ export default function StoreOrders() {
     }
   }
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === orders.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(orders.map(o => o._id)))
+    }
+  }
+
+  const handleBulkStatus = async (newStatus: string) => {
+    const selected = orders.filter(o => selectedIds.has(o._id))
+    if (!selected.length) return
+
+    try {
+      setBulkUpdating(true)
+      const payload = selected.map(o => ({ orderNumber: o.orderNumber, status: newStatus }))
+      const result = await bulkUpdateOrderStatus(payload)
+      showToast.success(`${result.updated} order(s) marked as ${newStatus}`)
+      setSelectedIds(new Set())
+      fetchData()
+    } catch {
+      showToast.error('Failed to update orders')
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+
+    try {
+      setImporting(true)
+      const text = await file.text()
+      const lines = text.split('\n').map(line => {
+        const result: string[] = []
+        let current = ''
+        let inQuotes = false
+        for (const char of line) {
+          if (char === '"') { inQuotes = !inQuotes; continue }
+          if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; continue }
+          current += char
+        }
+        result.push(current.trim())
+        return result
+      })
+
+      if (lines.length < 2) { showToast.error('CSV file is empty'); return }
+
+      const header = lines[0].map(h => h.toLowerCase().replace(/[^a-z#]/g, ''))
+      const orderCol = header.findIndex(h => h === 'order#' || h === 'ordernumber' || h === 'order')
+      const statusCol = header.findIndex(h => h === 'status')
+
+      if (orderCol === -1 || statusCol === -1) {
+        showToast.error('CSV must have "Order #" and "Status" columns')
+        return
+      }
+
+      const validStatuses = new Set(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'])
+      const orderMap = new Map<string, string>()
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i]
+        if (!row[orderCol]) continue
+        const orderNum = row[orderCol]
+        const status = row[statusCol]?.toLowerCase()
+        if (status && validStatuses.has(status) && !orderMap.has(orderNum)) {
+          orderMap.set(orderNum, status)
+        }
+      }
+
+      if (orderMap.size === 0) {
+        showToast.error('No valid status updates found in the CSV')
+        return
+      }
+
+      const payload = Array.from(orderMap.entries()).map(([orderNumber, status]) => ({ orderNumber, status }))
+      const result = await bulkUpdateOrderStatus(payload)
+      showToast.success(`${result.updated} order(s) updated, ${result.skipped} skipped`)
+      if (result.errors.length > 0) {
+        showToast.error(`Issues: ${result.errors.slice(0, 3).join('; ')}`)
+      }
+      fetchData()
+    } catch {
+      showToast.error('Failed to import CSV')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const selectedCount = selectedIds.size
+
   return (
     <Layout title="Orders" subtitle="Manage store orders">
 
@@ -269,7 +374,37 @@ export default function StoreOrders() {
         </div>
       )}
 
-      {/* Search + Export */}
+      {/* Bulk action bar */}
+      {selectedCount > 0 && (
+        <div className="flex items-center gap-2 mb-3 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+          <CheckSquare className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-indigo-700">{selectedCount} selected</span>
+          <div className="flex-1" />
+          <div className="flex flex-wrap gap-1.5">
+            {['processing', 'shipped', 'delivered', 'cancelled'].map(s => {
+              const style = STATUS_STYLE[s] || STATUS_STYLE.pending
+              return (
+                <button
+                  key={s}
+                  onClick={() => handleBulkStatus(s)}
+                  disabled={bulkUpdating}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${style.bg} ${style.text} hover:ring-1 hover:ring-current disabled:opacity-50`}
+                >
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              )
+            })}
+          </div>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-1 p-1 rounded hover:bg-indigo-100 text-indigo-400 hover:text-indigo-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Search + Export + Import */}
       <div className="flex items-center gap-2 mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -292,8 +427,13 @@ export default function StoreOrders() {
           className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
-          {exporting ? 'Exporting...' : 'Export'}
+          <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export'}</span>
         </button>
+        <label className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition cursor-pointer ${importing ? 'opacity-40 pointer-events-none' : ''}`}>
+          <Upload className="w-4 h-4" />
+          <span className="hidden sm:inline">{importing ? 'Importing...' : 'Import'}</span>
+          <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" disabled={importing} />
+        </label>
       </div>
 
       {/* Orders table */}
@@ -312,6 +452,14 @@ export default function StoreOrders() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={orders.length > 0 && selectedIds.size === orders.length}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Items</th>
@@ -325,8 +473,16 @@ export default function StoreOrders() {
                   <tr
                     key={order._id}
                     onClick={() => setSelectedOrder(order)}
-                    className="hover:bg-gray-50/50 cursor-pointer transition-colors"
+                    className={`hover:bg-gray-50/50 cursor-pointer transition-colors ${selectedIds.has(order._id) ? 'bg-indigo-50/50' : ''}`}
                   >
+                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(order._id)}
+                        onChange={() => toggleSelect(order._id)}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-mono font-semibold text-gray-900 text-xs">{order.orderNumber}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{formatDate(order.createdAt)}</p>

@@ -341,15 +341,6 @@ export default function PublicStorePage() {
 
   const THUMB_COLOURS = ['Black', 'Grey', 'Blue', 'Red', 'Purple', 'Brown', 'Tan', 'Green', 'Orange', 'Pink']
 
-  const getThumbColour = (group: DesignGroup, idx: number) => {
-    const colourWithImages = group.colours.filter(c => c.images.length > 0)
-    if (!colourWithImages.length) return group.colours[0] || null
-    const targetColour = THUMB_COLOURS[idx % THUMB_COLOURS.length]
-    const match = colourWithImages.find(c => c.colour === targetColour)
-    if (match) return match
-    return colourWithImages[idx % colourWithImages.length]
-  }
-
   const getThumbColoursForGrid = (groups: DesignGroup[]) => {
     const result: (DesignGroup['colours'][0] | null)[] = []
     for (let idx = 0; idx < groups.length; idx++) {
@@ -366,15 +357,16 @@ export default function PublicStorePage() {
     return result
   }
 
+  const thumbColours = useMemo(() => getThumbColoursForGrid(designGroups), [designGroups])
+
   const handleExpandVariant = (idx: number) => {
     if (expandedIndex === idx) { setExpandedIndex(null); return }
     setExpandedIndex(idx)
     const group = designGroups[idx]
     if (group) {
-      const startColourOption = getThumbColour(group, idx)
-      const startColour = startColourOption || group.colours[0]
+      const startColour = thumbColours[idx] || group.colours[0]
       setSelectedColour(startColour?.colour || null)
-      const avail = startColour?.sizes.find(s => s.stock > 0)
+      const avail = startColour?.sizes.find((s: { stock: number }) => s.stock > 0)
       setSelectedSize(avail?.size || startColour?.sizes[0]?.size || null)
     }
     setQuantity(1)
@@ -714,7 +706,7 @@ export default function PublicStorePage() {
       {/* Variant cards grid */}
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-          {(() => { const thumbColours = getThumbColoursForGrid(designGroups); return designGroups.map((group, idx) => {
+          {designGroups.map((group, idx) => {
             const thumbOption = thumbColours[idx]
             const thumb = thumbOption?.images[0] || activeProduct?.images?.[0]
             const totalStock = group.colours.reduce((s, c) => s + c.sizes.reduce((s2, sz) => s2 + sz.stock, 0), 0)
@@ -747,7 +739,7 @@ export default function PublicStorePage() {
                 </div>
               </button>
             )
-          }) })()}
+          })}
         </div>
       </div>
 

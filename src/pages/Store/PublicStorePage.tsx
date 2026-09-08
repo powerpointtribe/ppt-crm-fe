@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ShoppingCart, Minus, Plus, Tag, ChevronLeft, Check, X, Play, Pause, Eye } from 'lucide-react'
+import { ShoppingCart, Minus, Plus, Tag, ChevronLeft, Check, X, Play, Pause, Eye, Users, Baby } from 'lucide-react'
 import {
   getProductBySlug, getActiveProducts, createOrder, initiatePayment,
   validateCoupon, type Product, type ProductVariant,
@@ -43,6 +43,8 @@ interface CartItem {
   product: Product
   variant: ProductVariant
   quantity: number
+  age?: string
+  isChildren?: boolean
 }
 
 interface ColourOption {
@@ -59,15 +61,17 @@ interface DesignGroup {
 
 const COLOUR_HEX: Record<string, string> = {
   Black:  '#3a3735',
+  White:  '#f5f5f5',
   Grey:   '#9a9590',
   Blue:   '#5a6e8a',
   Red:    '#96403c',
   Purple: '#7b5e8a',
   Brown:  '#5c3d2e',
   Tan:    '#a07850',
-  Green:  '#506040',
+  Green:  '#4a7c59',
   Orange: '#c86830',
   Pink:   '#c08090',
+  Yellow: '#e6c619',
 }
 
 function parseDesignColour(colour: string): { design: string; color: string } {
@@ -220,6 +224,9 @@ export default function PublicStorePage() {
   useEffect(() => { ensureAnimStyles() }, [])
 
   const [product, setProduct] = useState<Product | null>(null)
+  const [childrenProduct, setChildrenProduct] = useState<Product | null>(null)
+  const [category, setCategory] = useState<'adults' | 'children'>('adults')
+  const [childrenAge, setChildrenAge] = useState('')
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -243,17 +250,19 @@ export default function PublicStorePage() {
   useEffect(() => {
     if (!product) return
     const validKeys = new Set(product.variants.map(v => `${v.colour}|${v.size}`))
+    const childValidKeys = childrenProduct ? new Set(childrenProduct.variants.map(v => `${v.colour}|${v.size}`)) : new Set()
     setCart(prev => {
       const pruned = prev.filter(item => {
-        if (item.product._id !== product._id) return true
-        return validKeys.has(`${item.variant.colour}|${item.variant.size}`)
+        if (item.product._id === product._id) return validKeys.has(`${item.variant.colour}|${item.variant.size}`)
+        if (childrenProduct && item.product._id === childrenProduct._id) return childValidKeys.has(`${item.variant.colour}|${item.variant.size}`)
+        return true
       })
       if (pruned.length < prev.length) {
         showToast.info(`${prev.length - pruned.length} outdated item(s) removed from cart`)
       }
       return pruned.length === prev.length ? prev : pruned
     })
-  }, [product])
+  }, [product, childrenProduct])
 
   // Checkout
   const [couponCode, setCouponCode] = useState('')
@@ -263,9 +272,18 @@ export default function PublicStorePage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (slug) loadProduct(slug)
-    else loadAllProducts()
+    if (slug) {
+      loadProduct(slug)
+      loadChildrenProduct(`${slug}-children`)
+    } else {
+      loadAllProducts()
+    }
   }, [slug])
+
+  useEffect(() => {
+    setExpandedIndex(null)
+    setChildrenAge('')
+  }, [category])
 
   useEffect(() => {
     if (product) {
@@ -292,6 +310,15 @@ export default function PublicStorePage() {
     }
   }
 
+  const loadChildrenProduct = async (s: string) => {
+    try {
+      const p = await getProductBySlug(s)
+      setChildrenProduct(p)
+    } catch {
+      // Children's product doesn't exist — no tab shown
+    }
+  }
+
   const loadAllProducts = async () => {
     try {
       setLoading(true)
@@ -305,21 +332,47 @@ export default function PublicStorePage() {
 
   const [selectedColour, setSelectedColour] = useState<string | null>(null)
 
+  const activeProduct = category === 'children' ? childrenProduct : product
+  const isChildrenMode = category === 'children'
+
   const designGroups = useMemo(() =>
-    product ? groupVariantsByDesign(product.variants) : []
-  , [product])
+    activeProduct ? groupVariantsByDesign(activeProduct.variants) : []
+  , [activeProduct])
 
   const THUMB_COLOURS = ['Black', 'Grey', 'Blue', 'Red', 'Purple', 'Brown', 'Tan', 'Green', 'Orange', 'Pink']
+
+  const getThumbColour = (group: DesignGroup, idx: number) => {
+    const colourWithImages = group.colours.filter(c => c.images.length > 0)
+    if (!colourWithImages.length) return group.colours[0] || null
+    const targetColour = THUMB_COLOURS[idx % THUMB_COLOURS.length]
+    const match = colourWithImages.find(c => c.colour === targetColour)
+    if (match) return match
+    return colourWithImages[idx % colourWithImages.length]
+  }
+
+  const getThumbColoursForGrid = (groups: DesignGroup[]) => {
+    const result: (DesignGroup['colours'][0] | null)[] = []
+    for (let idx = 0; idx < groups.length; idx++) {
+      const group = groups[idx]
+      const colourWithImages = group.colours.filter(c => c.images.length > 0)
+      if (!colourWithImages.length) { result.push(group.colours[0] || null); continue }
+      const targetColour = THUMB_COLOURS[idx % THUMB_COLOURS.length]
+      const match = colourWithImages.find(c => c.colour === targetColour)
+      if (match) { result.push(match); continue }
+      const used = new Set(result.filter(Boolean).map(r => r!.colour))
+      const available = colourWithImages.filter(c => !used.has(c.colour))
+      result.push(available.length ? available[0] : colourWithImages[idx % colourWithImages.length])
+    }
+    return result
+  }
 
   const handleExpandVariant = (idx: number) => {
     if (expandedIndex === idx) { setExpandedIndex(null); return }
     setExpandedIndex(idx)
     const group = designGroups[idx]
     if (group) {
-      const targetColour = THUMB_COLOURS[idx % THUMB_COLOURS.length]
-      const colourWithImages = group.colours.filter(c => c.images.length > 0)
-      const thumbMatch = colourWithImages.find(c => c.colour === targetColour)
-      const startColour = thumbMatch || group.colours[0]
+      const startColourOption = getThumbColour(group, idx)
+      const startColour = startColourOption || group.colours[0]
       setSelectedColour(startColour?.colour || null)
       const avail = startColour?.sizes.find(s => s.stock > 0)
       setSelectedSize(avail?.size || startColour?.sizes[0]?.size || null)
@@ -330,16 +383,28 @@ export default function PublicStorePage() {
   const expandedGroup = expandedIndex !== null ? designGroups[expandedIndex] ?? null : null
   const activeColourOption = expandedGroup?.colours.find(c => c.colour === selectedColour) || expandedGroup?.colours[0] || null
   const selectedVariant = activeColourOption
-    ? activeColourOption.sizes.find(s => s.size === selectedSize)?.variant || null
+    ? isChildrenMode
+      ? (activeColourOption.sizes.find(s => s.stock > 0)?.variant || activeColourOption.sizes[0]?.variant || null)
+      : (activeColourOption.sizes.find(s => s.size === selectedSize)?.variant || null)
     : null
 
   // ─── Cart ─────────────────────────────────────────────────────
   const addToCart = () => {
-    if (!product || !selectedVariant || selectedVariant.stock === 0) return
+    if (!activeProduct || !selectedVariant || selectedVariant.stock === 0) return
+    if (isChildrenMode && !childrenAge.trim()) {
+      showToast.error("Please enter the child's age")
+      return
+    }
     setCart(prev => {
-      const idx = prev.findIndex(
-        c => c.product._id === product._id && c.variant.size === selectedVariant.size && c.variant.colour === selectedVariant.colour
-      )
+      const matchKey = isChildrenMode
+        ? `${activeProduct._id}|${selectedVariant.colour}|age:${childrenAge.trim()}`
+        : `${activeProduct._id}|${selectedVariant.size}|${selectedVariant.colour}`
+      const idx = prev.findIndex(c => {
+        const k = c.isChildren
+          ? `${c.product._id}|${c.variant.colour}|age:${c.age}`
+          : `${c.product._id}|${c.variant.size}|${c.variant.colour}`
+        return k === matchKey
+      })
       if (idx >= 0) {
         const updated = [...prev]
         updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + quantity }
@@ -348,18 +413,24 @@ export default function PublicStorePage() {
       const variantWithImages = selectedVariant.images?.length
         ? selectedVariant
         : { ...selectedVariant, images: activeColourOption?.images || [] }
-      return [...prev, { product, variant: variantWithImages, quantity }]
+      return [...prev, {
+        product: activeProduct,
+        variant: variantWithImages,
+        quantity,
+        ...(isChildrenMode ? { age: childrenAge.trim(), isChildren: true } : {}),
+      }]
     })
     trackStoreEvent('add_to_cart', {
-      product: product.name,
+      product: activeProduct.name,
       design: parseDesignColour(selectedVariant.colour).design,
       colour: parseDesignColour(selectedVariant.colour).color,
-      size: selectedVariant.size,
+      size: isChildrenMode ? `Age: ${childrenAge.trim()}` : selectedVariant.size,
       quantity,
-      price: product.price,
+      price: activeProduct.price,
     })
     showToast.success(`Added to cart`)
     setQuantity(1)
+    setChildrenAge('')
     setExpandedIndex(null)
   }
 
@@ -403,10 +474,15 @@ export default function PublicStorePage() {
     try {
       setSubmitting(true)
       trackStoreEvent('checkout_initiated', { items: cart.length, total })
+      const childrenItems = cart.filter(c => c.isChildren && c.age)
+      const ageNotes = childrenItems.length
+        ? `Children's ages: ${childrenItems.map(c => `${parseDesignColour(c.variant.colour).design} (${parseDesignColour(c.variant.colour).color}) — Age ${c.age}`).join('; ')}`
+        : ''
+      const combinedNotes = [delivery.notes?.trim(), ageNotes].filter(Boolean).join('. ')
       const order = await createOrder({
         items: cart.map(c => ({
           product: c.product._id,
-          size: c.variant.size,
+          size: c.isChildren ? (c.variant.size || 'Standard') : c.variant.size,
           colour: c.variant.colour,
           quantity: c.quantity,
         })),
@@ -415,6 +491,7 @@ export default function PublicStorePage() {
           phone: delivery.phone.trim(),
           email: delivery.email.trim(),
           address: delivery.address.trim() || 'N/A',
+          ...(combinedNotes ? { notes: combinedNotes } : {}),
         },
         couponCode: couponResult?.code,
         customerEmail: delivery.email.trim(),
@@ -455,7 +532,7 @@ export default function PublicStorePage() {
                         {img && <img src={img} alt={`${item.product.name} - ${parseDesignColour(item.variant.colour).design}`} className="w-16 h-16 rounded-md object-cover flex-shrink-0" />}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-gray-900 text-sm truncate">{item.product.name}</p>
-                          <p className="text-xs text-gray-500">{parseDesignColour(item.variant.colour).design} · {parseDesignColour(item.variant.colour).color} · {item.variant.size}</p>
+                          <p className="text-xs text-gray-500">{parseDesignColour(item.variant.colour).design} · {parseDesignColour(item.variant.colour).color}{item.isChildren ? ` · Age: ${item.age}` : ` · ${item.variant.size}`}</p>
                           <p className="text-sm font-semibold text-indigo-600 mt-1">{formatPrice(item.product.price)}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
@@ -486,7 +563,7 @@ export default function PublicStorePage() {
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 {cart.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-sm">
-                    <span className="text-gray-600">{parseDesignColour(item.variant.colour).design} ({parseDesignColour(item.variant.colour).color}, {item.variant.size}) x{item.quantity}</span>
+                    <span className="text-gray-600">{parseDesignColour(item.variant.colour).design} ({parseDesignColour(item.variant.colour).color}{item.isChildren ? `, Age: ${item.age}` : `, ${item.variant.size}`}) x{item.quantity}</span>
                     <span className="text-gray-900">{formatPrice(item.product.price * item.quantity)}</span>
                   </div>
                 ))}
@@ -599,21 +676,47 @@ export default function PublicStorePage() {
         <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-5">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{product.name}</h1>
           <div className="flex items-center gap-3 mt-1">
-            <p className="text-xl font-bold text-indigo-600">{formatPrice(product.price)}</p>
+            <p className="text-xl font-bold text-indigo-600">{formatPrice(activeProduct?.price ?? product.price)}</p>
             <span className="text-xs text-gray-400">{designGroups.length} designs available</span>
           </div>
           {product.description && <p className="text-gray-500 mt-1 text-sm">{product.description}</p>}
+
+          {/* Category tabs */}
+          {childrenProduct && (
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setCategory('adults')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                  category === 'adults'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                Adults
+              </button>
+              <button
+                onClick={() => setCategory('children')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                  category === 'children'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <Baby className="w-4 h-4" />
+                Children
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Variant cards grid */}
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-          {designGroups.map((group, idx) => {
-            const targetColour = THUMB_COLOURS[idx % THUMB_COLOURS.length]
-            const colourWithImages = group.colours.filter(c => c.images.length > 0)
-            const thumbOption = colourWithImages.find(c => c.colour === targetColour) || colourWithImages[0]
-            const thumb = thumbOption?.images[0] || product.images?.[0]
+          {(() => { const thumbColours = getThumbColoursForGrid(designGroups); return designGroups.map((group, idx) => {
+            const thumbOption = thumbColours[idx]
+            const thumb = thumbOption?.images[0] || activeProduct?.images?.[0]
             const totalStock = group.colours.reduce((s, c) => s + c.sizes.reduce((s2, sz) => s2 + sz.stock, 0), 0)
             const availableColours = group.colours.map(c => c.colour)
 
@@ -634,7 +737,7 @@ export default function PublicStorePage() {
                 )}
                 <div className="p-2.5">
                   <h3 className="font-semibold text-gray-900 text-xs sm:text-sm truncate group-hover/card:text-indigo-600 transition-colors">{group.design}</h3>
-                  <p className="text-xs font-bold text-indigo-600 mt-0.5">{formatPrice(product.price)}</p>
+                  <p className="text-xs font-bold text-indigo-600 mt-0.5">{formatPrice(activeProduct?.price ?? product.price)}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     {availableColours.map(c => (
                       <span key={c} className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: COLOUR_HEX[c] || '#ccc' }} />
@@ -644,7 +747,7 @@ export default function PublicStorePage() {
                 </div>
               </button>
             )
-          })}
+          }) })()}
         </div>
       </div>
 
@@ -670,7 +773,7 @@ export default function PublicStorePage() {
                 <div className="p-3 sm:p-4 sm:h-full sm:flex sm:flex-col sm:justify-center">
                   {(() => {
                     const imgs = activeColourOption?.images.length ? activeColourOption.images
-                      : expandedGroup.colours.find(c => c.images.length)?.images || product.images || []
+                      : expandedGroup.colours.find(c => c.images.length)?.images || activeProduct?.images || []
                     return imgs.length > 0 ? (
                       <ImageViewer images={imgs} alt={`${expandedGroup.design} ${activeColourOption?.colour || ''} T-shirt`} />
                     ) : (
@@ -686,7 +789,8 @@ export default function PublicStorePage() {
               <div className="sm:w-[45%] p-5 sm:p-6 flex flex-col justify-center gap-4 sm:overflow-y-auto sm:max-h-[92vh]">
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900">{expandedGroup.design}</h2>
-                  <p className="text-xl font-bold text-indigo-600 mt-1">{formatPrice(product.price)}</p>
+                  <p className="text-xl font-bold text-indigo-600 mt-1">{formatPrice(activeProduct?.price ?? product.price)}</p>
+                  {isChildrenMode && <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">Children</span>}
                 </div>
 
                 {/* Colour selector */}
@@ -728,8 +832,19 @@ export default function PublicStorePage() {
                   </div>
                 )}
 
-                {/* Size selector */}
-                {activeColourOption && (
+                {/* Size selector (adults) / Age input (children) */}
+                {isChildrenMode ? (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Child's Age</p>
+                    <input
+                      type="text"
+                      value={childrenAge}
+                      onChange={(e) => setChildrenAge(e.target.value)}
+                      placeholder="e.g. 5 years"
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition"
+                    />
+                  </div>
+                ) : activeColourOption && (
                   <div>
                     <p className="text-sm font-medium text-gray-700 mb-2">Size</p>
                     <div className="flex flex-wrap gap-2">
@@ -779,7 +894,7 @@ export default function PublicStorePage() {
                 {/* Add to Cart */}
                 <button
                   onClick={addToCart}
-                  disabled={!selectedVariant || selectedVariant.stock === 0}
+                  disabled={!selectedVariant || selectedVariant.stock === 0 || (isChildrenMode && !childrenAge.trim())}
                   className="w-full py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
                 >
                   <ShoppingCart className="w-4 h-4" />

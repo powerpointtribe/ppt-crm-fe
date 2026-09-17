@@ -67,6 +67,7 @@ class ServiceAttendanceService {
     serviceType: ServiceType
     status?: 'present' | 'late'
     checkInMethod?: string
+    branch?: string
     notes?: string
   }): Promise<AttendanceRecord> {
     const response = await apiService.post<{ data: AttendanceRecord }>(
@@ -117,10 +118,13 @@ class ServiceAttendanceService {
   async getServiceAttendees(
     date: string,
     serviceType: ServiceType,
+    branch?: string,
   ): Promise<AttendanceRecord[]> {
+    const params: Record<string, string> = { date, serviceType }
+    if (branch) params.branch = branch
     const response = await apiService.get<{ data: AttendanceRecord[] }>(
       '/service-attendance/service',
-      { params: { date, serviceType } },
+      { params },
     )
     return (response as any).data
   }
@@ -139,6 +143,7 @@ class ServiceAttendanceService {
   async markAbsentees(data: {
     serviceDate: string
     serviceType: ServiceType
+    branch?: string
   }): Promise<{ marked: number }> {
     const response = await apiService.post<{ data: { marked: number } }>(
       '/service-attendance/mark-absent',

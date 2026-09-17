@@ -112,6 +112,7 @@ export default function Attendance() {
       const data = await serviceAttendanceService.getServiceAttendees(
         serviceDate,
         serviceType,
+        branchId || undefined,
       )
       setAttendees(data)
     } catch {
@@ -119,7 +120,7 @@ export default function Attendance() {
     } finally {
       setLoading(false)
     }
-  }, [serviceDate, serviceType])
+  }, [serviceDate, serviceType, branchId])
 
   useEffect(() => {
     loadAttendees()
@@ -172,6 +173,7 @@ export default function Attendance() {
         serviceDate,
         serviceType,
         checkInMethod: 'manual',
+        branch: branchId || undefined,
       })
       showToast.success(`${member.firstName} ${member.lastName} checked in`)
       setSearchQuery('')
@@ -206,6 +208,7 @@ export default function Attendance() {
       const result = await serviceAttendanceService.markAbsentees({
         serviceDate,
         serviceType,
+        branch: branchId || undefined,
       })
       showToast.success(`${result.marked} members marked absent`)
       loadAttendees()

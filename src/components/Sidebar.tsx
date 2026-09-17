@@ -47,6 +47,8 @@ import {
   ShoppingBag,
   ShoppingCart,
   Ticket,
+  TrendingUp,
+  ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -84,6 +86,18 @@ const menuGroups: MenuGroup[] = [
         label: 'Dashboard',
         path: '/dashboard',
         requiredPermission: 'dashboard:view',
+      },
+      {
+        icon: TrendingUp,
+        label: 'Growth Intelligence',
+        path: '/gis',
+        requiredPermission: 'gis:view-dashboard',
+      },
+      {
+        icon: ClipboardCheck,
+        label: 'Attendance',
+        path: '/attendance',
+        requiredPermission: 'attendance:record',
       },
     ],
   },

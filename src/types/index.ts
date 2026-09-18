@@ -57,11 +57,29 @@ export interface Member {
     state: string
     zipCode?: string
     country: string
+    lga?: string
+    landmark?: string
   }
+  weddingAnniversary?: string
   ministries?: string[]
   skills?: string[]
+  interests?: string[]
   occupation?: string
+  profession?: string
+  employer?: string
+  businessName?: string
+  businessType?: string
   workAddress?: string
+  memberCategory?: string
+  howLongAttending?: string
+  previousChurch?: string
+  socialMedia?: {
+    facebook?: string
+    instagram?: string
+    twitter?: string
+    linkedin?: string
+    tiktok?: string
+  }
 
   // Family
   spouse?: any

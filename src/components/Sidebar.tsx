@@ -123,6 +123,12 @@ const menuGroups: MenuGroup[] = [
             path: '/members/service-reports',
             requiredPermission: 'service-reports:view',
           },
+          {
+            icon: Upload,
+            label: 'Profile Submissions',
+            path: '/members/profile-submissions',
+            requiredPermission: 'members:view',
+          },
         ],
       },
       {

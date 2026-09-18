@@ -26,6 +26,7 @@ import PublicEventRegistration from '@/pages/PublicEventRegistration'
 import PublicTestimonyForm from '@/pages/PublicTestimonyForm'
 import PublicFeedbackForm from '@/pages/PublicFeedbackForm'
 import DocsPage from '@/pages/DocsPage'
+import UpdateProfile from '@/pages/Members/UpdateProfile'
 const PublicStorePage = lazy(() => import('@/pages/Store/PublicStorePage'))
 const PaymentVerify = lazy(() => import('@/pages/Store/PaymentVerify'))
 
@@ -33,6 +34,7 @@ const PaymentVerify = lazy(() => import('@/pages/Store/PaymentVerify'))
 import Dashboard from '@/pages/Dashboard'
 
 // Lazy loaded pages with prefetch support
+const ProfileSubmissions = lazy(() => import('@/pages/Members/ProfileSubmissions'))
 const Members = lazy(() => import('@/pages/Members/Members'))
 const MemberNew = lazy(() => import('@/pages/Members/MemberNew'))
 const MemberEdit = lazy(() => import('@/pages/Members/MemberEdit'))
@@ -206,6 +208,7 @@ function App() {
           <Route path="/event-testimony/:slug" element={<PublicTestimonyForm />} />
           <Route path="/event-feedback/:slug" element={<PublicFeedbackForm />} />
           <Route path="/check-in" element={<LazyPage><CheckInPage /></LazyPage>} />
+          <Route path="/update-profile" element={<UpdateProfile />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/store" element={<LazyPage><PublicStorePage /></LazyPage>} />
           <Route path="/store/payment/verify" element={<LazyPage><PaymentVerify /></LazyPage>} />
@@ -247,6 +250,11 @@ function App() {
           <Route path="/members/:id/edit" element={
             <ProtectedRoute>
               <LazyPage><MemberEdit /></LazyPage>
+            </ProtectedRoute>
+          } />
+          <Route path="/members/profile-submissions" element={
+            <ProtectedRoute>
+              <LazyPage><ProfileSubmissions /></LazyPage>
             </ProtectedRoute>
           } />
 

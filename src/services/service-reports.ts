@@ -165,7 +165,7 @@ export const serviceReportsService = {
     await apiService.delete(`/service-reports/${id}`)
   },
 
-  getServiceReportStats: async (params?: { dateFrom?: string; dateTo?: string }): Promise<ServiceReportStats> => {
+  getServiceReportStats: async (params?: { dateFrom?: string; dateTo?: string; branchId?: string; serviceTag?: string }): Promise<ServiceReportStats> => {
     const response = await apiService.get<ApiResponse<ServiceReportStats>>('/service-reports/stats', { params })
     return transformSingleResponse<ServiceReportStats>(response) as ServiceReportStats
   },
@@ -350,9 +350,9 @@ export const serviceReportsService = {
     }))
   },
 
-  getAttendanceChartData: async (limit: number = 10, dateFrom?: string, dateTo?: string): Promise<any[]> => {
+  getAttendanceChartData: async (limit: number = 10, dateFrom?: string, dateTo?: string, branchId?: string): Promise<any[]> => {
     const response = await apiService.get<ApiResponse<any[]>>('/service-reports/chart-data', {
-      params: { limit, dateFrom, dateTo }
+      params: { limit, dateFrom, dateTo, branchId }
     })
     return transformSingleResponse<any[]>(response) as any[]
   },

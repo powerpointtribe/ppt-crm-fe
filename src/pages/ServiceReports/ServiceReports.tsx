@@ -144,26 +144,30 @@ export default function ServiceReports() {
     }
   }, [memoizedSearchParams])
 
+  const effectiveBranchId = selectedBranch?._id || branchFilter || undefined
+
   const loadStats = useCallback(async () => {
     try {
       const statsData = await serviceReportsService.getServiceReportStats({
         dateFrom: dateFromFilter || undefined,
         dateTo: dateToFilter || undefined,
+        branchId: effectiveBranchId,
+        serviceTag: serviceTagFilter || undefined,
       })
       setStats(statsData)
     } catch (err) {
       console.error('Failed to load stats:', err)
     }
-  }, [dateFromFilter, dateToFilter])
+  }, [dateFromFilter, dateToFilter, effectiveBranchId, serviceTagFilter])
 
   const loadChartData = useCallback(async () => {
     try {
-      const data = await serviceReportsService.getAttendanceChartData(10, dateFromFilter, dateToFilter)
+      const data = await serviceReportsService.getAttendanceChartData(10, dateFromFilter, dateToFilter, effectiveBranchId)
       setChartData(data)
     } catch (err) {
       console.error('Failed to load chart data:', err)
     }
-  }, [dateFromFilter, dateToFilter])
+  }, [dateFromFilter, dateToFilter, effectiveBranchId])
 
   useEffect(() => {
     loadReports()

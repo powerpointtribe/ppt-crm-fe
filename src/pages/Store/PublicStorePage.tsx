@@ -266,8 +266,9 @@ export default function PublicStorePage() {
 
   // Checkout
   const [couponCode, setCouponCode] = useState('')
-  const [couponResult, setCouponResult] = useState<{ discountAmount: number; code: string } | null>(null)
+  const [couponResult, setCouponResult] = useState<{ discountAmount: number; code: string; maxApplicableItems?: number | null } | null>(null)
   const [validatingCoupon, setValidatingCoupon] = useState(false)
+  const [couponApplyToItemIndex, setCouponApplyToItemIndex] = useState<number>(0)
   const [delivery, setDelivery] = useState({ fullName: '', phone: '', email: '', address: '', city: '', state: '', notes: '' })
   const [submitting, setSubmitting] = useState(false)
 
@@ -437,13 +438,21 @@ export default function PublicStorePage() {
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
 
   // ─── Checkout ─────────────────────────────────────────────────
-  const handleValidateCoupon = async () => {
+  const handleValidateCoupon = async (applyIdx?: number) => {
     if (!couponCode.trim() || cart.length === 0) return
     try {
       setValidatingCoupon(true)
       const productIds = [...new Set(cart.map(c => c.product._id))]
-      const result = await validateCoupon(couponCode, cartSubtotal, productIds)
-      setCouponResult({ discountAmount: result.discountAmount, code: result.code })
+      const itemPrices = cart.map(c => ({
+        productId: c.product._id,
+        totalPrice: c.product.price * c.quantity,
+      }))
+      const idx = applyIdx ?? couponApplyToItemIndex
+      const result = await validateCoupon(couponCode, cartSubtotal, productIds, itemPrices, idx)
+      setCouponResult({ discountAmount: result.discountAmount, code: result.code, maxApplicableItems: result.maxApplicableItems })
+      if (result.maxApplicableItems && cart.length > 1) {
+        setCouponApplyToItemIndex(idx)
+      }
       showToast.success(`Coupon applied! ${formatPrice(result.discountAmount)} off`)
     } catch (err: any) {
       setCouponResult(null)
@@ -486,6 +495,7 @@ export default function PublicStorePage() {
           ...(combinedNotes ? { notes: combinedNotes } : {}),
         },
         couponCode: couponResult?.code,
+        ...(couponResult?.maxApplicableItems ? { couponApplyToItemIndex } : {}),
         customerEmail: delivery.email.trim(),
         customerPhone: delivery.phone.trim(),
       })
@@ -576,12 +586,28 @@ export default function PublicStorePage() {
                     <input type="text" value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null) }}
                       className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg uppercase font-mono text-sm" placeholder="Enter code" />
                   </div>
-                  <button onClick={handleValidateCoupon} disabled={validatingCoupon || !couponCode.trim()}
+                  <button onClick={() => handleValidateCoupon()} disabled={validatingCoupon || !couponCode.trim()}
                     className="px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-50 disabled:opacity-50">
                     {validatingCoupon ? '...' : couponResult ? <Check className="w-4 h-4" /> : 'Apply'}
                   </button>
                 </div>
               </div>
+              {couponResult?.maxApplicableItems && cart.length > 1 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium text-green-800">Apply discount to which item?</p>
+                  <div className="space-y-1.5">
+                    {cart.map((item, idx) => (
+                      <label key={idx} className={`flex items-center gap-2 p-2 rounded-md cursor-pointer text-sm transition ${couponApplyToItemIndex === idx ? 'bg-green-100 ring-1 ring-green-400' : 'hover:bg-green-100/50'}`}>
+                        <input type="radio" name="couponItem" checked={couponApplyToItemIndex === idx}
+                          onChange={() => { setCouponApplyToItemIndex(idx); handleValidateCoupon(idx) }}
+                          className="accent-green-600" />
+                        <span className="text-gray-700">{parseDesignColour(item.variant.colour).design} ({parseDesignColour(item.variant.colour).color}{item.isChildren ? `, Age: ${item.age}` : `, ${item.variant.size}`})</span>
+                        <span className="ml-auto text-gray-500">{formatPrice(item.product.price * item.quantity)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-900">Your Information</h3>
                 <input type="text" value={delivery.fullName} onChange={(e) => setDelivery(d => ({ ...d, fullName: e.target.value }))}

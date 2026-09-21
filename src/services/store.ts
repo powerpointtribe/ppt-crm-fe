@@ -194,6 +194,7 @@ export async function createOrder(data: {
   items: { product: string; size?: string; colour?: string; quantity: number }[]
   delivery: DeliveryInfo
   couponCode?: string
+  couponApplyToItemIndex?: number
   customerEmail?: string
   customerPhone?: string
 }) {
@@ -227,12 +228,19 @@ export async function verifyOrderPayment(orderId: string) {
   return res.data
 }
 
-export async function validateCoupon(code: string, subtotal: number, productIds: string[]) {
+export async function validateCoupon(
+  code: string,
+  subtotal: number,
+  productIds: string[],
+  itemPrices?: { productId: string; totalPrice: number }[],
+  applyToItemIndex?: number,
+) {
   const res = await apiService.post<SingleResponse<{
     code: string
     discountType: string
     discountValue: number
     discountAmount: number
-  }>>('/store/public/validate-coupon', { code, subtotal, productIds })
+    maxApplicableItems: number | null
+  }>>('/store/public/validate-coupon', { code, subtotal, productIds, itemPrices, applyToItemIndex })
   return res.data
 }

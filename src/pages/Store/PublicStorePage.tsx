@@ -583,7 +583,7 @@ export default function PublicStorePage() {
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input type="text" value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null) }}
+                    <input type="text" value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); setCouponApplyToItemIndex(0) }}
                       className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg uppercase font-mono text-sm" placeholder="Enter code" />
                   </div>
                   <button onClick={() => handleValidateCoupon()} disabled={validatingCoupon || !couponCode.trim()}

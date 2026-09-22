@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Plus, Edit, Trash2, X, Ticket, TrendingUp, CheckCircle2, Search } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Plus, Edit, Trash2, X, Ticket, TrendingUp, CheckCircle2, Search, Eye } from 'lucide-react'
 import Layout from '@/components/Layout'
-import { getCoupons, createCoupon, updateCoupon, deleteCoupon, type Coupon } from '@/services/store'
+import { getCoupons, createCoupon, updateCoupon, deleteCoupon, getCouponUsage, type Coupon, type CouponUsageEntry } from '@/services/store'
 import { showToast } from '@/utils/toast'
 
 interface CouponFormData {
@@ -32,6 +32,9 @@ export default function StoreCoupons() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'used' | 'expired' | 'inactive'>('all')
+  const [usageCode, setUsageCode] = useState<string | null>(null)
+  const [usageData, setUsageData] = useState<CouponUsageEntry[]>([])
+  const [loadingUsage, setLoadingUsage] = useState(false)
 
   const fetchCoupons = async () => {
     try {
@@ -46,6 +49,21 @@ export default function StoreCoupons() {
   }
 
   useEffect(() => { fetchCoupons() }, [])
+
+  const viewUsage = async (code: string) => {
+    if (usageCode === code) { setUsageCode(null); return }
+    try {
+      setLoadingUsage(true)
+      setUsageCode(code)
+      const entries = await getCouponUsage(code)
+      setUsageData(entries)
+    } catch {
+      showToast.error('Failed to load usage data')
+      setUsageCode(null)
+    } finally {
+      setLoadingUsage(false)
+    }
+  }
 
   const isExpired = (c: Coupon) => !!(c.expiresAt && new Date(c.expiresAt) < new Date())
   const isLimitReached = (c: Coupon) => !!(c.usageLimit && c.usageCount >= c.usageLimit)
@@ -251,7 +269,8 @@ export default function StoreCoupons() {
                 {filteredCoupons.map((coupon) => {
                   const status = getCouponStatus(coupon)
                   return (
-                    <tr key={coupon._id} className="hover:bg-gray-50">
+                    <React.Fragment key={coupon._id}>
+                    <tr className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <span className="font-mono font-semibold text-gray-900">{coupon.code}</span>
                         {coupon.description && <p className="text-xs text-gray-500 mt-0.5">{coupon.description}</p>}
@@ -286,11 +305,56 @@ export default function StoreCoupons() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
+                          {coupon.usageCount > 0 && (
+                            <button
+                              onClick={() => viewUsage(coupon.code)}
+                              className={`p-1.5 transition ${usageCode === coupon.code ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+                              title="View who used this code"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
                           <button onClick={() => openEdit(coupon)} className="p-1.5 text-gray-400 hover:text-indigo-600"><Edit className="w-4 h-4" /></button>
                           <button onClick={() => handleDelete(coupon._id, coupon.code)} className="p-1.5 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </tr>
+                    {usageCode === coupon.code && (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-0">
+                          <div className="bg-gray-50 rounded-lg border border-gray-200 my-2 overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-200">
+                              <span className="text-xs font-semibold text-gray-600 uppercase">Usage Details — {coupon.code}</span>
+                              <button onClick={() => setUsageCode(null)} className="text-gray-400 hover:text-gray-600">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            {loadingUsage ? (
+                              <div className="flex justify-center py-6">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600" />
+                              </div>
+                            ) : usageData.length === 0 ? (
+                              <p className="text-sm text-gray-500 text-center py-4">No paid orders found for this code</p>
+                            ) : (
+                              <div className="divide-y divide-gray-200">
+                                {usageData.map((entry, i) => (
+                                  <div key={i} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-gray-900 truncate">{entry.delivery?.fullName || 'N/A'}</p>
+                                      <p className="text-xs text-gray-500">{entry.customerEmail || entry.delivery?.phone || '—'}</p>
+                                    </div>
+                                    <div className="text-gray-600 font-mono text-xs">{entry.orderNumber}</div>
+                                    <div className="text-green-600 font-medium whitespace-nowrap">-{formatPrice(entry.discountAmount)}</div>
+                                    <div className="text-gray-500 text-xs whitespace-nowrap">{new Date(entry.createdAt).toLocaleDateString()}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   )
                 })}
               </tbody>

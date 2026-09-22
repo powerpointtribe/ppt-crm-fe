@@ -179,6 +179,20 @@ export async function deleteCoupon(id: string) {
   return apiService.delete(`/store/coupons/${id}`)
 }
 
+export interface CouponUsageEntry {
+  orderNumber: string
+  customerEmail?: string
+  delivery?: { fullName?: string; phone?: string }
+  discountAmount: number
+  totalAmount: number
+  createdAt: string
+}
+
+export async function getCouponUsage(code: string) {
+  const res = await apiService.get<SingleResponse<CouponUsageEntry[]>>(`/store/coupons/${code}/usage`)
+  return res.data
+}
+
 // ─── Public ─────────────────────────────────────────────────────
 
 export async function getActiveProducts() {

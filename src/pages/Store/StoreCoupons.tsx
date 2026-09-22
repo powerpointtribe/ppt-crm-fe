@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, X } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plus, Edit, Trash2, X, Ticket, TrendingUp, CheckCircle2, Search } from 'lucide-react'
 import Layout from '@/components/Layout'
 import { getCoupons, createCoupon, updateCoupon, deleteCoupon, type Coupon } from '@/services/store'
 import { showToast } from '@/utils/toast'
@@ -13,12 +13,14 @@ interface CouponFormData {
   minOrderAmount: string
   expiresAt: string
   usageLimit: string
+  maxApplicableItems: string
   isActive: boolean
 }
 
 const EMPTY_FORM: CouponFormData = {
   code: '', description: '', discountType: 'percentage', discountValue: '',
-  maxDiscountAmount: '', minOrderAmount: '', expiresAt: '', usageLimit: '', isActive: true,
+  maxDiscountAmount: '', minOrderAmount: '', expiresAt: '', usageLimit: '',
+  maxApplicableItems: '', isActive: true,
 }
 
 export default function StoreCoupons() {
@@ -28,11 +30,13 @@ export default function StoreCoupons() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<CouponFormData>({ ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'used' | 'expired' | 'inactive'>('all')
 
   const fetchCoupons = async () => {
     try {
       setLoading(true)
-      const data = await getCoupons({ limit: 50 })
+      const data = await getCoupons({ limit: 200 })
       setCoupons(data.data)
     } catch {
       showToast.error('Failed to load coupons')
@@ -42,6 +46,41 @@ export default function StoreCoupons() {
   }
 
   useEffect(() => { fetchCoupons() }, [])
+
+  const isExpired = (c: Coupon) => !!(c.expiresAt && new Date(c.expiresAt) < new Date())
+  const isLimitReached = (c: Coupon) => !!(c.usageLimit && c.usageCount >= c.usageLimit)
+
+  const getCouponStatus = (c: Coupon): 'active' | 'used' | 'expired' | 'inactive' => {
+    if (!c.isActive) return 'inactive'
+    if (isExpired(c)) return 'expired'
+    if (isLimitReached(c)) return 'used'
+    return 'active'
+  }
+
+  const stats = useMemo(() => {
+    const total = coupons.length
+    const active = coupons.filter(c => getCouponStatus(c) === 'active').length
+    const used = coupons.filter(c => getCouponStatus(c) === 'used').length
+    const expired = coupons.filter(c => getCouponStatus(c) === 'expired').length
+    const inactive = coupons.filter(c => getCouponStatus(c) === 'inactive').length
+    const totalRedemptions = coupons.reduce((sum, c) => sum + c.usageCount, 0)
+    return { total, active, used, expired, inactive, totalRedemptions }
+  }, [coupons])
+
+  const filteredCoupons = useMemo(() => {
+    let list = coupons
+    if (filterStatus !== 'all') {
+      list = list.filter(c => getCouponStatus(c) === filterStatus)
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(c =>
+        c.code.toLowerCase().includes(q) ||
+        c.description?.toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [coupons, filterStatus, search])
 
   const openCreate = () => {
     setEditingId(null)
@@ -60,6 +99,7 @@ export default function StoreCoupons() {
       minOrderAmount: coupon.minOrderAmount ? String(coupon.minOrderAmount) : '',
       expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toISOString().slice(0, 16) : '',
       usageLimit: coupon.usageLimit ? String(coupon.usageLimit) : '',
+      maxApplicableItems: coupon.maxApplicableItems ? String(coupon.maxApplicableItems) : '',
       isActive: coupon.isActive,
     })
     setShowModal(true)
@@ -79,6 +119,7 @@ export default function StoreCoupons() {
       minOrderAmount: form.minOrderAmount ? Number(form.minOrderAmount) : undefined,
       expiresAt: form.expiresAt || undefined,
       usageLimit: form.usageLimit ? Number(form.usageLimit) : undefined,
+      maxApplicableItems: form.maxApplicableItems ? Number(form.maxApplicableItems) : undefined,
       isActive: form.isActive,
     }
 
@@ -114,24 +155,83 @@ export default function StoreCoupons() {
   const formatPrice = (amount: number) =>
     new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(amount)
 
-  const isExpired = (c: Coupon) => c.expiresAt && new Date(c.expiresAt) < new Date()
-  const isLimitReached = (c: Coupon) => c.usageLimit && c.usageCount >= c.usageLimit
+  const statCards = [
+    { label: 'Total Coupons', value: stats.total, icon: Ticket, color: 'bg-indigo-50 text-indigo-600', filter: 'all' as const },
+    { label: 'Active', value: stats.active, icon: CheckCircle2, color: 'bg-green-50 text-green-600', filter: 'active' as const },
+    { label: 'Fully Used', value: stats.used, icon: TrendingUp, color: 'bg-amber-50 text-amber-600', filter: 'used' as const },
+    { label: 'Total Redemptions', value: stats.totalRedemptions, icon: TrendingUp, color: 'bg-purple-50 text-purple-600', filter: 'all' as const },
+  ]
 
   return (
     <Layout title="Coupons" subtitle="Manage store discount coupons">
-      <div className="flex justify-between items-center mb-6">
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
-          <Plus className="w-4 h-4" />
-          Create Coupon
-        </button>
+      {/* Overview Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {statCards.map((card) => (
+          <button
+            key={card.label}
+            onClick={() => setFilterStatus(card.filter)}
+            className={`bg-white rounded-xl border border-gray-200 p-4 text-left hover:shadow-md transition ${filterStatus === card.filter && card.filter !== 'all' ? 'ring-2 ring-indigo-400' : ''}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-500">{card.label}</span>
+              <div className={`p-2 rounded-lg ${card.color}`}>
+                <card.icon className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{card.value}</p>
+          </button>
+        ))}
       </div>
 
+      {/* Actions Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center mb-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          {(['all', 'active', 'used', 'expired', 'inactive'] as const).map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${
+                filterStatus === status
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+              {status !== 'all' && (
+                <span className="ml-1 opacity-75">
+                  ({status === 'active' ? stats.active : status === 'used' ? stats.used : status === 'expired' ? stats.expired : stats.inactive})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+              placeholder="Search codes..."
+            />
+          </div>
+          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition whitespace-nowrap">
+            <Plus className="w-4 h-4" />
+            Create
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
         </div>
-      ) : coupons.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">No coupons yet</div>
+      ) : filteredCoupons.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          {search || filterStatus !== 'all' ? 'No coupons match your filters' : 'No coupons yet'}
+        </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -141,50 +241,63 @@ export default function StoreCoupons() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Discount</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usage</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applies To</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expires</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {coupons.map((coupon) => (
-                  <tr key={coupon._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <span className="font-mono font-semibold text-gray-900">{coupon.code}</span>
-                      {coupon.description && <p className="text-xs text-gray-500 mt-0.5">{coupon.description}</p>}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {coupon.discountType === 'percentage'
-                        ? `${coupon.discountValue}%${coupon.maxDiscountAmount ? ` (max ${formatPrice(coupon.maxDiscountAmount)})` : ''}`
-                        : formatPrice(coupon.discountValue)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {coupon.usageCount}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ''}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString() : 'Never'}
-                    </td>
-                    <td className="px-6 py-4">
-                      {!coupon.isActive ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Inactive</span>
-                      ) : isExpired(coupon) ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Expired</span>
-                      ) : isLimitReached(coupon) ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Limit Reached</span>
-                      ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Active</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEdit(coupon)} className="p-1.5 text-gray-400 hover:text-indigo-600"><Edit className="w-4 h-4" /></button>
-                        <button onClick={() => handleDelete(coupon._id, coupon.code)} className="p-1.5 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredCoupons.map((coupon) => {
+                  const status = getCouponStatus(coupon)
+                  return (
+                    <tr key={coupon._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <span className="font-mono font-semibold text-gray-900">{coupon.code}</span>
+                        {coupon.description && <p className="text-xs text-gray-500 mt-0.5">{coupon.description}</p>}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {coupon.discountType === 'percentage'
+                          ? `${coupon.discountValue}%${coupon.maxDiscountAmount ? ` (max ${formatPrice(coupon.maxDiscountAmount)})` : ''}`
+                          : formatPrice(coupon.discountValue)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-medium text-gray-900">{coupon.usageCount}</span>
+                        <span className="text-sm text-gray-400"> / {coupon.usageLimit ?? '∞'}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {coupon.maxApplicableItems
+                          ? `${coupon.maxApplicableItems} item${coupon.maxApplicableItems > 1 ? 's' : ''}`
+                          : 'Whole order'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        {status === 'inactive' ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Inactive</span>
+                        ) : status === 'expired' ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Expired</span>
+                        ) : status === 'used' ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Used</span>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Active</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => openEdit(coupon)} className="p-1.5 text-gray-400 hover:text-indigo-600"><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => handleDelete(coupon._id, coupon.code)} className="p-1.5 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
+          </div>
+          <div className="px-6 py-3 bg-gray-50 border-t text-sm text-gray-500">
+            Showing {filteredCoupons.length} of {coupons.length} coupons
           </div>
         </div>
       )}
@@ -285,6 +398,19 @@ export default function StoreCoupons() {
                     min="1"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Max Items Discount Applies To</label>
+                <input
+                  type="number"
+                  value={form.maxApplicableItems}
+                  onChange={(e) => setForm(prev => ({ ...prev, maxApplicableItems: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="All items (leave empty)"
+                  min="1"
+                />
+                <p className="text-xs text-gray-400 mt-1">Limits discount to this many items instead of the whole order</p>
               </div>
 
               <div>

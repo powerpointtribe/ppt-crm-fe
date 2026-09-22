@@ -77,6 +77,7 @@ export interface Coupon {
   expiresAt?: string
   usageCount: number
   usageLimit?: number
+  maxApplicableItems?: number
   applicableProducts?: string[]
   isActive: boolean
   createdAt: string

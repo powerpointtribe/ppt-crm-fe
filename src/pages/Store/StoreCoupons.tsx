@@ -157,9 +157,9 @@ export default function StoreCoupons() {
 
   const statCards = [
     { label: 'Total Coupons', value: stats.total, icon: Ticket, color: 'bg-indigo-50 text-indigo-600', filter: 'all' as const },
-    { label: 'Active', value: stats.active, icon: CheckCircle2, color: 'bg-green-50 text-green-600', filter: 'active' as const },
-    { label: 'Fully Used', value: stats.used, icon: TrendingUp, color: 'bg-amber-50 text-amber-600', filter: 'used' as const },
-    { label: 'Total Redemptions', value: stats.totalRedemptions, icon: TrendingUp, color: 'bg-purple-50 text-purple-600', filter: 'all' as const },
+    { label: 'Available', value: stats.active, icon: CheckCircle2, color: 'bg-green-50 text-green-600', filter: 'active' as const },
+    { label: 'Used', value: stats.used, icon: TrendingUp, color: 'bg-amber-50 text-amber-600', filter: 'used' as const },
+    { label: 'Expired / Inactive', value: stats.expired + stats.inactive, icon: Ticket, color: 'bg-gray-50 text-gray-500', filter: 'expired' as const },
   ]
 
   return (

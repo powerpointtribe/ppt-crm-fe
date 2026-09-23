@@ -174,7 +174,7 @@ export default function StoreOrders() {
           ]
         })
       )
-      const header = ['Order #', 'Date', 'Customer', 'Email', 'Phone', 'Address', 'Product', 'Design', 'Colour', 'Size', 'Qty', 'Unit Price', 'Item Total', 'Status', 'Payment', 'Order Total']
+      const header = ['Order #', 'Date', 'Customer', 'Email', 'Phone', 'Address', 'Product', 'Design', 'Colour', 'Size / Age', 'Qty', 'Unit Price', 'Item Total', 'Status', 'Payment', 'Order Total']
       const csv = [header, ...rows].map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
       const blob = new Blob([csv], { type: 'text/csv' })
       const url = URL.createObjectURL(blob)

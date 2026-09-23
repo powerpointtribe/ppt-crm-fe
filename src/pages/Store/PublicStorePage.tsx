@@ -483,7 +483,7 @@ export default function PublicStorePage() {
       const order = await createOrder({
         items: cart.map(c => ({
           product: c.product._id,
-          size: c.isChildren ? (c.variant.size || 'Standard') : c.variant.size,
+          size: c.isChildren ? `Age: ${c.age}` : c.variant.size,
           colour: c.variant.colour,
           quantity: c.quantity,
         })),

@@ -9,11 +9,14 @@ export interface GisMetrics {
   newMembersThisMonth: number
   inactiveMembers: number
   baptismRate: number
+  districtUnitParticipationRate: number
   leadershipPipelineCount: number
   growthRate: number
   avgEngagementScore: number
   attritionCount: number
   followUpRate: number
+  regularAttendees: number
+  exitReasons: { reason: string; count: number }[]
 }
 
 export interface GisFunnel {

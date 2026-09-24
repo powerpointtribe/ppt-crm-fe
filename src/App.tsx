@@ -91,6 +91,7 @@ const GISDashboard = lazy(() => import('@/pages/GIS/GISDashboard'))
 
 const ServiceAttendancePage = lazy(() => import('@/pages/Attendance/Attendance'))
 const CheckInPage = lazy(() => import('@/pages/Attendance/CheckIn'))
+const GroupMeetingAttendancePage = lazy(() => import('@/pages/Attendance/GroupMeetingAttendance'))
 
 const AuditDashboard = lazy(() => import('@/pages/Audit/AuditDashboard'))
 const AuditLogs = lazy(() => import('@/pages/Audit/AuditLogs'))
@@ -213,6 +214,7 @@ function App() {
           <Route path="/store" element={<LazyPage><PublicStorePage /></LazyPage>} />
           <Route path="/store/payment/verify" element={<LazyPage><PaymentVerify /></LazyPage>} />
           <Route path="/store/:slug" element={<LazyPage><PublicStorePage /></LazyPage>} />
+          <Route path="/meeting-attendance" element={<LazyPage><GroupMeetingAttendancePage /></LazyPage>} />
 
           {/* Dashboard - Requires Login Only */}
           <Route path="/dashboard" element={

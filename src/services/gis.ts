@@ -9,10 +9,11 @@ import type {
 } from '@/types/gis'
 
 class GisService {
-  async getDashboard(filters?: { branch?: string; date?: string }): Promise<GisDashboard> {
+  async getDashboard(filters?: { branch?: string; startDate?: string; endDate?: string }): Promise<GisDashboard> {
     const params: Record<string, string> = {}
     if (filters?.branch) params.branch = filters.branch
-    if (filters?.date) params.date = filters.date
+    if (filters?.startDate) params.startDate = filters.startDate
+    if (filters?.endDate) params.endDate = filters.endDate
     const response = await apiService.get<{ data: GisDashboard }>('/gis/dashboard', {
       params: Object.keys(params).length ? params : undefined,
     })
@@ -54,8 +55,8 @@ class GisService {
     return (response as any).data
   }
 
-  async triggerSnapshot(): Promise<void> {
-    await apiService.post('/gis/snapshot')
+  async triggerSnapshot(branch?: string): Promise<void> {
+    await apiService.post('/gis/snapshot', branch ? { branch } : {})
   }
 }
 

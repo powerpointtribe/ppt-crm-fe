@@ -60,7 +60,8 @@ export default function GISDashboard() {
   const [trends, setTrends] = useState<GisSnapshot[]>([])
   const [loading, setLoading] = useState(true)
   const [filterBranch, setFilterBranch] = useState('')
-  const [filterDate, setFilterDate] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [branchOptions, setBranchOptions] = useState<BranchOption[]>([])
 
   const { branches: storeBranches } = useAppStore()
@@ -78,9 +79,10 @@ export default function GISDashboard() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const filters: { branch?: string; date?: string } = {}
+      const filters: { branch?: string; startDate?: string; endDate?: string } = {}
       if (filterBranch) filters.branch = filterBranch
-      if (filterDate) filters.date = new Date(filterDate).toISOString()
+      if (startDate) filters.startDate = new Date(startDate).toISOString()
+      if (endDate) filters.endDate = new Date(endDate + 'T23:59:59').toISOString()
 
       const [dashData, trendData] = await Promise.all([
         gisService.getDashboard(filters),
@@ -93,14 +95,19 @@ export default function GISDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [filterBranch, filterDate])
+  }, [filterBranch, startDate, endDate])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
   const activeBranchName = branchOptions.find((b) => b._id === filterBranch)?.name
-  const hasFilters = !!(filterBranch || filterDate)
+  const hasFilters = !!(filterBranch || startDate || endDate)
+  const hasDateRange = !!(startDate && endDate)
+  const rangeDays = hasDateRange
+    ? Math.round((new Date(endDate + 'T23:59:59').getTime() - new Date(startDate).getTime()) / 86400000)
+    : null
+  const periodLabel = rangeDays !== null ? `${rangeDays}-day` : null
 
   if (loading) return <LoadingSkeleton />
 
@@ -131,7 +138,7 @@ export default function GISDashboard() {
         <button
           onClick={async () => {
             try {
-              await gisService.triggerSnapshot()
+              await gisService.triggerSnapshot(filterBranch || undefined)
               showToast.success('Snapshot captured')
               loadData()
             } catch {
@@ -162,19 +169,37 @@ export default function GISDashboard() {
               ))}
             </select>
           </div>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400"
-            />
+          <div className="flex items-center gap-1.5">
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                max={endDate || new Date().toISOString().split('T')[0]}
+                placeholder="Start date"
+                title="Start date"
+                className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400"
+              />
+            </div>
+            <span className="text-xs text-gray-400">to</span>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+                max={new Date().toISOString().split('T')[0]}
+                placeholder="End date"
+                title="End date"
+                className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400"
+              />
+            </div>
           </div>
           {hasFilters && (
             <button
-              onClick={() => { setFilterBranch(''); setFilterDate('') }}
+              onClick={() => { setFilterBranch(''); setStartDate(''); setEndDate('') }}
               className="text-xs px-3 py-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center gap-1.5 font-medium"
             >
               <X className="w-3.5 h-3.5" /> Clear filters
@@ -183,7 +208,8 @@ export default function GISDashboard() {
           {hasFilters && (
             <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
               Showing {activeBranchName || 'all campuses'}
-              {filterDate && ` as of ${new Date(filterDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+              {startDate && ` from ${new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+              {endDate && ` to ${new Date(endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
             </span>
           )}
         </motion.div>
@@ -205,7 +231,7 @@ export default function GISDashboard() {
             accent="#3B82F6"
           />
           <HeroKPI
-            label="Month-over-Month Growth"
+            label={periodLabel ? `Growth (${periodLabel})` : 'Month-over-Month Growth'}
             value={metrics.growthRate}
             format="percent-signed"
             icon={metrics.growthRate >= 0 ? TrendingUp : TrendingDown}
@@ -218,27 +244,27 @@ export default function GISDashboard() {
           <MetricGroup
             title="Outreach"
             metrics={[
-              { label: 'First Timers This Month', value: metrics.firstTimerCount, icon: UserPlus },
-              { label: 'Conversion Rate', value: metrics.firstTimerConversionRate, suffix: '%', icon: Target, sub: '90-day window' },
+              { label: periodLabel ? `First Timers (${periodLabel})` : 'First Timers This Month', value: metrics.firstTimerCount, icon: UserPlus },
+              { label: 'Conversion Rate', value: metrics.firstTimerConversionRate, suffix: '%', icon: Target, sub: periodLabel ? `${periodLabel} window` : '90-day window' },
               { label: 'Follow-Up Rate', value: metrics.followUpRate, suffix: '%', icon: Percent, health: metrics.followUpRate >= 80 ? 'good' : metrics.followUpRate >= 50 ? 'warn' : 'bad' },
-              { label: 'New Members This Month', value: metrics.newMembersThisMonth, icon: UserPlus },
+              { label: periodLabel ? `New Members (${periodLabel})` : 'New Members This Month', value: metrics.newMembersThisMonth, icon: UserPlus },
             ]}
           />
           <MetricGroup
             title="Retention"
             metrics={[
-              { label: '90-Day Retention Rate', value: metrics.retentionRate90Day, suffix: '%', icon: Heart, health: metrics.retentionRate90Day >= 70 ? 'good' : metrics.retentionRate90Day >= 50 ? 'warn' : 'bad' },
-              { label: 'Inactive Members', value: metrics.inactiveMembers, icon: UserMinus, sub: '60+ days absent', health: metrics.inactiveMembers > 20 ? 'bad' : metrics.inactiveMembers > 10 ? 'warn' : 'good' },
-              { label: 'Monthly Attrition', value: metrics.attritionCount, icon: UserMinus, health: metrics.attritionCount > 5 ? 'bad' : metrics.attritionCount > 2 ? 'warn' : 'good' },
-              { label: 'Avg Engagement Score', value: metrics.avgEngagementScore, icon: BarChart3 },
+              { label: `${periodLabel || '90-Day'} Retention Rate`, value: metrics.retentionRate90Day, suffix: '%', icon: Heart, health: metrics.retentionRate90Day >= 70 ? 'good' : metrics.retentionRate90Day >= 50 ? 'warn' : 'bad' },
+              { label: 'Regular Attendees', value: metrics.regularAttendees ?? 0, icon: UserCheck, sub: periodLabel ? `4+ services in ${periodLabel} range` : '4+ services in 90 days' },
+              { label: 'Not Attending', value: metrics.inactiveMembers, icon: UserMinus, sub: periodLabel ? `No attendance in ${periodLabel} range` : 'No attendance in 60+ days', health: metrics.inactiveMembers > 20 ? 'bad' : metrics.inactiveMembers > 10 ? 'warn' : 'good' },
+              { label: periodLabel ? `Attrition (${periodLabel})` : 'Monthly Attrition', value: metrics.attritionCount, icon: UserMinus, health: metrics.attritionCount > 5 ? 'bad' : metrics.attritionCount > 2 ? 'warn' : 'good' },
             ]}
           />
           <MetricGroup
             title="Discipleship"
             metrics={[
               { label: 'Small Group Participation', value: metrics.smallGroupParticipationRate, suffix: '%', icon: Users },
-              { label: 'Serving Rate', value: metrics.servingRate, suffix: '%', icon: Activity, sub: 'Members in units' },
-              { label: 'Baptism Rate', value: metrics.baptismRate, suffix: '%', icon: Heart },
+              { label: 'Serving Rate', value: metrics.servingRate, suffix: '%', icon: Activity, sub: 'Members assigned to a unit' },
+              { label: 'District/Unit Participation', value: metrics.districtUnitParticipationRate ?? 0, suffix: '%', icon: Users, sub: 'Attended a district or unit meeting' },
               { label: 'In Training', value: metrics.leadershipPipelineCount, icon: GraduationCap, sub: 'Leadership pipeline' },
             ]}
           />
@@ -246,6 +272,13 @@ export default function GISDashboard() {
             <FunnelCard funnel={funnel} />
           </motion.div>
         </div>
+
+        {/* Exit Reasons */}
+        {metrics.exitReasons?.length > 0 && (
+          <motion.div variants={fadeUp}>
+            <ExitReasonsCard reasons={metrics.exitReasons} periodLabel={periodLabel} />
+          </motion.div>
+        )}
 
         {/* Trend Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -400,6 +433,46 @@ function FunnelCard({ funnel }: { funnel: GisFunnel }) {
                     <ArrowRight className="w-2.5 h-2.5" />{conv}%
                   </span>
                 )}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ── Exit Reasons Card ── */
+
+function ExitReasonsCard({ reasons, periodLabel }: { reasons: { reason: string; count: number }[]; periodLabel: string | null }) {
+  const total = reasons.reduce((sum, r) => sum + r.count, 0)
+
+  return (
+    <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+          Why Members Left
+        </p>
+        <span className="text-xs text-gray-400 dark:text-gray-500">
+          {periodLabel ? `${periodLabel} range` : 'This month'} &middot; {total} total
+        </span>
+      </div>
+      <div className="space-y-2.5">
+        {reasons.map((r) => {
+          const pct = total > 0 ? Math.round((r.count / total) * 100) : 0
+          return (
+            <div key={r.reason} className="flex items-center gap-3">
+              <span className="text-xs text-gray-600 dark:text-gray-300 min-w-0 truncate flex-1">
+                {r.reason}
+              </span>
+              <div className="w-32 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden shrink-0">
+                <div
+                  className="h-full bg-red-400 dark:bg-red-500 rounded-full transition-all"
+                  style={{ width: `${Math.max(pct, 4)}%` }}
+                />
+              </div>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums w-12 text-right shrink-0">
+                {r.count} ({pct}%)
               </span>
             </div>
           )

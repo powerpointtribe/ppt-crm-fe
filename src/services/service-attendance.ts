@@ -210,7 +210,16 @@ class ServiceAttendanceService {
     const response = await apiService.get<any>('/service-attendance/group-meeting/overview', {
       params: Object.keys(params).length ? params : undefined,
     })
-    return (response as any).data
+    const payload = (response as any)?.data
+    // The API returns a bare [] when the branch has no districts/units,
+    // otherwise { groups, uniqueMemberCount }. Normalise both shapes.
+    if (Array.isArray(payload)) {
+      return { groups: payload, uniqueMemberCount: 0 }
+    }
+    return {
+      groups: Array.isArray(payload?.groups) ? payload.groups : [],
+      uniqueMemberCount: Number(payload?.uniqueMemberCount) || 0,
+    }
   }
 
   async recordGroupMeeting(data: {
@@ -234,7 +243,8 @@ class ServiceAttendanceService {
     }>(`/service-attendance/group-meeting/${groupId}/history`, {
       params: { limit: String(limit) },
     })
-    return (response as any).data
+    const payload = (response as any)?.data
+    return Array.isArray(payload) ? payload : []
   }
 
   async publicVerifyLeader(email: string, password: string): Promise<{

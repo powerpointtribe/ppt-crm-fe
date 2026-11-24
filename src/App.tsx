@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useContext, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import AppShell, { ShellContext } from '@/components/AppShell'
 import { ModuleAccessGuard } from '@/guards'
 import GlobalLoadingIndicator from '@/components/GlobalLoadingIndicator'
 import PageLoader from '@/components/PageLoader'
@@ -87,6 +88,15 @@ const ProductForm = lazy(() => import('@/pages/Store/ProductForm'))
 const StoreOrders = lazy(() => import('@/pages/Store/StoreOrders'))
 const StoreCoupons = lazy(() => import('@/pages/Store/StoreCoupons'))
 
+// Website admin (public site content, inbox, lost & found, giving)
+const WebsiteOverview = lazy(() => import('@/pages/Website/WebsiteOverview'))
+const WebsiteResourceList = lazy(() => import('@/pages/Website/ResourceList'))
+const WebsiteResourceEdit = lazy(() => import('@/pages/Website/ResourceEdit'))
+const WebsiteSubmissions = lazy(() => import('@/pages/Website/Submissions'))
+const WebsiteClaims = lazy(() => import('@/pages/Website/Claims'))
+const WebsiteDonations = lazy(() => import('@/pages/Website/Donations'))
+const WebsiteSettings = lazy(() => import('@/pages/Website/SiteSettings'))
+
 const GISDashboard = lazy(() => import('@/pages/GIS/GISDashboard'))
 
 const ServiceAttendancePage = lazy(() => import('@/pages/Attendance/Attendance'))
@@ -154,8 +164,12 @@ const FormTemplates = lazy(() => import('@/pages/BulkEmail/Forms'))
 const FormBuilder = lazy(() => import('@/pages/BulkEmail/FormBuilder'))
 const FormDetail = lazy(() => import('@/pages/BulkEmail/FormDetail'))
 
-// Wrapper for lazy components with smooth loading
+// Wrapper for lazy components. Inside the AppShell it adds no boundary of its own, so a
+// loading page suspends into the shell's (already visible) boundary and the current page
+// stays on screen until the next one is ready. Public pages keep their own fallback.
 function LazyPage({ children }: { children: React.ReactNode }) {
+  const inShell = useContext(ShellContext)
+  if (inShell) return <>{children}</>
   return (
     <Suspense fallback={<PageLoader />}>
       {children}
@@ -216,592 +230,632 @@ function App() {
           <Route path="/store/:slug" element={<LazyPage><PublicStorePage /></LazyPage>} />
           <Route path="/meeting-attendance" element={<LazyPage><GroupMeetingAttendancePage /></LazyPage>} />
 
-          {/* Dashboard - Requires Login Only */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
+          {/* Signed-in app: one persistent shell (sidebar stays mounted); only the page content changes */}
+          <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+            {/* Dashboard - Requires Login Only */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
 
-          {/* Members */}
-          <Route path="/members" element={
-            <ProtectedRoute>
-              <LazyPage><Members /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/analytics" element={
-            <ProtectedRoute>
-              <LazyPage><MemberAnalytics /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/reports" element={
-            <ProtectedRoute>
-              <LazyPage><MemberReports /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/new" element={
-            <ProtectedRoute>
-              <LazyPage><MemberNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/:id" element={
-            <ProtectedRoute>
-              <LazyPage><MemberDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><MemberEdit /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/profile-submissions" element={
-            <ProtectedRoute>
-              <LazyPage><ProfileSubmissions /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Members */}
+            <Route path="/members" element={
+              <ProtectedRoute>
+                <LazyPage><Members /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/analytics" element={
+              <ProtectedRoute>
+                <LazyPage><MemberAnalytics /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/reports" element={
+              <ProtectedRoute>
+                <LazyPage><MemberReports /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/new" element={
+              <ProtectedRoute>
+                <LazyPage><MemberNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/:id" element={
+              <ProtectedRoute>
+                <LazyPage><MemberDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><MemberEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/profile-submissions" element={
+              <ProtectedRoute>
+                <LazyPage><ProfileSubmissions /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Groups */}
-          <Route path="/groups" element={
-            <ProtectedRoute>
-              <LazyPage><Groups /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/groups/new" element={
-            <ProtectedRoute>
-              <LazyPage><GroupNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/groups/:id" element={
-            <ProtectedRoute>
-              <LazyPage><GroupDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/groups/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><GroupEdit /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Groups */}
+            <Route path="/groups" element={
+              <ProtectedRoute>
+                <LazyPage><Groups /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/groups/new" element={
+              <ProtectedRoute>
+                <LazyPage><GroupNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/groups/:id" element={
+              <ProtectedRoute>
+                <LazyPage><GroupDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/groups/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><GroupEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* First Timers */}
-          <Route path="/first-timers" element={
-            <ProtectedRoute>
-              <LazyPage><FirstTimers /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/new" element={
-            <ProtectedRoute>
-              <LazyPage><FirstTimerNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/entry-import" element={
-            <ProtectedRoute>
-              <LazyPage><FirstTimerEntryImport /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/:id" element={
-            <ProtectedRoute>
-              <LazyPage><FirstTimerDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><FirstTimerEdit /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/my-assigned-first-timers" element={
-            <ProtectedRoute>
-              <LazyPage><AssignedFirstTimers /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/call-reports" element={
-            <ProtectedRoute>
-              <LazyPage><CallReports /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/reports" element={
-            <ProtectedRoute>
-              <LazyPage><FirstTimerReports /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/birthdays" element={
-            <ProtectedRoute>
-              <LazyPage><FirstTimerBirthdays /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/message-drafts" element={
-            <ProtectedRoute>
-              <LazyPage><MessageDrafts /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/message-drafts/new" element={
-            <ProtectedRoute>
-              <LazyPage><MessageDraftForm /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/message-drafts/:id" element={
-            <ProtectedRoute>
-              <LazyPage><MessageDraftDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/first-timers/message-drafts/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><MessageDraftForm /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* First Timers */}
+            <Route path="/first-timers" element={
+              <ProtectedRoute>
+                <LazyPage><FirstTimers /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/new" element={
+              <ProtectedRoute>
+                <LazyPage><FirstTimerNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/entry-import" element={
+              <ProtectedRoute>
+                <LazyPage><FirstTimerEntryImport /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/:id" element={
+              <ProtectedRoute>
+                <LazyPage><FirstTimerDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><FirstTimerEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/my-assigned-first-timers" element={
+              <ProtectedRoute>
+                <LazyPage><AssignedFirstTimers /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/call-reports" element={
+              <ProtectedRoute>
+                <LazyPage><CallReports /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/reports" element={
+              <ProtectedRoute>
+                <LazyPage><FirstTimerReports /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/birthdays" element={
+              <ProtectedRoute>
+                <LazyPage><FirstTimerBirthdays /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/message-drafts" element={
+              <ProtectedRoute>
+                <LazyPage><MessageDrafts /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/message-drafts/new" element={
+              <ProtectedRoute>
+                <LazyPage><MessageDraftForm /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/message-drafts/:id" element={
+              <ProtectedRoute>
+                <LazyPage><MessageDraftDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/first-timers/message-drafts/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><MessageDraftForm /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Service Reports - Under Members section */}
-          <Route path="/service-reports" element={<Navigate to="/members/service-reports" replace />} />
-          <Route path="/members/service-reports" element={
-            <ProtectedRoute>
-              <LazyPage><ServiceReports /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/service-reports/new" element={
-            <ProtectedRoute>
-              <LazyPage><ServiceReportNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/service-reports/:id" element={
-            <ProtectedRoute>
-              <LazyPage><ServiceReportDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/members/service-reports/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><ServiceReportEdit /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Service Reports - Under Members section */}
+            <Route path="/service-reports" element={<Navigate to="/members/service-reports" replace />} />
+            <Route path="/members/service-reports" element={
+              <ProtectedRoute>
+                <LazyPage><ServiceReports /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/service-reports/new" element={
+              <ProtectedRoute>
+                <LazyPage><ServiceReportNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/service-reports/:id" element={
+              <ProtectedRoute>
+                <LazyPage><ServiceReportDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/members/service-reports/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><ServiceReportEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Bulk Operations */}
-          <Route path="/bulk-operations" element={
-            <ProtectedRoute>
-              <LazyPage><BulkOperationsDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-operations/upload" element={
-            <ProtectedRoute>
-              <LazyPage><BulkUpload /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-operations/update" element={
-            <ProtectedRoute>
-              <LazyPage><BulkUpdate /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Bulk Operations */}
+            <Route path="/bulk-operations" element={
+              <ProtectedRoute>
+                <LazyPage><BulkOperationsDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-operations/upload" element={
+              <ProtectedRoute>
+                <LazyPage><BulkUpload /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-operations/update" element={
+              <ProtectedRoute>
+                <LazyPage><BulkUpdate /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* User Settings - Personal preferences for all users */}
-          <Route path="/my-settings" element={
-            <ProtectedRoute>
-              <LazyPage><UserSettings /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* User Settings - Personal preferences for all users */}
+            <Route path="/my-settings" element={
+              <ProtectedRoute>
+                <LazyPage><UserSettings /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Admin Settings - System-wide configuration */}
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <LazyPage><Settings /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Admin Settings - System-wide configuration */}
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <LazyPage><Settings /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Queue Management */}
-          <Route path="/queue" element={
-            <ProtectedRoute>
-              <LazyPage><QueueManagement /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Queue Management */}
+            <Route path="/queue" element={
+              <ProtectedRoute>
+                <LazyPage><QueueManagement /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Analytics & Reports */}
-          <Route path="/analytics" element={
-            <ProtectedRoute>
-              <LazyPage><Analytics /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/reports" element={
-            <ProtectedRoute>
-              <LazyPage><Analytics /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Analytics & Reports */}
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <LazyPage><Analytics /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/reports" element={
+              <ProtectedRoute>
+                <LazyPage><Analytics /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Workers Training */}
-          <Route path="/workers-training" element={
-            <ProtectedRoute>
-              <LazyPage><WorkersTraining /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/workers-training/cohorts" element={
-            <ProtectedRoute>
-              <LazyPage><CohortManagement /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/workers-training/trainees/assignment" element={
-            <ProtectedRoute>
-              <LazyPage><TraineeAssignment /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/workers-training/cohorts/:cohortId/assignment" element={
-            <ProtectedRoute>
-              <LazyPage><TraineeAssignment /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Workers Training */}
+            <Route path="/workers-training" element={
+              <ProtectedRoute>
+                <LazyPage><WorkersTraining /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/workers-training/cohorts" element={
+              <ProtectedRoute>
+                <LazyPage><CohortManagement /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/workers-training/trainees/assignment" element={
+              <ProtectedRoute>
+                <LazyPage><TraineeAssignment /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/workers-training/cohorts/:cohortId/assignment" element={
+              <ProtectedRoute>
+                <LazyPage><TraineeAssignment /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Inventory Management */}
-          <Route path="/inventory" element={
-            <ProtectedRoute>
-              <LazyPage><InventoryDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/inventory/dashboard" element={
-            <ProtectedRoute>
-              <LazyPage><InventoryDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/inventory/items" element={
-            <ProtectedRoute>
-              <LazyPage><InventoryItems /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Inventory Management */}
+            <Route path="/inventory" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory/dashboard" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory/items" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryItems /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Store Management */}
-          <Route path="/store/products" element={
-            <ProtectedRoute>
-              <LazyPage><StoreProducts /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/store/products/new" element={
-            <ProtectedRoute>
-              <LazyPage><ProductForm /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/store/products/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><ProductForm /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/store/orders" element={
-            <ProtectedRoute>
-              <LazyPage><StoreOrders /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/store/coupons" element={
-            <ProtectedRoute>
-              <LazyPage><StoreCoupons /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Store Management */}
+            <Route path="/store/products" element={
+              <ProtectedRoute>
+                <LazyPage><StoreProducts /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/store/products/new" element={
+              <ProtectedRoute>
+                <LazyPage><ProductForm /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/store/products/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><ProductForm /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/store/orders" element={
+              <ProtectedRoute>
+                <LazyPage><StoreOrders /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/store/coupons" element={
+              <ProtectedRoute>
+                <LazyPage><StoreCoupons /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Service Attendance */}
-          <Route path="/attendance" element={
-            <ProtectedRoute>
-              <LazyPage><ServiceAttendancePage /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Website admin */}
+            <Route path="/website" element={
+              <ProtectedRoute>
+                <LazyPage><WebsiteOverview /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/website/submissions" element={
+              <ProtectedRoute>
+                <LazyPage><WebsiteSubmissions /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/website/claims" element={
+              <ProtectedRoute>
+                <LazyPage><WebsiteClaims /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/website/donations" element={
+              <ProtectedRoute>
+                <LazyPage><WebsiteDonations /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/website/settings" element={
+              <ProtectedRoute>
+                <LazyPage><WebsiteSettings /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/website/:resource" element={
+              <ProtectedRoute>
+                <LazyPage><WebsiteResourceList /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/website/:resource/:id" element={
+              <ProtectedRoute>
+                <LazyPage><WebsiteResourceEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Growth Intelligence System */}
-          <Route path="/gis" element={
-            <ProtectedRoute>
-              <LazyPage><GISDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/gis/dashboard" element={
-            <ProtectedRoute>
-              <LazyPage><GISDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Service Attendance */}
+            <Route path="/attendance" element={
+              <ProtectedRoute>
+                <LazyPage><ServiceAttendancePage /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Audit Management */}
-          <Route path="/audit" element={
-            <ProtectedRoute>
-              <LazyPage><AuditDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/audit/dashboard" element={
-            <ProtectedRoute>
-              <LazyPage><AuditDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/audit/logs" element={
-            <ProtectedRoute>
-              <LazyPage><AuditLogs /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Growth Intelligence System */}
+            <Route path="/gis" element={
+              <ProtectedRoute>
+                <LazyPage><GISDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/gis/dashboard" element={
+              <ProtectedRoute>
+                <LazyPage><GISDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Roles Management - Protected by module access guard */}
-          <Route path="/roles" element={
-            <ProtectedRoute>
-              <ModuleAccessGuard module="roles">
-                <LazyPage><RolesListPage /></LazyPage>
-              </ModuleAccessGuard>
-            </ProtectedRoute>
-          } />
-          <Route path="/roles/create" element={
-            <ProtectedRoute>
-              <ModuleAccessGuard module="roles">
-                <LazyPage><CreateRolePage /></LazyPage>
-              </ModuleAccessGuard>
-            </ProtectedRoute>
-          } />
-          <Route path="/roles/:id" element={
-            <ProtectedRoute>
-              <ModuleAccessGuard module="roles">
-                <LazyPage><RoleDetailsPage /></LazyPage>
-              </ModuleAccessGuard>
-            </ProtectedRoute>
-          } />
-          <Route path="/roles/:id/edit" element={
-            <ProtectedRoute>
-              <ModuleAccessGuard module="roles">
-                <LazyPage><EditRolePage /></LazyPage>
-              </ModuleAccessGuard>
-            </ProtectedRoute>
-          } />
+            {/* Audit Management */}
+            <Route path="/audit" element={
+              <ProtectedRoute>
+                <LazyPage><AuditDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/audit/dashboard" element={
+              <ProtectedRoute>
+                <LazyPage><AuditDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/audit/logs" element={
+              <ProtectedRoute>
+                <LazyPage><AuditLogs /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* User Management - Protected by permission guard */}
-          <Route path="/user-management" element={
-            <ProtectedRoute>
-              <LazyPage><UserManagement /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Roles Management - Protected by module access guard */}
+            <Route path="/roles" element={
+              <ProtectedRoute>
+                <ModuleAccessGuard module="roles">
+                  <LazyPage><RolesListPage /></LazyPage>
+                </ModuleAccessGuard>
+              </ProtectedRoute>
+            } />
+            <Route path="/roles/create" element={
+              <ProtectedRoute>
+                <ModuleAccessGuard module="roles">
+                  <LazyPage><CreateRolePage /></LazyPage>
+                </ModuleAccessGuard>
+              </ProtectedRoute>
+            } />
+            <Route path="/roles/:id" element={
+              <ProtectedRoute>
+                <ModuleAccessGuard module="roles">
+                  <LazyPage><RoleDetailsPage /></LazyPage>
+                </ModuleAccessGuard>
+              </ProtectedRoute>
+            } />
+            <Route path="/roles/:id/edit" element={
+              <ProtectedRoute>
+                <ModuleAccessGuard module="roles">
+                  <LazyPage><EditRolePage /></LazyPage>
+                </ModuleAccessGuard>
+              </ProtectedRoute>
+            } />
 
-          {/* Branches Management - Protected by module access guard */}
-          <Route path="/branches" element={
-            <ProtectedRoute>
-              <ModuleAccessGuard module="branches">
-                <LazyPage><Branches /></LazyPage>
-              </ModuleAccessGuard>
-            </ProtectedRoute>
-          } />
-          <Route path="/branches/new" element={
-            <ProtectedRoute>
-              <ModuleAccessGuard module="branches">
-                <LazyPage><BranchForm mode="create" /></LazyPage>
-              </ModuleAccessGuard>
-            </ProtectedRoute>
-          } />
-          <Route path="/branches/:id" element={
-            <ProtectedRoute>
-              <ModuleAccessGuard module="branches">
-                <LazyPage><BranchDetail /></LazyPage>
-              </ModuleAccessGuard>
-            </ProtectedRoute>
-          } />
-          <Route path="/branches/:id/edit" element={
-            <ProtectedRoute>
-              <ModuleAccessGuard module="branches">
-                <LazyPage><BranchForm mode="edit" /></LazyPage>
-              </ModuleAccessGuard>
-            </ProtectedRoute>
-          } />
+            {/* User Management - Protected by permission guard */}
+            <Route path="/user-management" element={
+              <ProtectedRoute>
+                <LazyPage><UserManagement /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Finance Management */}
-          <Route path="/finance" element={<Navigate to="/finance/requisitions" replace />} />
-          <Route path="/finance/requisitions" element={
-            <ProtectedRoute>
-              <LazyPage><RequisitionsList /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/finance/requisitions/new" element={
-            <ProtectedRoute>
-              <LazyPage><RequisitionNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/finance/requisitions/:id" element={
-            <ProtectedRoute>
-              <LazyPage><RequisitionDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/finance/approvals" element={
-            <ProtectedRoute>
-              <LazyPage><PendingApprovals /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/finance/disbursements" element={
-            <ProtectedRoute>
-              <LazyPage><PendingDisbursements /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/finance/settings/form-fields" element={
-            <ProtectedRoute>
-              <LazyPage><FormFieldsSettings /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Branches Management - Protected by module access guard */}
+            <Route path="/branches" element={
+              <ProtectedRoute>
+                <ModuleAccessGuard module="branches">
+                  <LazyPage><Branches /></LazyPage>
+                </ModuleAccessGuard>
+              </ProtectedRoute>
+            } />
+            <Route path="/branches/new" element={
+              <ProtectedRoute>
+                <ModuleAccessGuard module="branches">
+                  <LazyPage><BranchForm mode="create" /></LazyPage>
+                </ModuleAccessGuard>
+              </ProtectedRoute>
+            } />
+            <Route path="/branches/:id" element={
+              <ProtectedRoute>
+                <ModuleAccessGuard module="branches">
+                  <LazyPage><BranchDetail /></LazyPage>
+                </ModuleAccessGuard>
+              </ProtectedRoute>
+            } />
+            <Route path="/branches/:id/edit" element={
+              <ProtectedRoute>
+                <ModuleAccessGuard module="branches">
+                  <LazyPage><BranchForm mode="edit" /></LazyPage>
+                </ModuleAccessGuard>
+              </ProtectedRoute>
+            } />
 
-          {/* Entry Import - Super Admin Only */}
-          <Route path="/entry-import" element={
-            <ProtectedRoute>
-              <LazyPage><EntryImport /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/entry-import/:id" element={
-            <ProtectedRoute>
-              <LazyPage><ImportDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Finance Management */}
+            <Route path="/finance" element={<Navigate to="/finance/requisitions" replace />} />
+            <Route path="/finance/requisitions" element={
+              <ProtectedRoute>
+                <LazyPage><RequisitionsList /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/finance/requisitions/new" element={
+              <ProtectedRoute>
+                <LazyPage><RequisitionNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/finance/requisitions/:id" element={
+              <ProtectedRoute>
+                <LazyPage><RequisitionDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/finance/approvals" element={
+              <ProtectedRoute>
+                <LazyPage><PendingApprovals /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/finance/disbursements" element={
+              <ProtectedRoute>
+                <LazyPage><PendingDisbursements /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/finance/settings/form-fields" element={
+              <ProtectedRoute>
+                <LazyPage><FormFieldsSettings /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Events Management */}
-          <Route path="/events" element={
-            <ProtectedRoute>
-              <LazyPage><Events /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/events/new" element={
-            <ProtectedRoute>
-              <LazyPage><EventNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/events/:id/registrations/:regId" element={
-            <ProtectedRoute>
-              <LazyPage><RegistrationDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/events/:id" element={
-            <ProtectedRoute>
-              <LazyPage><EventDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          {/* EventManagement route removed - EventDetail handles management */}
-          <Route path="/events/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><EventEdit /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Entry Import - Super Admin Only */}
+            <Route path="/entry-import" element={
+              <ProtectedRoute>
+                <LazyPage><EntryImport /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/entry-import/:id" element={
+              <ProtectedRoute>
+                <LazyPage><ImportDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Library Management */}
-          <Route path="/library" element={
-            <ProtectedRoute>
-              <LazyPage><LibraryDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/books" element={
-            <ProtectedRoute>
-              <LazyPage><Books /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/books/new" element={
-            <ProtectedRoute>
-              <LazyPage><BookNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/books/:id" element={
-            <ProtectedRoute>
-              <LazyPage><BookDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/books/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><BookEdit /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/categories" element={
-            <ProtectedRoute>
-              <LazyPage><LibraryCategories /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/borrowings" element={
-            <ProtectedRoute>
-              <LazyPage><Borrowings /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/borrowings/new" element={
-            <ProtectedRoute>
-              <LazyPage><BorrowingNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/overdue" element={
-            <ProtectedRoute>
-              <LazyPage><OverdueBooks /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/library/member/:memberId" element={
-            <ProtectedRoute>
-              <LazyPage><MemberBorrowingHistory /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Events Management */}
+            <Route path="/events" element={
+              <ProtectedRoute>
+                <LazyPage><Events /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/events/new" element={
+              <ProtectedRoute>
+                <LazyPage><EventNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/events/:id/registrations/:regId" element={
+              <ProtectedRoute>
+                <LazyPage><RegistrationDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/events/:id" element={
+              <ProtectedRoute>
+                <LazyPage><EventDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            {/* EventManagement route removed - EventDetail handles management */}
+            <Route path="/events/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><EventEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
 
-          {/* Bulk Email Management */}
-          <Route path="/bulk-email" element={
-            <ProtectedRoute>
-              <LazyPage><BulkEmailDashboard /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/templates" element={
-            <ProtectedRoute>
-              <LazyPage><EmailTemplates /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/templates/new" element={
-            <ProtectedRoute>
-              <LazyPage><EmailTemplateNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/templates/:id" element={
-            <ProtectedRoute>
-              <LazyPage><EmailTemplateDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/templates/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><EmailTemplateEdit /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/campaigns" element={
-            <ProtectedRoute>
-              <LazyPage><EmailCampaigns /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/campaigns/new" element={
-            <ProtectedRoute>
-              <LazyPage><EmailCampaignNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/campaigns/:id" element={
-            <ProtectedRoute>
-              <LazyPage><EmailCampaignDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/campaigns/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><EmailCampaignEdit /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/history" element={
-            <ProtectedRoute>
-              <LazyPage><EmailSendHistory /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/mailing-lists" element={
-            <ProtectedRoute>
-              <LazyPage><MailingLists /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/mailing-lists/new" element={
-            <ProtectedRoute>
-              <LazyPage><MailingListNew /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/mailing-lists/:id" element={
-            <ProtectedRoute>
-              <LazyPage><MailingListDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/forms" element={
-            <ProtectedRoute>
-              <LazyPage><FormTemplates /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/forms/new" element={
-            <ProtectedRoute>
-              <LazyPage><FormBuilder /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/forms/:id" element={
-            <ProtectedRoute>
-              <LazyPage><FormDetail /></LazyPage>
-            </ProtectedRoute>
-          } />
-          <Route path="/bulk-email/forms/:id/edit" element={
-            <ProtectedRoute>
-              <LazyPage><FormBuilder /></LazyPage>
-            </ProtectedRoute>
-          } />
+            {/* Library Management */}
+            <Route path="/library" element={
+              <ProtectedRoute>
+                <LazyPage><LibraryDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/books" element={
+              <ProtectedRoute>
+                <LazyPage><Books /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/books/new" element={
+              <ProtectedRoute>
+                <LazyPage><BookNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/books/:id" element={
+              <ProtectedRoute>
+                <LazyPage><BookDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/books/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><BookEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/categories" element={
+              <ProtectedRoute>
+                <LazyPage><LibraryCategories /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/borrowings" element={
+              <ProtectedRoute>
+                <LazyPage><Borrowings /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/borrowings/new" element={
+              <ProtectedRoute>
+                <LazyPage><BorrowingNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/overdue" element={
+              <ProtectedRoute>
+                <LazyPage><OverdueBooks /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/library/member/:memberId" element={
+              <ProtectedRoute>
+                <LazyPage><MemberBorrowingHistory /></LazyPage>
+              </ProtectedRoute>
+            } />
+
+            {/* Bulk Email Management */}
+            <Route path="/bulk-email" element={
+              <ProtectedRoute>
+                <LazyPage><BulkEmailDashboard /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/templates" element={
+              <ProtectedRoute>
+                <LazyPage><EmailTemplates /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/templates/new" element={
+              <ProtectedRoute>
+                <LazyPage><EmailTemplateNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/templates/:id" element={
+              <ProtectedRoute>
+                <LazyPage><EmailTemplateDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/templates/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><EmailTemplateEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/campaigns" element={
+              <ProtectedRoute>
+                <LazyPage><EmailCampaigns /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/campaigns/new" element={
+              <ProtectedRoute>
+                <LazyPage><EmailCampaignNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/campaigns/:id" element={
+              <ProtectedRoute>
+                <LazyPage><EmailCampaignDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/campaigns/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><EmailCampaignEdit /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/history" element={
+              <ProtectedRoute>
+                <LazyPage><EmailSendHistory /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/mailing-lists" element={
+              <ProtectedRoute>
+                <LazyPage><MailingLists /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/mailing-lists/new" element={
+              <ProtectedRoute>
+                <LazyPage><MailingListNew /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/mailing-lists/:id" element={
+              <ProtectedRoute>
+                <LazyPage><MailingListDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/forms" element={
+              <ProtectedRoute>
+                <LazyPage><FormTemplates /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/forms/new" element={
+              <ProtectedRoute>
+                <LazyPage><FormBuilder /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/forms/:id" element={
+              <ProtectedRoute>
+                <LazyPage><FormDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/bulk-email/forms/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><FormBuilder /></LazyPage>
+              </ProtectedRoute>
+            } />
+          </Route>
       </Routes>
     </>
   )

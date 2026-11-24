@@ -81,6 +81,7 @@ const CohortManagement = lazy(() => import('@/pages/WorkersTraining/CohortManage
 const TraineeAssignment = lazy(() => import('@/pages/WorkersTraining/TraineeAssignment'))
 const TraineeManagement = lazy(() => import('@/pages/WorkersTraining/TraineeManagement'))
 const CohortForm = lazy(() => import('@/pages/WorkersTraining/CohortForm'))
+const CohortDetail = lazy(() => import('@/pages/WorkersTraining/CohortDetail'))
 
 const InventoryDashboard = lazy(() => import('@/pages/Inventory/InventoryDashboard'))
 const InventoryItems = lazy(() => import('@/pages/Inventory/InventoryItems'))
@@ -460,6 +461,11 @@ function App() {
             <Route path="/workers-training/cohorts/new" element={
               <ProtectedRoute>
                 <LazyPage><CohortForm /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/workers-training/cohorts/:cohortId" element={
+              <ProtectedRoute>
+                <LazyPage><CohortDetail /></LazyPage>
               </ProtectedRoute>
             } />
             <Route path="/workers-training/cohorts/:cohortId/edit" element={

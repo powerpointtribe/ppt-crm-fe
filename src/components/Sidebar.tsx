@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Fragment, useState, useEffect, useMemo, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PreloadLink } from './PreloadLink'
 import { routePreloader } from '@/utils/routePreloader'
@@ -49,6 +49,13 @@ import {
   Ticket,
   TrendingUp,
   ClipboardCheck,
+  Inbox,
+  PackageSearch,
+  Hand,
+  Gift,
+  Layers,
+  Megaphone,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useAppStore, Branch } from '@/store'
@@ -69,6 +76,8 @@ interface SubMenuItem {
   label: string
   path: string
   requiredPermission: string
+  /** Optional category heading; a heading shows wherever the section changes. */
+  section?: string
 }
 
 interface MenuGroup {
@@ -312,6 +321,37 @@ const menuGroups: MenuGroup[] = [
             path: '/store/coupons',
             requiredPermission: 'store:manage-coupons',
           },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Website',
+    items: [
+      {
+        icon: Globe,
+        label: 'Website',
+        path: '/website',
+        requiredPermission: 'website:view-content',
+        hasDropdown: true,
+        subItems: [
+          { section: 'Messages', icon: BookOpen, label: 'Sermons', path: '/website/sermons', requiredPermission: 'website:view-content' },
+          { section: 'Messages', icon: Layers, label: 'Series', path: '/website/series', requiredPermission: 'website:view-content' },
+          { section: 'Messages', icon: Megaphone, label: 'Push Buttons', path: '/website/devotionals', requiredPermission: 'website:view-content' },
+          { section: 'Messages', icon: Calendar, label: 'Events', path: '/website/events', requiredPermission: 'events:view' },
+          { section: 'People & Pages', icon: Users, label: 'Pastors', path: '/website/pastors', requiredPermission: 'website:view-content' },
+          { section: 'People & Pages', icon: MessageCircle, label: 'Testimonies', path: '/website/testimonies', requiredPermission: 'website:view-content' },
+          { section: 'People & Pages', icon: Building2, label: 'Units', path: '/website/units', requiredPermission: 'website:view-content' },
+          { section: 'People & Pages', icon: Heart, label: 'Tribe Groups', path: '/website/tribe-groups', requiredPermission: 'website:view-content' },
+          { section: 'People & Pages', icon: HelpCircle, label: 'FAQs', path: '/website/faqs', requiredPermission: 'website:view-content' },
+          { section: 'People & Pages', icon: MapPin, label: 'Campuses', path: '/website/campuses', requiredPermission: 'branches:view' },
+          { section: 'Shop & Giving', icon: ShoppingBag, label: 'Products', path: '/website/products', requiredPermission: 'store:view-products' },
+          { section: 'Shop & Giving', icon: Gift, label: 'Donations', path: '/website/donations', requiredPermission: 'giving:view-donations' },
+          { section: 'Shop & Giving', icon: Wallet, label: 'Giving Accounts', path: '/website/giving-accounts', requiredPermission: 'giving:view-accounts' },
+          { section: 'Care & Inbox', icon: Inbox, label: 'Form Submissions', path: '/website/submissions', requiredPermission: 'website:view-submissions' },
+          { section: 'Care & Inbox', icon: PackageSearch, label: 'Lost and Found', path: '/website/lost-items', requiredPermission: 'lost-found:view' },
+          { section: 'Care & Inbox', icon: Hand, label: 'Claims', path: '/website/claims', requiredPermission: 'lost-found:view-claims' },
+          { section: 'Site', icon: Settings, label: 'Site Settings', path: '/website/settings', requiredPermission: 'website:view-content' },
         ],
       },
     ],
@@ -665,7 +705,10 @@ export default function Sidebar() {
     )
   }
 
-  const NavItem = ({
+  // Called as a plain function, not rendered as <NavItem />: a component declared inside
+  // Sidebar is a new type on every render, which made React rebuild every sidebar link
+  // (and replay dropdown animations) on each navigation.
+  const renderNavItem = ({
     item,
     onNavigate,
   }: {
@@ -727,11 +770,17 @@ export default function Sidebar() {
               className="overflow-hidden"
             >
               <div className="ml-4 mt-1 pl-3 border-l border-slate-700 space-y-0.5">
-                {item.subItems?.map((subItem) => {
+                {item.subItems?.map((subItem, i, all) => {
                   const isSubActive = isPathActive(subItem.path)
+                  const heading = subItem.section && subItem.section !== all[i - 1]?.section ? subItem.section : null
                   return (
+                    <div key={subItem.path}>
+                    {heading && (
+                      <p className={cn('px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600', i > 0 ? 'pt-3' : 'pt-1')}>
+                        {heading}
+                      </p>
+                    )}
                     <PreloadLink
-                      key={subItem.path}
                       to={subItem.path}
                       onClick={onNavigate}
                       className={cn(
@@ -744,6 +793,7 @@ export default function Sidebar() {
                       <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" />
                       <span className="truncate">{subItem.label}</span>
                     </PreloadLink>
+                    </div>
                   )
                 })}
               </div>
@@ -827,11 +877,9 @@ export default function Sidebar() {
                       </div>
                       <div className="space-y-0.5">
                         {group.items.map((item) => (
-                          <NavItem
-                            key={item.path}
-                            item={item}
-                            onNavigate={() => setMobileMenuOpen(false)}
-                          />
+                          <Fragment key={item.path}>
+                            {renderNavItem({ item, onNavigate: () => setMobileMenuOpen(false) })}
+                          </Fragment>
                         ))}
                       </div>
                     </div>
@@ -895,7 +943,7 @@ export default function Sidebar() {
             <div className="space-y-0.5">
               {group.items.map((item) => (
                 <div key={item.path} className="relative group">
-                  <NavItem item={item} />
+                  {renderNavItem({ item })}
                 </div>
               ))}
             </div>

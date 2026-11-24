@@ -33,7 +33,8 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      {/* v7_startTransition: navigation keeps the current page on screen while the next page's code loads */}
+      <BrowserRouter future={{ v7_startTransition: true }}>
         <AuthProvider>
           <App />
         </AuthProvider>

@@ -52,8 +52,8 @@ export default function GroupMeetingOverview() {
     try {
       setLoading(true)
       const data = await serviceAttendanceService.getGroupMeetingOverview()
-      setGroups(data.groups)
-      setUniqueMemberCount(data.uniqueMemberCount)
+      setGroups(Array.isArray(data?.groups) ? data.groups : [])
+      setUniqueMemberCount(data?.uniqueMemberCount ?? 0)
     } catch {
       showToast.error('Failed to load meeting overview')
     } finally {

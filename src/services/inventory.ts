@@ -19,15 +19,52 @@ export enum UnitOfMeasurement {
   METERS = 'METERS',
   CENTIMETERS = 'CENTIMETERS',
   BOXES = 'BOXES',
-  PACKS = 'PACKS',
+  PACKAGES = 'PACKAGES',
 }
+
+export enum InventoryMovementType {
+  STOCK_IN = 'STOCK_IN',
+  STOCK_OUT = 'STOCK_OUT',
+  TRANSFER = 'TRANSFER',
+  ADJUSTMENT = 'ADJUSTMENT',
+  DAMAGE = 'DAMAGE',
+  EXPIRED = 'EXPIRED',
+  DONATED = 'DONATED',
+  SOLD = 'SOLD',
+  RETURNED = 'RETURNED',
+}
+
+// Mirrors InventoryCategoryType in crm-be/src/common/enums/inventory.enum.ts
+export const INVENTORY_CATEGORY_TYPES = [
+  'GENERAL',
+  'OFFICE_SUPPLIES',
+  'ELECTRONICS',
+  'FURNITURE',
+  'BOOKS_MATERIALS',
+  'FOOD_BEVERAGES',
+  'CLEANING_SUPPLIES',
+  'MEDICAL_SUPPLIES',
+  'MUSICAL_INSTRUMENTS',
+  'SOUND_EQUIPMENT',
+  'DECORATIONS',
+  'UNIFORMS_CLOTHING',
+  'VEHICLES',
+  'MAINTENANCE',
+  'GIFTS_DONATIONS',
+] as const
+
+type UserRef = { _id: string; firstName: string; lastName: string; email?: string }
 
 // Interfaces
 export interface InventoryCategory {
   _id: string
   name: string
+  code?: string
+  type?: string
+  color?: string
+  sortOrder?: number
   description?: string
-  parentCategory?: string
+  parentCategory?: string | { _id: string; name: string; code?: string }
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -105,27 +142,42 @@ export interface InventoryItem {
 
 export interface InventoryMovement {
   _id: string
-  inventoryItem: InventoryItem | string
-  movementType: string
+  inventoryItem: { _id: string; name: string; itemCode: string; unitOfMeasurement?: string } | string
+  movementType: InventoryMovementType | string
   quantity: number
-  fromQuantity: number
-  toQuantity: number
+  previousStock: number
+  newStock: number
   unitCost?: number
   totalCost?: number
   reason: string
-  description?: string
-  reference?: string
-  fromLocation?: string
-  toLocation?: string
+  referenceNumber?: string
+  batchNumber?: string
+  supplier?: string
+  supplierInvoiceNumber?: string
   fromUnit?: { _id: string; name: string }
   toUnit?: { _id: string; name: string }
-  approvedBy?: { _id: string; firstName: string; lastName: string }
-  approvedAt?: string
-  status: string
+  fromDistrict?: { _id: string; name: string }
+  toDistrict?: { _id: string; name: string }
+  performedBy?: UserRef | string
+  approvedBy?: UserRef | string
+  approvedDate?: string
+  status: 'pending' | 'approved' | 'rejected' | string
+  notes?: string
   metadata?: Record<string, any>
-  createdBy: { _id: string; firstName: string; lastName: string } | string
+  movementDate: string
   createdAt: string
   updatedAt: string
+}
+
+export interface MovementStatistics {
+  summary: {
+    totalMovements: number
+    totalQuantityIn: number
+    totalQuantityOut: number
+    totalValue: number
+  }
+  movementTypes: Array<{ _id: string; count: number; totalQuantity: number; totalValue: number }>
+  dailyMovements: Array<{ _id: string; count: number; quantity: number }>
 }
 
 export interface CreateInventoryItemData {
@@ -173,26 +225,72 @@ export interface CreateInventoryItemData {
   }
   isDepreciable?: boolean
   depreciationRate?: number
+  status?: InventoryStatus
 }
 
 export interface CreateInventoryCategoryData {
   name: string
+  code: string
+  type?: string
+  color?: string
+  sortOrder?: number
+  isActive?: boolean
   description?: string
   parentCategory?: string
 }
 
 export interface CreateInventoryMovementData {
   inventoryItem: string
-  movementType: string
+  movementType: InventoryMovementType | string
   quantity: number
   reason: string
-  description?: string
-  reference?: string
-  fromLocation?: string
-  toLocation?: string
+  unitCost?: number
+  referenceNumber?: string
+  batchNumber?: string
+  expiryDate?: string
+  supplier?: string
+  supplierInvoiceNumber?: string
+  supplierInvoiceDate?: string
   fromUnit?: string
   toUnit?: string
-  unitCost?: number
+  fromDistrict?: string
+  toDistrict?: string
+  status?: 'pending' | 'approved'
+  notes?: string
+  movementDate?: string
+}
+
+export interface MovementQueryParams {
+  page?: number
+  limit?: number
+  inventoryItemId?: string
+  movementType?: string
+  status?: string
+  startDate?: string
+  endDate?: string
+}
+
+const dropEmpty = (o: Record<string, any>) =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== ''))
+
+// The movements endpoint returns { movements, pagination: { current, pages, count, total } },
+// which transformPaginatedResponse doesn't understand.
+function toMovementPage(raw: any, limit: number): PaginatedResponse<InventoryMovement> {
+  const body = raw?.movements ? raw : raw?.data?.movements ? raw.data : {}
+  const p = body.pagination || {}
+  const page = Number(p.current) || 1
+  const totalPages = p.pages || 0
+  return {
+    items: body.movements || [],
+    pagination: {
+      page,
+      limit,
+      total: p.total || 0,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  }
 }
 
 export interface InventoryQueryParams {
@@ -318,6 +416,18 @@ export const inventoryService = {
     }
   },
 
+  /** Item count and stock value for every category, keyed by category id. */
+  getCategoryBreakdown: async (): Promise<Array<{ id: string; name: string; count: number; value: number }>> => {
+    const response = await apiService.get<ApiResponse<any>>('/inventory/items/statistics')
+    const data = transformSingleResponse<any>(response) || {}
+    return (data.categoryBreakdown || []).map((c: any) => ({
+      id: String(c._id),
+      name: c.categoryInfo?.name || 'Unknown',
+      count: c.itemCount || 0,
+      value: c.totalValue || 0,
+    }))
+  },
+
   getLowStockItems: async (): Promise<InventoryItem[]> => {
     const response = await apiService.get<ApiResponse<InventoryItem[]>>('/inventory/items/low-stock')
     return transformSingleResponse<InventoryItem[]>(response) as InventoryItem[]
@@ -329,16 +439,25 @@ export const inventoryService = {
   },
 
   // Movements
-  getMovements: async (params?: {
-    page?: number
-    limit?: number
-    itemId?: string
-    movementType?: string
-    startDate?: string
-    endDate?: string
-  }): Promise<PaginatedResponse<InventoryMovement>> => {
-    const response = await apiService.get<ApiResponse<any>>('/inventory/movements', { params })
-    return transformPaginatedResponse<InventoryMovement>(response)
+  getMovements: async (params: MovementQueryParams = {}): Promise<PaginatedResponse<InventoryMovement>> => {
+    const response = await apiService.get<any>('/inventory/movements', { params: dropEmpty(params) })
+    return toMovementPage(response, params.limit || 20)
+  },
+
+  getMovementStatistics: async (
+    params: { inventoryItemId?: string; startDate?: string; endDate?: string } = {},
+  ): Promise<MovementStatistics> => {
+    const response = await apiService.get<any>('/inventory/movements/statistics', { params: dropEmpty(params) })
+    const data = transformSingleResponse<any>(response) || {}
+    return {
+      summary: data.summary || { totalMovements: 0, totalQuantityIn: 0, totalQuantityOut: 0, totalValue: 0 },
+      movementTypes: data.movementTypes || [],
+      dailyMovements: data.dailyMovements || [],
+    }
+  },
+
+  rejectMovement: async (id: string, reason: string): Promise<void> => {
+    await apiService.patch(`/inventory/movements/${id}/reject`, { reason })
   },
 
   getMovementById: async (id: string): Promise<InventoryMovement> => {

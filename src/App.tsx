@@ -80,9 +80,15 @@ const WorkersTraining = lazy(() => import('@/pages/WorkersTraining/WorkersTraini
 const CohortManagement = lazy(() => import('@/pages/WorkersTraining/CohortManagement'))
 const TraineeAssignment = lazy(() => import('@/pages/WorkersTraining/TraineeAssignment'))
 const TraineeManagement = lazy(() => import('@/pages/WorkersTraining/TraineeManagement'))
+const CohortForm = lazy(() => import('@/pages/WorkersTraining/CohortForm'))
 
 const InventoryDashboard = lazy(() => import('@/pages/Inventory/InventoryDashboard'))
 const InventoryItems = lazy(() => import('@/pages/Inventory/InventoryItems'))
+const InventoryItemForm = lazy(() => import('@/pages/Inventory/InventoryItemForm'))
+const InventoryItemDetail = lazy(() => import('@/pages/Inventory/InventoryItemDetail'))
+const InventoryCategories = lazy(() => import('@/pages/Inventory/InventoryCategories'))
+const InventoryMovements = lazy(() => import('@/pages/Inventory/InventoryMovements'))
+const InventoryReports = lazy(() => import('@/pages/Inventory/InventoryReports'))
 
 const StoreProducts = lazy(() => import('@/pages/Store/StoreProducts'))
 const ProductForm = lazy(() => import('@/pages/Store/ProductForm'))
@@ -106,6 +112,7 @@ const GroupMeetingAttendancePage = lazy(() => import('@/pages/Attendance/GroupMe
 
 const AuditDashboard = lazy(() => import('@/pages/Audit/AuditDashboard'))
 const AuditLogs = lazy(() => import('@/pages/Audit/AuditLogs'))
+const AuditReports = lazy(() => import('@/pages/Audit/AuditReports'))
 
 const RolesListPage = lazy(() => import('@/pages/roles').then(m => ({ default: m.RolesListPage })))
 const CreateRolePage = lazy(() => import('@/pages/roles').then(m => ({ default: m.CreateRolePage })))
@@ -450,6 +457,16 @@ function App() {
                 <LazyPage><CohortManagement /></LazyPage>
               </ProtectedRoute>
             } />
+            <Route path="/workers-training/cohorts/new" element={
+              <ProtectedRoute>
+                <LazyPage><CohortForm /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/workers-training/cohorts/:cohortId/edit" element={
+              <ProtectedRoute>
+                <LazyPage><CohortForm /></LazyPage>
+              </ProtectedRoute>
+            } />
             <Route path="/workers-training/trainees" element={
               <ProtectedRoute>
                 <LazyPage><TraineeManagement /></LazyPage>
@@ -480,6 +497,36 @@ function App() {
             <Route path="/inventory/items" element={
               <ProtectedRoute>
                 <LazyPage><InventoryItems /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory/items/new" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryItemForm /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory/items/:id/edit" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryItemForm /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory/items/:id" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryItemDetail /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory/categories" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryCategories /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory/movements" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryMovements /></LazyPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory/reports" element={
+              <ProtectedRoute>
+                <LazyPage><InventoryReports /></LazyPage>
               </ProtectedRoute>
             } />
 
@@ -580,6 +627,12 @@ function App() {
             <Route path="/audit/logs" element={
               <ProtectedRoute>
                 <LazyPage><AuditLogs /></LazyPage>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/audit/reports" element={
+              <ProtectedRoute>
+                <LazyPage><AuditReports /></LazyPage>
               </ProtectedRoute>
             } />
 

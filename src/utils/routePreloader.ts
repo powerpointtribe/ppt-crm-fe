@@ -43,14 +43,19 @@ const routeComponents: Record<string, LazyComponent> = {
   // Workers Training
   '/workers-training': () => import('@/pages/WorkersTraining/WorkersTraining'),
   '/workers-training/cohorts': () => import('@/pages/WorkersTraining/CohortManagement'),
+  '/workers-training/cohorts/new': () => import('@/pages/WorkersTraining/CohortForm'),
 
   // Inventory
   '/inventory': () => import('@/pages/Inventory/InventoryDashboard'),
   '/inventory/items': () => import('@/pages/Inventory/InventoryItems'),
+  '/inventory/categories': () => import('@/pages/Inventory/InventoryCategories'),
+  '/inventory/movements': () => import('@/pages/Inventory/InventoryMovements'),
+  '/inventory/reports': () => import('@/pages/Inventory/InventoryReports'),
 
   // Audit
   '/audit': () => import('@/pages/Audit/AuditDashboard'),
   '/audit/logs': () => import('@/pages/Audit/AuditLogs'),
+  '/audit/reports': () => import('@/pages/Audit/AuditReports'),
 
   // Roles
   '/roles': () => import('@/pages/roles').then(m => ({ default: m.RolesListPage })),
